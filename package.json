@@ -1,0 +1,44 @@
+{
+	"name": "animotion",
+	"type": "module",
+	"scripts": {
+		"dev": "vite dev",
+		"build": "vite build",
+		"preview": "vite preview",
+		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch"
+	},
+	"devDependencies": {
+		"@allmaps/annotation": "1.0.0-beta.36",
+		"@allmaps/stdlib": "1.0.0-beta.40",
+		"@sveltejs/adapter-static": "^3.0.10",
+		"@sveltejs/kit": "^2.51.0",
+		"@sveltejs/vite-plugin-svelte": "^6.2.4",
+		"@types/reveal.js": "^5.2.2",
+		"prettier": "^3.8.1",
+		"prettier-plugin-svelte": "^3.4.1",
+		"prettier-plugin-tailwindcss": "^0.7.2",
+		"shiki": "^3.22.0",
+		"shiki-magic-move": "^1.2.1",
+		"svelte": "^5.50.3",
+		"svelte-check": "^4.3.6",
+		"tslib": "^2.8.1",
+		"typescript": "^5.9.3",
+		"vite": "^7.3.1"
+	},
+	"dependencies": {
+		"@allmaps/bearing": "1.0.0-beta.11",
+		"@allmaps/maplibre": "1.0.0-beta.42",
+		"@allmaps/transform": "1.0.0-beta.51",
+		"@animotion/core": "^1.2.2",
+		"@animotion/motion": "^2.0.1",
+		"@fontsource/atkinson-hyperlegible": "^5.2.8",
+		"@fontsource/monaspace-neon": "^5.2.5",
+		"@protomaps/basemaps": "^5.7.1",
+		"@tailwindcss/vite": "^4.1.18",
+		"@turf/turf": "^7.3.4",
+		"maplibre-gl": "^5.18.0",
+		"reveal.js": "^5.2.1",
+		"tailwindcss": "^4.1.18"
+	}
+}

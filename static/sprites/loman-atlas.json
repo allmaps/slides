@@ -1,0 +1,672 @@
+[
+  {
+    "imageId": "https://stadsarchiefamsterdam.memorix.io/resources/records/media/77ef52ce-bafc-d1e7-c086-9a8315738208/iiif/3/36347551",
+    "allmapsId": "34d0a2d0dc326a81",
+    "scaleFactor": 60.4921875,
+    "x": 0,
+    "y": 0,
+    "width": 128,
+    "height": 94,
+    "spriteTileScale": 0.5
+  },
+  {
+    "imageId": "https://stadsarchiefamsterdam.memorix.io/resources/records/media/77ef52ce-bafc-d1e7-c086-9a8315738208/iiif/3/36347495",
+    "allmapsId": "7936d9f015e49c54",
+    "scaleFactor": 61.3046875,
+    "x": 128,
+    "y": 0,
+    "width": 128,
+    "height": 93,
+    "spriteTileScale": 0.5
+  },
+  {
+    "imageId": "https://stadsarchiefamsterdam.memorix.io/resources/records/media/77ef52ce-bafc-d1e7-c086-9a8315738208/iiif/3/36347552",
+    "allmapsId": "6d85c81e380f58af",
+    "scaleFactor": 60.8125,
+    "x": 256,
+    "y": 0,
+    "width": 128,
+    "height": 93,
+    "spriteTileScale": 0.5
+  },
+  {
+    "imageId": "https://stadsarchiefamsterdam.memorix.io/resources/records/media/77ef52ce-bafc-d1e7-c086-9a8315738208/iiif/3/36347516",
+    "allmapsId": "bbc70bc7c476e39b",
+    "scaleFactor": 60.17829457364341,
+    "x": 384,
+    "y": 0,
+    "width": 129,
+    "height": 93,
+    "spriteTileScale": 0.5
+  },
+  {
+    "imageId": "https://stadsarchiefamsterdam.memorix.io/resources/records/media/77ef52ce-bafc-d1e7-c086-9a8315738208/iiif/3/36347462",
+    "allmapsId": "8f95f54f3ae560e5",
+    "scaleFactor": 60.65116279069768,
+    "x": 513,
+    "y": 0,
+    "width": 129,
+    "height": 93,
+    "spriteTileScale": 0.5
+  },
+  {
+    "imageId": "https://stadsarchiefamsterdam.memorix.io/resources/records/media/77ef52ce-bafc-d1e7-c086-9a8315738208/iiif/3/36347510",
+    "allmapsId": "cecce150418c9380",
+    "scaleFactor": 60.92968749999999,
+    "x": 642,
+    "y": 0,
+    "width": 128,
+    "height": 93,
+    "spriteTileScale": 0.5
+  },
+  {
+    "imageId": "https://stadsarchiefamsterdam.memorix.io/resources/records/media/77ef52ce-bafc-d1e7-c086-9a8315738208/iiif/3/36347532",
+    "allmapsId": "6e5fb2b21e469f1f",
+    "scaleFactor": 61.04687500000001,
+    "x": 770,
+    "y": 0,
+    "width": 128,
+    "height": 92,
+    "spriteTileScale": 0.5
+  },
+  {
+    "imageId": "https://stadsarchiefamsterdam.memorix.io/resources/records/media/77ef52ce-bafc-d1e7-c086-9a8315738208/iiif/3/36347529",
+    "allmapsId": "98da2de752a9c34a",
+    "scaleFactor": 62.37007874015748,
+    "x": 0,
+    "y": 94,
+    "width": 127,
+    "height": 92,
+    "spriteTileScale": 0.5
+  },
+  {
+    "imageId": "https://stadsarchiefamsterdam.memorix.io/resources/records/media/77ef52ce-bafc-d1e7-c086-9a8315738208/iiif/3/36347497",
+    "allmapsId": "84c8d721725d17dc",
+    "scaleFactor": 61.31249999999999,
+    "x": 127,
+    "y": 94,
+    "width": 128,
+    "height": 92,
+    "spriteTileScale": 0.5
+  },
+  {
+    "imageId": "https://stadsarchiefamsterdam.memorix.io/resources/records/media/77ef52ce-bafc-d1e7-c086-9a8315738208/iiif/3/36347493",
+    "allmapsId": "cc8bec71cc71818f",
+    "scaleFactor": 62.3984375,
+    "x": 255,
+    "y": 94,
+    "width": 128,
+    "height": 92,
+    "spriteTileScale": 0.5
+  },
+  {
+    "imageId": "https://stadsarchiefamsterdam.memorix.io/resources/records/media/77ef52ce-bafc-d1e7-c086-9a8315738208/iiif/3/36347512",
+    "allmapsId": "adfc81bc7329a33c",
+    "scaleFactor": 61.64341085271318,
+    "x": 383,
+    "y": 94,
+    "width": 129,
+    "height": 92,
+    "spriteTileScale": 0.5
+  },
+  {
+    "imageId": "https://stadsarchiefamsterdam.memorix.io/resources/records/media/77ef52ce-bafc-d1e7-c086-9a8315738208/iiif/3/36347511",
+    "allmapsId": "75ad71808b2e0bba",
+    "scaleFactor": 61.1937984496124,
+    "x": 512,
+    "y": 94,
+    "width": 129,
+    "height": 92,
+    "spriteTileScale": 0.5
+  },
+  {
+    "imageId": "https://stadsarchiefamsterdam.memorix.io/resources/records/media/77ef52ce-bafc-d1e7-c086-9a8315738208/iiif/3/36347531",
+    "allmapsId": "ec634917e8126228",
+    "scaleFactor": 61.70312500000001,
+    "x": 641,
+    "y": 94,
+    "width": 128,
+    "height": 91,
+    "spriteTileScale": 0.5
+  },
+  {
+    "imageId": "https://stadsarchiefamsterdam.memorix.io/resources/records/media/77ef52ce-bafc-d1e7-c086-9a8315738208/iiif/3/36347537",
+    "allmapsId": "adb24bcfc5c863f8",
+    "scaleFactor": 62.13178294573644,
+    "x": 769,
+    "y": 94,
+    "width": 129,
+    "height": 91,
+    "spriteTileScale": 0.5
+  },
+  {
+    "imageId": "https://stadsarchiefamsterdam.memorix.io/resources/records/media/77ef52ce-bafc-d1e7-c086-9a8315738208/iiif/3/36347475",
+    "allmapsId": "a67fedd42fc69504",
+    "scaleFactor": 62.890625,
+    "x": 0,
+    "y": 186,
+    "width": 128,
+    "height": 91,
+    "spriteTileScale": 0.5
+  },
+  {
+    "imageId": "https://stadsarchiefamsterdam.memorix.io/resources/records/media/77ef52ce-bafc-d1e7-c086-9a8315738208/iiif/3/36347464",
+    "allmapsId": "bd32e2f5584996e0",
+    "scaleFactor": 62.96875,
+    "x": 128,
+    "y": 186,
+    "width": 128,
+    "height": 91,
+    "spriteTileScale": 0.5
+  },
+  {
+    "imageId": "https://stadsarchiefamsterdam.memorix.io/resources/records/media/77ef52ce-bafc-d1e7-c086-9a8315738208/iiif/3/36347496",
+    "allmapsId": "4c1afd76b80e3682",
+    "scaleFactor": 62.96875,
+    "x": 256,
+    "y": 186,
+    "width": 128,
+    "height": 91,
+    "spriteTileScale": 0.5
+  },
+  {
+    "imageId": "https://stadsarchiefamsterdam.memorix.io/resources/records/media/77ef52ce-bafc-d1e7-c086-9a8315738208/iiif/3/36347499",
+    "allmapsId": "542657d5892aa0eb",
+    "scaleFactor": 62.9609375,
+    "x": 384,
+    "y": 186,
+    "width": 128,
+    "height": 91,
+    "spriteTileScale": 0.5
+  },
+  {
+    "imageId": "https://stadsarchiefamsterdam.memorix.io/resources/records/media/77ef52ce-bafc-d1e7-c086-9a8315738208/iiif/3/36347513",
+    "allmapsId": "adaba9b2e6ddaeab",
+    "scaleFactor": 62.96875,
+    "x": 512,
+    "y": 186,
+    "width": 128,
+    "height": 91,
+    "spriteTileScale": 0.5
+  },
+  {
+    "imageId": "https://stadsarchiefamsterdam.memorix.io/resources/records/media/77ef52ce-bafc-d1e7-c086-9a8315738208/iiif/3/36347530",
+    "allmapsId": "ff788cf7266cf38b",
+    "scaleFactor": 62.55038759689923,
+    "x": 640,
+    "y": 186,
+    "width": 129,
+    "height": 91,
+    "spriteTileScale": 0.5
+  },
+  {
+    "imageId": "https://stadsarchiefamsterdam.memorix.io/resources/records/media/77ef52ce-bafc-d1e7-c086-9a8315738208/iiif/3/36347528",
+    "allmapsId": "f3badf9ade725cea",
+    "scaleFactor": 62.558139534883715,
+    "x": 769,
+    "y": 186,
+    "width": 129,
+    "height": 91,
+    "spriteTileScale": 0.5
+  },
+  {
+    "imageId": "https://stadsarchiefamsterdam.memorix.io/resources/records/media/77ef52ce-bafc-d1e7-c086-9a8315738208/iiif/3/36347514",
+    "allmapsId": "cdeaf979e0957472",
+    "scaleFactor": 62.558139534883715,
+    "x": 0,
+    "y": 277,
+    "width": 129,
+    "height": 91,
+    "spriteTileScale": 0.5
+  },
+  {
+    "imageId": "https://stadsarchiefamsterdam.memorix.io/resources/records/media/77ef52ce-bafc-d1e7-c086-9a8315738208/iiif/3/36347454",
+    "allmapsId": "9aae08041709828a",
+    "scaleFactor": 62.9140625,
+    "x": 129,
+    "y": 277,
+    "width": 128,
+    "height": 91,
+    "spriteTileScale": 0.5
+  },
+  {
+    "imageId": "https://stadsarchiefamsterdam.memorix.io/resources/records/media/77ef52ce-bafc-d1e7-c086-9a8315738208/iiif/3/36347490",
+    "allmapsId": "797d366017cc5b65",
+    "scaleFactor": 62.9140625,
+    "x": 257,
+    "y": 277,
+    "width": 128,
+    "height": 91,
+    "spriteTileScale": 0.5
+  },
+  {
+    "imageId": "https://stadsarchiefamsterdam.memorix.io/resources/records/media/77ef52ce-bafc-d1e7-c086-9a8315738208/iiif/3/36347492",
+    "allmapsId": "caedbe4060365c2d",
+    "scaleFactor": 62.828125,
+    "x": 385,
+    "y": 277,
+    "width": 128,
+    "height": 91,
+    "spriteTileScale": 0.5
+  },
+  {
+    "imageId": "https://stadsarchiefamsterdam.memorix.io/resources/records/media/77ef52ce-bafc-d1e7-c086-9a8315738208/iiif/3/36347509",
+    "allmapsId": "7d0167b7353c372d",
+    "scaleFactor": 62.25581395348838,
+    "x": 513,
+    "y": 277,
+    "width": 129,
+    "height": 91,
+    "spriteTileScale": 0.5
+  },
+  {
+    "imageId": "https://stadsarchiefamsterdam.memorix.io/resources/records/media/77ef52ce-bafc-d1e7-c086-9a8315738208/iiif/3/36347504",
+    "allmapsId": "ff8379ea3a4f156c",
+    "scaleFactor": 62.03875968992248,
+    "x": 642,
+    "y": 277,
+    "width": 129,
+    "height": 91,
+    "spriteTileScale": 0.5
+  },
+  {
+    "imageId": "https://stadsarchiefamsterdam.memorix.io/resources/records/media/77ef52ce-bafc-d1e7-c086-9a8315738208/iiif/3/36347463",
+    "allmapsId": "ebdbad620e751608",
+    "scaleFactor": 61.976377952755904,
+    "x": 771,
+    "y": 277,
+    "width": 127,
+    "height": 91,
+    "spriteTileScale": 0.5
+  },
+  {
+    "imageId": "https://stadsarchiefamsterdam.memorix.io/resources/records/media/77ef52ce-bafc-d1e7-c086-9a8315738208/iiif/3/36347465",
+    "allmapsId": "a4b16de4f0164cd9",
+    "scaleFactor": 62.78740157480314,
+    "x": 0,
+    "y": 368,
+    "width": 127,
+    "height": 91,
+    "spriteTileScale": 0.5
+  },
+  {
+    "imageId": "https://stadsarchiefamsterdam.memorix.io/resources/records/media/77ef52ce-bafc-d1e7-c086-9a8315738208/iiif/3/36347546",
+    "allmapsId": "5e29a56ba381a7d0",
+    "scaleFactor": 62.65116279069768,
+    "x": 127,
+    "y": 368,
+    "width": 129,
+    "height": 90,
+    "spriteTileScale": 0.5
+  },
+  {
+    "imageId": "https://stadsarchiefamsterdam.memorix.io/resources/records/media/77ef52ce-bafc-d1e7-c086-9a8315738208/iiif/3/36347542",
+    "allmapsId": "8e105a29b84a2cf8",
+    "scaleFactor": 62.65625000000001,
+    "x": 256,
+    "y": 368,
+    "width": 128,
+    "height": 90,
+    "spriteTileScale": 0.5
+  },
+  {
+    "imageId": "https://stadsarchiefamsterdam.memorix.io/resources/records/media/77ef52ce-bafc-d1e7-c086-9a8315738208/iiif/3/36347468",
+    "allmapsId": "2bd40bef77b76c9f",
+    "scaleFactor": 63.33858267716535,
+    "x": 384,
+    "y": 368,
+    "width": 127,
+    "height": 90,
+    "spriteTileScale": 0.5
+  },
+  {
+    "imageId": "https://stadsarchiefamsterdam.memorix.io/resources/records/media/77ef52ce-bafc-d1e7-c086-9a8315738208/iiif/3/36347473",
+    "allmapsId": "57b13dad648f850e",
+    "scaleFactor": 62.248062015503876,
+    "x": 511,
+    "y": 368,
+    "width": 129,
+    "height": 90,
+    "spriteTileScale": 0.5
+  },
+  {
+    "imageId": "https://stadsarchiefamsterdam.memorix.io/resources/records/media/77ef52ce-bafc-d1e7-c086-9a8315738208/iiif/3/36347453",
+    "allmapsId": "9f38244903c312da",
+    "scaleFactor": 62.581395348837205,
+    "x": 640,
+    "y": 368,
+    "width": 129,
+    "height": 90,
+    "spriteTileScale": 0.5
+  },
+  {
+    "imageId": "https://stadsarchiefamsterdam.memorix.io/resources/records/media/77ef52ce-bafc-d1e7-c086-9a8315738208/iiif/3/36347470",
+    "allmapsId": "812953ed73a185a6",
+    "scaleFactor": 62.248062015503876,
+    "x": 769,
+    "y": 368,
+    "width": 129,
+    "height": 90,
+    "spriteTileScale": 0.5
+  },
+  {
+    "imageId": "https://stadsarchiefamsterdam.memorix.io/resources/records/media/77ef52ce-bafc-d1e7-c086-9a8315738208/iiif/3/36347508",
+    "allmapsId": "1ff02e8342c1d925",
+    "scaleFactor": 62.65625000000001,
+    "x": 0,
+    "y": 459,
+    "width": 128,
+    "height": 90,
+    "spriteTileScale": 0.5
+  },
+  {
+    "imageId": "https://stadsarchiefamsterdam.memorix.io/resources/records/media/77ef52ce-bafc-d1e7-c086-9a8315738208/iiif/3/36347501",
+    "allmapsId": "f1363a5a4fc3899c",
+    "scaleFactor": 62.240310077519375,
+    "x": 128,
+    "y": 459,
+    "width": 129,
+    "height": 90,
+    "spriteTileScale": 0.5
+  },
+  {
+    "imageId": "https://stadsarchiefamsterdam.memorix.io/resources/records/media/77ef52ce-bafc-d1e7-c086-9a8315738208/iiif/3/36347482",
+    "allmapsId": "3b0a82794d78b4c9",
+    "scaleFactor": 62.65116279069768,
+    "x": 257,
+    "y": 459,
+    "width": 129,
+    "height": 90,
+    "spriteTileScale": 0.5
+  },
+  {
+    "imageId": "https://stadsarchiefamsterdam.memorix.io/resources/records/media/77ef52ce-bafc-d1e7-c086-9a8315738208/iiif/3/36347498",
+    "allmapsId": "4dae730f20448719",
+    "scaleFactor": 62.558139534883715,
+    "x": 386,
+    "y": 459,
+    "width": 129,
+    "height": 90,
+    "spriteTileScale": 0.5
+  },
+  {
+    "imageId": "https://stadsarchiefamsterdam.memorix.io/resources/records/media/77ef52ce-bafc-d1e7-c086-9a8315738208/iiif/3/36347461",
+    "allmapsId": "50f78228001fc78f",
+    "scaleFactor": 62.55038759689923,
+    "x": 515,
+    "y": 459,
+    "width": 129,
+    "height": 90,
+    "spriteTileScale": 0.5
+  },
+  {
+    "imageId": "https://stadsarchiefamsterdam.memorix.io/resources/records/media/77ef52ce-bafc-d1e7-c086-9a8315738208/iiif/3/36347507",
+    "allmapsId": "5fc2fdc448400e15",
+    "scaleFactor": 62.558139534883715,
+    "x": 644,
+    "y": 459,
+    "width": 129,
+    "height": 90,
+    "spriteTileScale": 0.5
+  },
+  {
+    "imageId": "https://stadsarchiefamsterdam.memorix.io/resources/records/media/77ef52ce-bafc-d1e7-c086-9a8315738208/iiif/3/36347534",
+    "allmapsId": "78fd793c36b22548",
+    "scaleFactor": 62.55038759689923,
+    "x": 773,
+    "y": 459,
+    "width": 129,
+    "height": 90,
+    "spriteTileScale": 0.5
+  },
+  {
+    "imageId": "https://stadsarchiefamsterdam.memorix.io/resources/records/media/77ef52ce-bafc-d1e7-c086-9a8315738208/iiif/3/36347500",
+    "allmapsId": "c5cb7b6a1aba0d73",
+    "scaleFactor": 62.558139534883715,
+    "x": 0,
+    "y": 549,
+    "width": 129,
+    "height": 90,
+    "spriteTileScale": 0.5
+  },
+  {
+    "imageId": "https://stadsarchiefamsterdam.memorix.io/resources/records/media/77ef52ce-bafc-d1e7-c086-9a8315738208/iiif/3/36347469",
+    "allmapsId": "ddd76e9a87601beb",
+    "scaleFactor": 62.56589147286822,
+    "x": 129,
+    "y": 549,
+    "width": 129,
+    "height": 90,
+    "spriteTileScale": 0.5
+  },
+  {
+    "imageId": "https://stadsarchiefamsterdam.memorix.io/resources/records/media/77ef52ce-bafc-d1e7-c086-9a8315738208/iiif/3/36347488",
+    "allmapsId": "876138ce3ecc8de0",
+    "scaleFactor": 62.56589147286822,
+    "x": 258,
+    "y": 549,
+    "width": 129,
+    "height": 90,
+    "spriteTileScale": 0.5
+  },
+  {
+    "imageId": "https://stadsarchiefamsterdam.memorix.io/resources/records/media/77ef52ce-bafc-d1e7-c086-9a8315738208/iiif/3/36347486",
+    "allmapsId": "70eb13729e520973",
+    "scaleFactor": 62.56589147286822,
+    "x": 387,
+    "y": 549,
+    "width": 129,
+    "height": 90,
+    "spriteTileScale": 0.5
+  },
+  {
+    "imageId": "https://stadsarchiefamsterdam.memorix.io/resources/records/media/77ef52ce-bafc-d1e7-c086-9a8315738208/iiif/3/36347472",
+    "allmapsId": "01f398697955829c",
+    "scaleFactor": 62.56589147286822,
+    "x": 516,
+    "y": 549,
+    "width": 129,
+    "height": 90,
+    "spriteTileScale": 0.5
+  },
+  {
+    "imageId": "https://stadsarchiefamsterdam.memorix.io/resources/records/media/77ef52ce-bafc-d1e7-c086-9a8315738208/iiif/3/36347539",
+    "allmapsId": "d7cd119b25649455",
+    "scaleFactor": 62.57364341085272,
+    "x": 645,
+    "y": 549,
+    "width": 129,
+    "height": 90,
+    "spriteTileScale": 0.5
+  },
+  {
+    "imageId": "https://stadsarchiefamsterdam.memorix.io/resources/records/media/77ef52ce-bafc-d1e7-c086-9a8315738208/iiif/3/36347502",
+    "allmapsId": "5cad585d08641dd2",
+    "scaleFactor": 62.65116279069768,
+    "x": 774,
+    "y": 549,
+    "width": 129,
+    "height": 90,
+    "spriteTileScale": 0.5
+  },
+  {
+    "imageId": "https://stadsarchiefamsterdam.memorix.io/resources/records/media/77ef52ce-bafc-d1e7-c086-9a8315738208/iiif/3/36347549",
+    "allmapsId": "ff5a44f24c8f61c7",
+    "scaleFactor": 62.65116279069768,
+    "x": 0,
+    "y": 639,
+    "width": 129,
+    "height": 90,
+    "spriteTileScale": 0.5
+  },
+  {
+    "imageId": "https://stadsarchiefamsterdam.memorix.io/resources/records/media/77ef52ce-bafc-d1e7-c086-9a8315738208/iiif/3/36347521",
+    "allmapsId": "cae4017c21932de6",
+    "scaleFactor": 62.63565891472868,
+    "x": 129,
+    "y": 639,
+    "width": 129,
+    "height": 90,
+    "spriteTileScale": 0.5
+  },
+  {
+    "imageId": "https://stadsarchiefamsterdam.memorix.io/resources/records/media/77ef52ce-bafc-d1e7-c086-9a8315738208/iiif/3/36347544",
+    "allmapsId": "631d64419adf98f0",
+    "scaleFactor": 62.65116279069768,
+    "x": 258,
+    "y": 639,
+    "width": 129,
+    "height": 90,
+    "spriteTileScale": 0.5
+  },
+  {
+    "imageId": "https://stadsarchiefamsterdam.memorix.io/resources/records/media/77ef52ce-bafc-d1e7-c086-9a8315738208/iiif/3/36347449",
+    "allmapsId": "124fc47399c8adb6",
+    "scaleFactor": 62.581395348837205,
+    "x": 387,
+    "y": 639,
+    "width": 129,
+    "height": 90,
+    "spriteTileScale": 0.5
+  },
+  {
+    "imageId": "https://stadsarchiefamsterdam.memorix.io/resources/records/media/77ef52ce-bafc-d1e7-c086-9a8315738208/iiif/3/36347485",
+    "allmapsId": "b862f02f9337e6d0",
+    "scaleFactor": 62.65891472868218,
+    "x": 516,
+    "y": 639,
+    "width": 129,
+    "height": 90,
+    "spriteTileScale": 0.5
+  },
+  {
+    "imageId": "https://stadsarchiefamsterdam.memorix.io/resources/records/media/77ef52ce-bafc-d1e7-c086-9a8315738208/iiif/3/36347525",
+    "allmapsId": "336e85c08f2c2c7b",
+    "scaleFactor": 62.65116279069768,
+    "x": 645,
+    "y": 639,
+    "width": 129,
+    "height": 90,
+    "spriteTileScale": 0.5
+  },
+  {
+    "imageId": "https://stadsarchiefamsterdam.memorix.io/resources/records/media/77ef52ce-bafc-d1e7-c086-9a8315738208/iiif/3/36347483",
+    "allmapsId": "3ea1baba4de2dc47",
+    "scaleFactor": 62.57364341085272,
+    "x": 774,
+    "y": 639,
+    "width": 129,
+    "height": 90,
+    "spriteTileScale": 0.5
+  },
+  {
+    "imageId": "https://stadsarchiefamsterdam.memorix.io/resources/records/media/77ef52ce-bafc-d1e7-c086-9a8315738208/iiif/3/36347550",
+    "allmapsId": "665ad9426f0b9383",
+    "scaleFactor": 62.57364341085272,
+    "x": 0,
+    "y": 729,
+    "width": 129,
+    "height": 90,
+    "spriteTileScale": 0.5
+  },
+  {
+    "imageId": "https://stadsarchiefamsterdam.memorix.io/resources/records/media/77ef52ce-bafc-d1e7-c086-9a8315738208/iiif/3/36347522",
+    "allmapsId": "6dd3b31fa1f20a01",
+    "scaleFactor": 63.488188976377955,
+    "x": 129,
+    "y": 729,
+    "width": 127,
+    "height": 90,
+    "spriteTileScale": 0.5
+  },
+  {
+    "imageId": "https://stadsarchiefamsterdam.memorix.io/resources/records/media/77ef52ce-bafc-d1e7-c086-9a8315738208/iiif/3/36347523",
+    "allmapsId": "34dc626f03c19d5a",
+    "scaleFactor": 63.488188976377955,
+    "x": 256,
+    "y": 729,
+    "width": 127,
+    "height": 90,
+    "spriteTileScale": 0.5
+  },
+  {
+    "imageId": "https://stadsarchiefamsterdam.memorix.io/resources/records/media/77ef52ce-bafc-d1e7-c086-9a8315738208/iiif/3/36347547",
+    "allmapsId": "f50a2142f189a276",
+    "scaleFactor": 62.984375,
+    "x": 383,
+    "y": 729,
+    "width": 128,
+    "height": 90,
+    "spriteTileScale": 0.5
+  },
+  {
+    "imageId": "https://stadsarchiefamsterdam.memorix.io/resources/records/media/77ef52ce-bafc-d1e7-c086-9a8315738208/iiif/3/36347471",
+    "allmapsId": "708ef70b3c734519",
+    "scaleFactor": 63.33858267716535,
+    "x": 511,
+    "y": 729,
+    "width": 127,
+    "height": 90,
+    "spriteTileScale": 0.5
+  },
+  {
+    "imageId": "https://stadsarchiefamsterdam.memorix.io/resources/records/media/77ef52ce-bafc-d1e7-c086-9a8315738208/iiif/3/36347536",
+    "allmapsId": "c9384bc04f39a92e",
+    "scaleFactor": 62.62500000000001,
+    "x": 638,
+    "y": 729,
+    "width": 128,
+    "height": 90,
+    "spriteTileScale": 0.5
+  },
+  {
+    "imageId": "https://stadsarchiefamsterdam.memorix.io/resources/records/media/77ef52ce-bafc-d1e7-c086-9a8315738208/iiif/3/36347527",
+    "allmapsId": "df3dc4e04309c401",
+    "scaleFactor": 62.57364341085272,
+    "x": 766,
+    "y": 729,
+    "width": 129,
+    "height": 90,
+    "spriteTileScale": 0.5
+  },
+  {
+    "imageId": "https://stadsarchiefamsterdam.memorix.io/resources/records/media/77ef52ce-bafc-d1e7-c086-9a8315738208/iiif/3/36347541",
+    "allmapsId": "54a4a0438a358c3e",
+    "scaleFactor": 62.56589147286822,
+    "x": 0,
+    "y": 819,
+    "width": 129,
+    "height": 89,
+    "spriteTileScale": 0.5
+  },
+  {
+    "imageId": "https://stadsarchiefamsterdam.memorix.io/resources/records/media/77ef52ce-bafc-d1e7-c086-9a8315738208/iiif/3/36347451",
+    "allmapsId": "b4c5372515aece2e",
+    "scaleFactor": 62.65116279069768,
+    "x": 129,
+    "y": 819,
+    "width": 129,
+    "height": 89,
+    "spriteTileScale": 0.5
+  },
+  {
+    "imageId": "https://stadsarchiefamsterdam.memorix.io/resources/records/media/77ef52ce-bafc-d1e7-c086-9a8315738208/iiif/3/36347480",
+    "allmapsId": "5a6d33707214d5ac",
+    "scaleFactor": 62.581395348837205,
+    "x": 258,
+    "y": 819,
+    "width": 129,
+    "height": 89,
+    "spriteTileScale": 0.5
+  },
+  {
+    "imageId": "https://stadsarchiefamsterdam.memorix.io/resources/records/media/77ef52ce-bafc-d1e7-c086-9a8315738208/iiif/3/36347452",
+    "allmapsId": "647864923ed86cff",
+    "scaleFactor": 62.65116279069768,
+    "x": 387,
+    "y": 819,
+    "width": 129,
+    "height": 89,
+    "spriteTileScale": 0.5
+  }
+]
