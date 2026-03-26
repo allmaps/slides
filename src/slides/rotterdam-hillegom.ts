@@ -2,6 +2,12 @@ import type { MapSlideProps } from '$lib/types'
 
 const slides: MapSlideProps[] = [
 	{
+		sources: {
+			fietstocht: {
+				type: 'geojson',
+				data: '/geojson/fietstocht.geojson'
+			}
+		},
 		annotations: [
 			{
 				url: 'https://sammeltassen.nl/iiif-manifests/allmaps/rotterdam-1897.json',
@@ -10,6 +16,12 @@ const slides: MapSlideProps[] = [
 		]
 	},
 	{
+		sources: {
+			fietstocht: {
+				type: 'geojson',
+				data: '/geojson/fietstocht.geojson'
+			}
+		},
 		annotations: [
 			{
 				url: 'https://annotations.allmaps.org/maps/30b43175342a28b6@2e6470a8d174949f',
@@ -22,6 +34,12 @@ const slides: MapSlideProps[] = [
 		]
 	},
 	{
+		sources: {
+			fietstocht: {
+				type: 'geojson',
+				data: '/geojson/fietstocht.geojson'
+			}
+		},
 		// location: {
 		// 	center: [4.466506, 51.927387],
 		// 	zoom: 12
@@ -42,14 +60,15 @@ const slides: MapSlideProps[] = [
 					removeColorThreshold: 0.5
 				}
 			}
-		],
-		geojsons: [
-			{
-				url: '/geojson/fietstocht.geojson'
-			}
 		]
 	},
 	{
+		sources: {
+			fietstocht: {
+				type: 'geojson',
+				data: '/geojson/fietstocht.geojson'
+			}
+		},
 		// location: {
 		// 	center: [4.5530893, 51.976715],
 		// 	zoom: 12
@@ -64,6 +83,12 @@ const slides: MapSlideProps[] = [
 		]
 	},
 	{
+		sources: {
+			fietstocht: {
+				type: 'geojson',
+				data: '/geojson/fietstocht.geojson'
+			}
+		},
 		annotations: [
 			{
 				url: 'https://annotations.allmaps.org/maps/d49fc22647a499d7@0e87da4ff7464a5f',
@@ -74,6 +99,12 @@ const slides: MapSlideProps[] = [
 		]
 	},
 	{
+		sources: {
+			fietstocht: {
+				type: 'geojson',
+				data: '/geojson/fietstocht.geojson'
+			}
+		},
 		annotations: [
 			{
 				url: 'https://annotations.allmaps.org/maps/6a74aa1b0a1cd30f@6eed53e93a15ae63',
@@ -85,6 +116,12 @@ const slides: MapSlideProps[] = [
 	{
 		location: {
 			bearing: 90
+		},
+		sources: {
+			fietstocht: {
+				type: 'geojson',
+				data: '/geojson/fietstocht.geojson'
+			}
 		},
 		annotations: [
 			{
@@ -101,6 +138,12 @@ const slides: MapSlideProps[] = [
 		location: {
 			bearing: 90
 		},
+		sources: {
+			fietstocht: {
+				type: 'geojson',
+				data: '/geojson/fietstocht.geojson'
+			}
+		},
 		// freeze: true,
 		annotations: [
 			{
@@ -114,6 +157,12 @@ const slides: MapSlideProps[] = [
 		]
 	},
 	{
+		sources: {
+			fietstocht: {
+				type: 'geojson',
+				data: '/geojson/fietstocht.geojson'
+			}
+		},
 		annotations: [
 			{
 				url: 'https://annotations.allmaps.org/maps/82172b1fdbcd8c40@e8a555b5056c4886',
@@ -128,6 +177,12 @@ const slides: MapSlideProps[] = [
 		// 	center: [4.569164, 52.3022714],
 		// 	zoom: 12
 		// },
+		sources: {
+			fietstocht: {
+				type: 'geojson',
+				data: '/geojson/fietstocht.geojson'
+			}
+		},
 		annotations: [
 			{
 				url: 'https://annotations.allmaps.org/maps/85910a5bab900c3f@0c6e85b88adfb471',
@@ -148,6 +203,12 @@ const slides: MapSlideProps[] = [
 			center: [4.7621975, 52.3080392],
 			zoom: 12
 		},
+		sources: {
+			fietstocht: {
+				type: 'geojson',
+				data: '/geojson/fietstocht.geojson'
+			}
+		},
 		annotations: [
 			{
 				url: 'https://annotations.allmaps.org/maps/85910a5bab900c3f@0c6e85b88adfb471',
@@ -164,6 +225,12 @@ const slides: MapSlideProps[] = [
 		]
 	},
 	{
+		sources: {
+			fietstocht: {
+				type: 'geojson',
+				data: '/geojson/fietstocht.geojson'
+			}
+		},
 		annotations: [
 			{
 				url: 'https://annotations.allmaps.org/maps/95daa06fe824bda6',

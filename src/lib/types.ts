@@ -26,7 +26,4 @@ export type MapSlideProps = {
 		bearing?: boolean
 		options?: Partial<MapLibreWarpedMapLayerOptions>
 	}[]
-	geojsons?: {
-		url: string
-	}[]
 }

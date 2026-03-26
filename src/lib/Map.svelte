@@ -31,7 +31,6 @@
 	let annotations = $derived(
 		currentSlide.annotations?.length ? currentSlide.annotations : undefined
 	)
-	let geojsons = $derived(currentSlide.geojsons)
 	let sprite = $derived(currentSlide.sprite)
 
 	let map: maplibregl.Map
@@ -89,20 +88,29 @@
 			})
 			if (slideSources) {
 				Object.entries(slideSources).forEach(([id, source]) => {
-					// Currently only supporting raster layers
-					const isRaster = source.type === 'raster'
+					// Currently only supporting raster and geojson layers
+					const layerType =
+						source.type === 'raster' ? 'raster' : source.type === 'geojson' ? 'line' : undefined
 					if (!map.getSource(id)) {
 						map.addSource(id, source)
 					}
-					if (isRaster && !visibleLayers.has(id)) {
-						map.addLayer(
-							{
-								id,
-								type: 'raster',
-								source: id
-							},
-							'warped-map-layer'
-						)
+					if (layerType && !visibleLayers.has(id)) {
+						const layerOptions: maplibregl.LayerSpecification = {
+							id,
+							type: layerType,
+							source: id
+						}
+						if (layerType === 'line') {
+							layerOptions.layout = {
+								'line-join': 'round',
+								'line-cap': 'round'
+							}
+							layerOptions.paint = {
+								'line-color': colors.green.stroke,
+								'line-width': 8
+							}
+						}
+						map.addLayer(layerOptions, layerType === 'raster' ? 'warped-map-layer' : undefined)
 					}
 					visibleLayers.add(id)
 				})
@@ -251,38 +259,6 @@
 		}
 	})
 
-	// This is still primitive!
-	const loadGeoJsons = (maps: MapSlideProps[]) => {
-		const allUrls = maps
-			.map((i) => i.geojsons)
-			.filter(Boolean)
-			.flat()
-			.map((i) => i.url)
-		const uniqueUrls = [...new Set(allUrls)]
-		if (uniqueUrls.length) {
-			uniqueUrls.forEach((url: string, i: number) => {
-				const id = `geojson-${i}`
-				map.addSource(id, {
-					type: 'geojson',
-					data: url
-				})
-				map.addLayer({
-					id: `route-${i}`,
-					type: 'line',
-					source: id,
-					layout: {
-						'line-join': 'round',
-						'line-cap': 'round'
-					},
-					paint: {
-						'line-color': colors.green.stroke,
-						'line-width': 8
-					}
-				})
-			})
-		}
-	}
-
 	onMount(() => {
 		map = new maplibregl.Map({
 			container,
@@ -307,7 +283,6 @@
 			// @ts-expect-error
 			map.addLayer(warpedMapLayer)
 			await loadAnnotations(maps)
-			loadGeoJsons(maps)
 
 			if (debug) {
 				// Debug layer to show bounds
