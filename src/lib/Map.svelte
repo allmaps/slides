@@ -61,9 +61,9 @@
 	const loadAnnotations = async (maps: MapSlideProps[]) => {
 		const allUrls = maps
 			.map((i) => i.annotations)
-			.filter(Boolean)
-			.flat()
-			.map((i) => i.url)
+			.flatMap((annotations) =>
+				annotations ? annotations.map((annotation) => annotation.url) : []
+			)
 		const uniqueUrls = [...new Set(allUrls)]
 		if (uniqueUrls.length) {
 			const promises = uniqueUrls.map((url: string) => {
@@ -251,11 +251,23 @@
 					bearing: -bearing
 				}
 				// Add optional center if bearing is used
-				if (center) {
+				if (center && !location.center) {
 					flyToOptions.center = center
 				}
 				map.flyTo(flyToOptions)
 			}
+		} else if (mapLoaded) {
+			// Hide all maps
+			warpedMapLayer.setMapsOptions(
+				visibleMaps,
+				useVisibility
+					? { visible: false }
+					: {
+							opacity: 0,
+							renderPoints: false,
+							renderLines: false
+						}
+			)
 		}
 	})
 
