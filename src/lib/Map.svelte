@@ -244,7 +244,7 @@
 					padding: slidePadding !== undefined ? slidePadding : PADDING
 				})
 				const flyToOptions = {
-					duration: init ? 0 : DURATION,
+					duration: index === 0 ? 0 : DURATION,
 					...camera,
 					// Apply manual overrides
 					...location,
