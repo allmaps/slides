@@ -243,16 +243,16 @@
 				const camera = map.cameraForBounds(bounds, {
 					padding: slidePadding !== undefined ? slidePadding : PADDING
 				})
+				// Add optional center if bearing is used
+				if (camera && center) {
+					camera.center = center
+				}
 				const flyToOptions = {
-					duration: index === 0 ? 0 : DURATION,
+					duration: init ? 0 : DURATION,
 					...camera,
 					// Apply manual overrides
 					...location,
 					bearing: -bearing
-				}
-				// Add optional center if bearing is used
-				if (center && !location.center) {
-					flyToOptions.center = center
 				}
 				map.flyTo(flyToOptions)
 			}
