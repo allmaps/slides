@@ -1,6 +1,16 @@
 import type { MapLibreWarpedMapLayerOptions } from '@allmaps/maplibre'
 import maplibregl from 'maplibre-gl'
 
+export type MapSlideAnnotationProps = {
+	type?: 'Image'
+	url: string
+	caption?: string
+	homepage?: string
+	bearing?: boolean
+	options?: Partial<MapLibreWarpedMapLayerOptions>
+	region?: [number, number, number, number]
+}
+
 export type MapSlideProps = {
 	location?: {
 		zoom?: number
@@ -20,10 +30,5 @@ export type MapSlideProps = {
 	sources?: {
 		[key: string]: maplibregl.SourceSpecification
 	}
-	annotations?: {
-		url: string
-		caption?: string
-		bearing?: boolean
-		options?: Partial<MapLibreWarpedMapLayerOptions>
-	}[]
+	annotations?: MapSlideAnnotationProps[]
 }

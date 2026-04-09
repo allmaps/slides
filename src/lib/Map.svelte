@@ -4,27 +4,26 @@
 	import { WarpedMapLayer } from '@allmaps/maplibre'
 	import colors from './colors'
 	import { computeWarpedMapBearing } from '@allmaps/bearing'
-	import { getAxisAlignedBboxAndCenter, getNarrowBbox } from './helpers'
+	import { createFauxGeoreferencedMap, getAxisAlignedBboxAndCenter, getNarrowBbox } from './helpers'
 	import { bboxPolygon } from '@turf/turf'
 	import { featureCollection } from '@turf/turf'
+	import { getLayers, getStyleWithoutLayers } from './style'
+	import { PADDING, DURATION, FLAVOR, DEFAULT_OPTIONS, LOCALE } from './constants'
 
-	import type { MapSlideProps } from './types'
+	import type { MapSlideProps, MapSlideAnnotationProps } from './types'
 
 	import 'maplibre-gl/dist/maplibre-gl.css'
-	import { mapToResourceMaskSvgPolygon } from '@allmaps/stdlib'
 
-	const { index, maps, init } = $props()
-
-	const DURATION = 2000
-	const PADDING = 25
-	// https://tiles.openfreemap.org/styles/liberty
-	const STYLE = 'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json'
+	const { index, maps, init, highlight } = $props()
 
 	let currentSlide = $derived(maps[index]) as MapSlideProps
 	let location = $derived(currentSlide.location ? currentSlide.location : {})
 	let freeze = $derived(currentSlide.freeze)
-	let hideBackground = $derived(currentSlide.hideBackground)
-	let slideDuration = $derived(currentSlide.location?.duration)
+	let imageSlide = $derived(
+		currentSlide.annotations?.some((annotations) => annotations.type === 'Image') || false
+	)
+	let hideBackground = $derived(imageSlide || currentSlide.hideBackground)
+	let slideDuration = $derived(imageSlide ? 0 : currentSlide.location?.duration)
 	let slidePadding = $derived(currentSlide.padding)
 	let slideContain = $derived(currentSlide.contain)
 	let slideSources = $derived(currentSlide.sources)
@@ -44,6 +43,10 @@
 	const debug = false
 	const useVisibility = false
 
+	// Initialize style and layers
+	const styleWithoutLayers = getStyleWithoutLayers(FLAVOR)
+	const styleLayers = getLayers(FLAVOR)
+	const symbolLayers = getLayers(FLAVOR, undefined, { lang: LOCALE, labelsOnly: true })
 	const warpedMapLayer = new WarpedMapLayer(useVisibility ? { visible: false } : undefined)
 
 	function toggleVisibility(event: KeyboardEvent) {
@@ -59,23 +62,63 @@
 	}
 
 	const loadAnnotations = async (maps: MapSlideProps[]) => {
-		const allUrls = maps
+		// Add maps
+		const uniqueAnnotations = maps
 			.map((i) => i.annotations)
-			.flatMap((annotations) =>
-				annotations ? annotations.map((annotation) => annotation.url) : []
-			)
-		const uniqueUrls = [...new Set(allUrls)]
-		if (uniqueUrls.length) {
-			const promises = uniqueUrls.map((url: string) => {
-				return warpedMapLayer
-					.addGeoreferenceAnnotationByUrl(url, useVisibility ? { visible: false } : { opacity: 0 })
-					.then((ids) => {
-						mapIdsByAnnotationUrl.set(url, ids)
-					})
+			.flatMap((annotations) => (annotations ? annotations : []))
+			// Filter for unique URLs
+			.reduce((acc: MapSlideAnnotationProps[], current) => {
+				const annotationExists = acc.some((annotation) => annotation.url === current.url)
+				if (!annotationExists) {
+					acc.push(current)
+				}
+				return acc
+			}, [])
+		if (uniqueAnnotations.length) {
+			const promises = uniqueAnnotations.map((annotation) => {
+				const url = annotation.url
+				if (annotation.type === 'Image') {
+					// Create a 'fake' annotation for the image, in order to add it to the map
+					return createFauxGeoreferencedMap(url, { region: annotation.region })
+						.then((georeferencedMap) =>
+							warpedMapLayer.addGeoreferencedMap(
+								georeferencedMap,
+								useVisibility ? { visible: false } : { opacity: 0 }
+							)
+						)
+						.then((id) => {
+							mapIdsByAnnotationUrl.set(url, [id])
+						})
+				} else {
+					// Add the georeference annotation
+					return warpedMapLayer
+						.addGeoreferenceAnnotationByUrl(
+							url,
+							useVisibility ? { visible: false } : { opacity: 0 }
+						)
+						.then((ids) => {
+							mapIdsByAnnotationUrl.set(url, ids)
+						})
+				}
 			})
-			await Promise.all(promises)
+			return Promise.all(promises)
 		}
 	}
+
+	let highlightedMaps: string[] = []
+	$effect(() => {
+		if (mapLoaded && highlight) {
+			const ids = mapIdsByAnnotationUrl.get(highlight)
+			warpedMapLayer.setMapsOptions(ids, {
+				renderAppliableMask: true
+			})
+			highlightedMaps = ids
+		} else if (mapLoaded) {
+			warpedMapLayer.setMapsOptions(highlightedMaps, {
+				renderAppliableMask: false
+			})
+		}
+	})
 
 	$effect(() => {
 		if (mapLoaded) {
@@ -129,19 +172,20 @@
 	})
 
 	$effect(() => {
+		const alwaysShow = [warpedMapLayer?.id, 'foreground', 'background']
 		if (mapLoaded && hideBackground) {
-			map.setPaintProperty('white-background', 'background-opacity', 1)
+			map.setPaintProperty('foreground', 'background-opacity', 1)
 
 			for (const layer of map.getLayersOrder()) {
-				if (layer !== warpedMapLayer?.id) {
+				if (!alwaysShow.includes(layer)) {
 					map.setLayoutProperty(layer, 'visibility', 'none')
 				}
 			}
 		} else if (mapLoaded) {
-			map.setPaintProperty('white-background', 'background-opacity', 0)
+			map.setPaintProperty('foreground', 'background-opacity', 0)
 
 			for (const layer of map.getLayersOrder()) {
-				if (layer !== warpedMapLayer?.id) {
+				if (!alwaysShow.includes(layer)) {
 					map.setLayoutProperty(layer, 'visibility', 'visible')
 				}
 			}
@@ -165,8 +209,20 @@
 						optionsByMapId.set(
 							id,
 							useVisibility
-								? { visible: true, renderPoints: true, renderLines: true, ...options }
-								: { opacity: 1, renderPoints: true, renderLines: true, ...options }
+								? {
+										visible: true,
+										renderPoints: true,
+										renderLines: true,
+										...DEFAULT_OPTIONS,
+										...options
+									}
+								: {
+										opacity: 1,
+										renderPoints: true,
+										renderLines: true,
+										...DEFAULT_OPTIONS,
+										...options
+									}
 						)
 						if (!visibleMaps.includes(id)) {
 							// No longer used!
@@ -248,7 +304,7 @@
 					camera.center = center
 				}
 				const flyToOptions = {
-					duration: init ? 0 : DURATION,
+					duration: init || imageSlide ? 0 : DURATION,
 					...camera,
 					// Apply manual overrides
 					...location,
@@ -274,27 +330,24 @@
 	onMount(() => {
 		map = new maplibregl.Map({
 			container,
-			style: STYLE,
+			style: styleWithoutLayers,
 			maxPitch: 0,
-			attributionControl: false
+			attributionControl: false,
+			center: [0, 0],
+			zoom: 14
 		})
 
 		map.keyboard.disable()
 
 		map.on('load', async () => {
-			map.addLayer({
-				id: 'white-background',
-				type: 'background',
-				paint: {
-					'background-color': '#ffffff',
-					'background-opacity': 1,
-					'background-opacity-transition': { duration: DURATION }
-				}
-			})
+			// Add layers
+			styleLayers.forEach((layer) => map.addLayer(layer, 'foreground'))
 
 			// @ts-expect-error
 			map.addLayer(warpedMapLayer)
 			await loadAnnotations(maps)
+
+			// symbolLayers.forEach((layer) => map.addLayer(layer))
 
 			if (debug) {
 				// Debug layer to show bounds
@@ -340,4 +393,4 @@
 
 <svelte:window on:keydown={toggleVisibility} on:keyup={toggleVisibility} />
 
-<div class="maplibre h-screen w-screen" bind:this={container}></div>
+<div class="maplibre h-dvh w-dvw" bind:this={container}></div>

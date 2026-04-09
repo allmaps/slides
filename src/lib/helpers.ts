@@ -17,9 +17,12 @@ import {
 	bboxToCenter
 } from '@allmaps/stdlib'
 import maplibregl from 'maplibre-gl'
+import type { GeoreferencedMap } from '@allmaps/annotation'
 
 type BBox = [number, number, number, number]
 type Coord = [number, number]
+
+export const fetchJson = (url: string) => fetch(url).then((resp) => resp.json())
 
 // Need to take into account display ratio!
 export const getNarrowBbox = (mapsBbox: BBox) => {
@@ -66,4 +69,56 @@ export const getAxisAlignedBboxAndCenter = (geoMasks, bearing: number) => {
 		bounds: rotatedBbox,
 		center: new maplibregl.LngLat(...viewportCenterCoord)
 	}
+}
+
+export const createFauxGeoreferencedMap = async (
+	imageId: string,
+	options: {
+		bounds?: [number, number, number, number]
+		region?: [number, number, number, number]
+	}
+) => {
+	let { region, bounds } = options
+	if (!bounds) {
+		bounds = [-0.1, -0.1, 0.1, 0.1]
+	}
+	const imageInfo = await fetchJson(`${imageId}/info.json`)
+	const { width, height } = imageInfo
+	let [xMin, yMin, xMax, yMax] = bounds
+	let [resourceX, resourceY, resourceWidth, resourceHeight] = [0, 0, width, height]
+	if (region) {
+		;[resourceX, resourceY, resourceWidth, resourceHeight] = region
+	}
+	const resourceMask = [
+		[resourceX, resourceY],
+		[resourceX + resourceWidth, resourceY],
+		[resourceX + resourceWidth, resourceY + resourceHeight],
+		[resourceX, resourceY + resourceHeight]
+	]
+	const gcps = [
+		{
+			resource: [resourceX, resourceY + resourceHeight],
+			geo: [xMin, yMin]
+		},
+		{
+			resource: [resourceX + resourceWidth, resourceY],
+			geo: [xMax, yMax]
+		}
+	]
+	return {
+		['@context']: 'https://schemas.allmaps.org/map/2/context.json',
+		id: imageId,
+		type: 'GeoreferencedMap',
+		resource: {
+			id: imageId,
+			width,
+			height,
+			type: 'ImageService3'
+		},
+		gcps,
+		resourceMask,
+		transformation: {
+			type: 'straight'
+		}
+	} satisfies GeoreferencedMap
 }
