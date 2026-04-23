@@ -11,6 +11,8 @@ const slides: MapSlideProps[] = [
 		annotations: [
 			{
 				url: 'https://sammeltassen.nl/iiif-manifests/allmaps/rotterdam-1897.json',
+				caption: 'Plattegrond van Rotterdam in 10 bladen',
+				homepage: 'https://hdl.handle.net/21.12133/D4819B84C353472E82C51412132084C8',
 				bearing: true
 			}
 		]
@@ -113,49 +115,49 @@ const slides: MapSlideProps[] = [
 			}
 		]
 	},
-	{
-		location: {
-			bearing: 90
-		},
-		sources: {
-			fietstocht: {
-				type: 'geojson',
-				data: '/geojson/fietstocht.geojson'
-			}
-		},
-		annotations: [
-			{
-				url: 'https://annotations.allmaps.org/maps/8d600f869d79b7db',
-				caption: 'Stratenboek',
-				options: {
-					transformationType: 'helmert'
-				},
-				bearing: true
-			}
-		]
-	},
-	{
-		location: {
-			bearing: 90
-		},
-		sources: {
-			fietstocht: {
-				type: 'geojson',
-				data: '/geojson/fietstocht.geojson'
-			}
-		},
-		// freeze: true,
-		annotations: [
-			{
-				url: 'https://annotations.allmaps.org/maps/8d600f869d79b7db',
-				caption: 'Stratenboek',
-				bearing: true,
-				options: {
-					transformationType: 'thinPlateSpline'
-				}
-			}
-		]
-	},
+	// {
+	// 	location: {
+	// 		bearing: 90
+	// 	},
+	// 	sources: {
+	// 		fietstocht: {
+	// 			type: 'geojson',
+	// 			data: '/geojson/fietstocht.geojson'
+	// 		}
+	// 	},
+	// 	annotations: [
+	// 		{
+	// 			url: 'https://annotations.allmaps.org/maps/8d600f869d79b7db',
+	// 			caption: 'Stratenboek',
+	// 			options: {
+	// 				transformationType: 'helmert'
+	// 			},
+	// 			bearing: true
+	// 		}
+	// 	]
+	// },
+	// {
+	// 	location: {
+	// 		bearing: 90
+	// 	},
+	// 	sources: {
+	// 		fietstocht: {
+	// 			type: 'geojson',
+	// 			data: '/geojson/fietstocht.geojson'
+	// 		}
+	// 	},
+	// 	// freeze: true,
+	// 	annotations: [
+	// 		{
+	// 			url: 'https://annotations.allmaps.org/maps/8d600f869d79b7db',
+	// 			caption: 'Stratenboek',
+	// 			bearing: true,
+	// 			options: {
+	// 				transformationType: 'thinPlateSpline'
+	// 			}
+	// 		}
+	// 	]
+	// },
 	{
 		sources: {
 			fietstocht: {
@@ -231,11 +233,16 @@ const slides: MapSlideProps[] = [
 				data: '/geojson/fietstocht.geojson'
 			}
 		},
+		location: {
+			bearing: 90
+		},
 		annotations: [
 			{
 				url: 'https://annotations.allmaps.org/maps/95daa06fe824bda6',
+				caption: 'Bodemkundige overzichtskaart van de Haarlemmermeer',
+				bearing: true,
 				options: {
-					removeColor: true,
+					removeColor: false,
 					removeColorColor: '#DFDBC8',
 					removeColorThreshold: 0.2
 				}

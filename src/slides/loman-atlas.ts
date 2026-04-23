@@ -195,6 +195,16 @@ const slides: MapSlideProps[] = [
 			}
 		]
 	},
+	{
+		annotations: [
+			{
+				url: 'https://annotations.allmaps.org/maps/435ccc0ea633df34@3d263d75a9563b6a',
+				caption: 'Amstelredamum emporium Hollandiæ primarium totiusque Europæ celeberrimum',
+				homepage: 'https://hdl.handle.net/11245/3.39844',
+				bearing: true
+			}
+		]
+	},
 	// {
 	// 	hideBackground: true,
 	// 	annotations: [

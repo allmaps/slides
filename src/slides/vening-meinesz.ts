@@ -5,6 +5,7 @@ const slides: MapSlideProps[] = [
 		annotations: [
 			{
 				url: 'https://annotations.allmaps.org/maps/4d9f3883d445c148',
+				caption: 'Gravity Stations in the North Sea',
 				options: {
 					// removeColor: true,
 					// removeColorColor: '#F5F7E3',
@@ -23,6 +24,7 @@ const slides: MapSlideProps[] = [
 		annotations: [
 			{
 				url: 'https://annotations.allmaps.org/maps/ccc491226d63fc9d',
+				caption: 'Isostatic anomalies',
 				options: {
 					removeColor: true,
 					removeColorColor: '#F5F7E3',
@@ -34,6 +36,7 @@ const slides: MapSlideProps[] = [
 			},
 			{
 				url: 'https://annotations.allmaps.org/maps/4d9f3883d445c148',
+				caption: 'Gravity Stations in the North Sea',
 				options: {
 					// removeColor: true,
 					// removeColorColor: '#F5F7E3',
@@ -52,6 +55,7 @@ const slides: MapSlideProps[] = [
 		annotations: [
 			{
 				url: 'https://annotations.allmaps.org/maps/7830878dfc7ed3f5',
+				caption: 'Structural map of the North Sea',
 				options: {
 					removeColor: true,
 					removeColorColor: '#F5F7E3',
@@ -63,6 +67,7 @@ const slides: MapSlideProps[] = [
 			},
 			{
 				url: 'https://annotations.allmaps.org/maps/ccc491226d63fc9d',
+				caption: 'Isostatic anomalies',
 				options: {
 					removeColor: true,
 					removeColorColor: '#F5F7E3',
@@ -74,6 +79,7 @@ const slides: MapSlideProps[] = [
 			},
 			{
 				url: 'https://annotations.allmaps.org/maps/4d9f3883d445c148',
+				caption: 'Gravity Stations in the North Sea',
 				options: {
 					// removeColor: true,
 					// removeColorColor: '#F5F7E3',
