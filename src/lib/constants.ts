@@ -19,5 +19,7 @@ export const DEFAULT_OPTIONS: Partial<MapLibreWarpedMapLayerOptions> = {
 	renderTransformedGcps: false,
 	renderVectors: false,
 	renderGrid: false,
-	transformationType: undefined
+	transformationType: undefined,
+	// Fix until undefined works
+	distortionMeasure: ''
 }

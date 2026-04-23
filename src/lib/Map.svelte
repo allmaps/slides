@@ -79,7 +79,10 @@
 				const url = annotation.url
 				if (annotation.type === 'Image') {
 					// Create a 'fake' annotation for the image, in order to add it to the map
-					return createFauxGeoreferencedMap(url, { region: annotation.region })
+					return createFauxGeoreferencedMap(url, {
+						region: annotation.region,
+						wiggle: annotation.wiggle
+					})
 						.then((georeferencedMap) =>
 							warpedMapLayer.addGeoreferencedMap(
 								georeferencedMap,

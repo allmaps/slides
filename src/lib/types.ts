@@ -9,6 +9,7 @@ export type MapSlideAnnotationProps = {
 	bearing?: boolean
 	options?: Partial<MapLibreWarpedMapLayerOptions>
 	region?: [number, number, number, number]
+	wiggle?: boolean
 }
 
 export type MapSlideProps = {
