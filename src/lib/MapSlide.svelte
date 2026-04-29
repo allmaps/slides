@@ -50,7 +50,7 @@
 		{/if}
 		{#if currentAnnotations}
 			<div class="absolute bottom-0 mb-5 flex h-auto w-full items-center justify-center text-base">
-				<div class="max-w-lg rounded-lg border border-solid bg-white p-2 text-left">
+				<div class="max-w-3xl rounded-lg border border-solid bg-white p-2 text-left">
 					<ul>
 						{#each currentAnnotations as annotation}
 							<li class="ml-4">
@@ -61,8 +61,7 @@
 									onmouseout={highlightMap}
 									onfocus={highlightMap}
 									onblur={highlightMap}
-									href={annotation.homepage}
-									>{annotation.caption ? annotation.caption : 'No caption'}</a
+									href={annotation.homepage}>{@html annotation.caption}</a
 								>
 							</li>
 						{/each}
