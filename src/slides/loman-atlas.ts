@@ -31,7 +31,7 @@ const slides: MapSlideProps[] = [
 				bearing: true,
 				options: {
 					applyMask: false,
-					renderAppliableMask: true,
+					renderMask: true,
 					renderGcps: false,
 					debugTiles: false,
 					transformationType: 'helmert'
@@ -48,7 +48,7 @@ const slides: MapSlideProps[] = [
 				bearing: true,
 				options: {
 					applyMask: false,
-					renderAppliableMask: true,
+					renderMask: true,
 					renderGcps: true,
 					transformationType: 'helmert'
 				}
@@ -63,7 +63,7 @@ const slides: MapSlideProps[] = [
 				caption: 'Loman Atlas',
 				options: {
 					applyMask: true,
-					renderAppliableMask: false,
+					renderMask: false,
 					renderGcps: true,
 					transformationType: 'polynomial'
 				}
@@ -77,7 +77,7 @@ const slides: MapSlideProps[] = [
 				caption: 'Loman Atlas',
 				options: {
 					transformationType: 'polynomial',
-					renderAppliableMask: false,
+					renderMask: false,
 					removeColor: false,
 					renderGcps: false
 				}
@@ -92,7 +92,7 @@ const slides: MapSlideProps[] = [
 				options: {
 					transformationType: 'polynomial',
 					removeColor: false,
-					renderAppliableMask: true,
+					renderMask: true,
 					renderAppliableMaskSize: 4,
 					saturation: 1
 				}
@@ -110,7 +110,7 @@ const slides: MapSlideProps[] = [
 				caption: 'Loman Atlas',
 				options: {
 					transformationType: 'polynomial',
-					renderAppliableMask: false,
+					renderMask: false,
 					removeColor: true,
 					removeColorColor: '#EEDECA',
 					removeColorThreshold: 0.2,
