@@ -4,6 +4,7 @@ export const DURATION = 4000
 export const PADDING = 25
 export const FLAVOR = 'light'
 export const LOCALE = 'en'
+export const ANIMATE = false
 
 // https://github.com/allmaps/allmaps/blob/main/packages/render/src/shared/types.ts#L39
 export const DEFAULT_OPTIONS: Partial<MapLibreWarpedMapLayerOptions> = {

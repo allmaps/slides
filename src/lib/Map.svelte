@@ -8,7 +8,7 @@
 	import { bboxPolygon } from '@turf/turf'
 	import { featureCollection } from '@turf/turf'
 	import { getLayers, getStyleWithoutLayers } from './style'
-	import { PADDING, DURATION, FLAVOR, DEFAULT_OPTIONS, LOCALE } from './constants'
+	import { PADDING, DURATION, FLAVOR, DEFAULT_OPTIONS, LOCALE, ANIMATE } from './constants'
 
 	import type { MapSlideProps, MapSlideAnnotationProps } from './types'
 
@@ -47,7 +47,9 @@
 	const styleWithoutLayers = getStyleWithoutLayers(FLAVOR)
 	const styleLayers = getLayers(FLAVOR)
 	const symbolLayers = getLayers(FLAVOR, undefined, { lang: LOCALE, labelsOnly: true })
-	const warpedMapLayer = new WarpedMapLayer(useVisibility ? { visible: false } : undefined)
+	const warpedMapLayer = new WarpedMapLayer(
+		useVisibility ? { visible: false, anticipate: true } : { anticipate: true }
+	)
 
 	function toggleVisibility(event: KeyboardEvent) {
 		if (event.repeat) return
@@ -263,7 +265,10 @@
 			})
 			// Animation not working correctly
 			// const animate = init ? false : slideDuration === 0 ? false : true
-			warpedMapLayer.setMapsOptionsByMapId(optionsByMapId)
+			warpedMapLayer.setMapsOptionsByMapId(optionsByMapId, undefined, {
+				animate: ANIMATE
+				// animatedOptions: ['opacity']
+			})
 
 			visibleMaps = mapIds
 
