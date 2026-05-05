@@ -41,7 +41,7 @@
 
 	// For debugging
 	const debug = false
-	const useVisibility = false
+	const useVisibility = true
 
 	// Initialize style and layers
 	const styleWithoutLayers = getStyleWithoutLayers(FLAVOR)
@@ -113,15 +113,24 @@
 		if (mapLoaded && highlight) {
 			const ids = mapIdsByAnnotationUrl.get(highlight)
 			warpedMapLayer.setMapsOptions(ids, {
-				renderAppliableMask: true
+				renderMask: true
 			})
 			highlightedMaps = ids
 		} else if (mapLoaded) {
 			warpedMapLayer.setMapsOptions(highlightedMaps, {
-				renderAppliableMask: false
+				renderMask: false
 			})
 		}
 	})
+
+	// WIP
+	// $effect(() => {
+	// 	if (mapLoaded && currentSlide.moveToTop) {
+	// 		currentSlide.moveToTop.forEach((layer) => {
+	// 			map.moveLayer(layer)
+	// 		})
+	// 	}
+	// })
 
 	$effect(() => {
 		if (mapLoaded) {
@@ -259,7 +268,7 @@
 			visibleMaps = mapIds
 
 			// Get bounds of visible maps
-			let bounds = warpedMapLayer.getMapsBbox(mapIds, { projection: { definition: 'EPSG:4326' } })
+			let bounds = warpedMapLayer.getMapsBounds(mapIds)
 			// Get optional bearing for map
 			let bearing = 0
 			let center: maplibregl.LngLat | undefined
@@ -273,7 +282,7 @@
 					.map((id) => {
 						const warpedMap = warpedMapLayer.getWarpedMap(id)
 						if (warpedMap) {
-							return warpedMap.geoMask
+							return warpedMap.geoAppliedMask
 						}
 					})
 					.filter(Boolean)
@@ -282,7 +291,7 @@
 					bearing = computeWarpedMapBearing(warpedMap)
 					if (location.bearing) {
 						// This can be useful if original map is rotated
-						bearing = bearing + location.bearing
+						bearing = bearing - location.bearing
 					}
 				}
 
@@ -311,7 +320,7 @@
 					...camera,
 					// Apply manual overrides
 					...location,
-					bearing: -bearing
+					bearing
 				}
 				map.flyTo(flyToOptions)
 			}
@@ -346,7 +355,6 @@
 			// Add layers
 			styleLayers.forEach((layer) => map.addLayer(layer, 'foreground'))
 
-			// @ts-expect-error
 			map.addLayer(warpedMapLayer)
 			await loadAnnotations(maps)
 
