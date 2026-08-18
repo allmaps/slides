@@ -17,6 +17,19 @@ const config = {
       precompress: false,
       strict: true,
     }),
+    prerender: {
+      handleUnseenRoutes: ({ routes }) => {
+        const unexpectedRoutes = routes.filter(
+          (route) => route !== "/[project]/[slideshow]",
+        );
+
+        if (unexpectedRoutes.length) {
+          throw new Error(
+            `The following prerenderable routes were not prerendered: ${unexpectedRoutes.join(", ")}`,
+          );
+        }
+      },
+    },
     // router: {
     //   type: "hash",
     // },

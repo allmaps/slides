@@ -1,5 +1,5 @@
 import type { StyleSpecification } from "maplibre-gl";
-import baseUrl from "$lib/base-url";
+import baseUrl from "$lib/shared/base-url";
 
 const style: StyleSpecification = {
   version: 8,

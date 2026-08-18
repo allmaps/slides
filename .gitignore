@@ -1,6 +1,8 @@
 node_modules
+.pnpm-store
 
 static/iiif
+static/assets
 
 # Output
 .output

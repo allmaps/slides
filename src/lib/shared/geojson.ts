@@ -71,7 +71,7 @@ const getSimpleStyleMarkerRadius = (): MapLibreExpression => [
 
 export const getGeoJsonLayers = (
   sourceId: string,
-  visibility?: "none" | "visible" = "visible",
+  visibility: "none" | "visible" = "visible",
 ) => {
   return [
     {
