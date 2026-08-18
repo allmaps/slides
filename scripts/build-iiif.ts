@@ -703,7 +703,7 @@ async function writeRawDerivativeImage(
     raw: {
       width: image.width,
       height: image.height,
-      channels: image.channels,
+      channels: image.channels as sharp.Channels,
     },
   });
 
