@@ -1,4 +1,5 @@
 import type { MapLibreWarpedMapLayerOptions } from "@allmaps/maplibre";
+import type { SourceSpecification } from "maplibre-gl";
 
 export type WarpedMapProps = {
   type?: "Image";
@@ -39,4 +40,48 @@ export type MapChapterProps = {
   contain?: boolean;
   warpedMaps?: WarpedMapProps[] | WarpedMapProps;
   layers?: MapLayerProps[] | MapLayerProps;
+};
+
+export type MapChapter = MapChapterProps & {
+  slug: string;
+  title: string;
+  description?: string;
+  Component: any;
+};
+
+export type ProjectSourceDefinition = {
+  type: string;
+  path?: string;
+  url?: string;
+};
+
+export type ProjectManifest = {
+  id: string;
+  slug: string;
+  title: string;
+  description?: string;
+  main: string;
+  slideshows: Array<{
+    id: string;
+    path: string;
+    slug: string;
+    title?: string;
+  }>;
+  sources?: Record<string, ProjectSourceDefinition>;
+};
+
+export type Project = ProjectManifest & {
+  folder: string;
+  assetBase: string;
+  sources: Record<string, SourceSpecification>;
+  slideshows: Slideshow[];
+};
+
+export type Slideshow = {
+  id: string;
+  path: string;
+  slug: string;
+  title: string;
+  chapters: MapChapter[];
+  sources: Record<string, SourceSpecification>;
 };

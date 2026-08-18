@@ -15,6 +15,11 @@ import type { GeoreferencedMap } from "@allmaps/annotation";
 
 type BBox = [number, number, number, number];
 type Coord = [number, number];
+type GeoMask = Coord[];
+type FauxGcp = {
+  resource: Coord;
+  geo: Coord;
+};
 
 export const fetchJson = (url: string) =>
   fetch(url).then((resp) => resp.json());
@@ -45,7 +50,10 @@ export const getNarrowBbox = (mapsBbox: BBox) => {
   }
 };
 
-export const getAxisAlignedBboxAndCenter = (geoMasks, bearing: number) => {
+export const getAxisAlignedBboxAndCenter = (
+  geoMasks: GeoMask[],
+  bearing: number,
+) => {
   // Use first mask coordinate as pivot
   const pivot: Coord = geoMasks[0][0];
 
@@ -90,9 +98,12 @@ export const createFauxGeoreferencedMap = async (
   if (!center) {
     center = [0, 0];
   }
-  const imageInfo = await fetchJson(`${imageId}/info.json`);
+  const imageInfo = (await fetchJson(`${imageId}/info.json`)) as {
+    width: number;
+    height: number;
+  };
   const { width, height } = imageInfo;
-  let gcps;
+  let gcps: FauxGcp[];
   let [resourceX, resourceY, resourceWidth, resourceHeight] = [
     0,
     0,
@@ -102,14 +113,14 @@ export const createFauxGeoreferencedMap = async (
   if (region) {
     [resourceX, resourceY, resourceWidth, resourceHeight] = region;
   }
-  const resourceMask = [
+  const resourceMask: Coord[] = [
     [resourceX, resourceY],
     [resourceX + resourceWidth, resourceY],
     [resourceX + resourceWidth, resourceY + resourceHeight],
     [resourceX, resourceY + resourceHeight],
   ];
   if (bounds) {
-    let [xMin, yMin, xMax, yMax] = bounds;
+    const [xMin, yMin, xMax, yMax] = bounds;
     gcps = [
       {
         resource: [resourceX, resourceY + resourceHeight],
@@ -136,7 +147,7 @@ export const createFauxGeoreferencedMap = async (
       },
       {
         resource: landscape ? [resourceX, centerY] : [centerX, resourceY],
-        geo: getCoords(rhumbDestination(point(center), 100, bearing)),
+        geo: getCoords(rhumbDestination(point(center), 100, bearing)) as Coord,
       },
     ];
   }
