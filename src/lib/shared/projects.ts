@@ -6,6 +6,7 @@ import type {
   MapChapter,
   Project,
   ProjectManifest,
+  ProjectSlideshowDefinition,
   ProjectSourceDefinition,
   Slideshow,
   WarpedMapProps,
@@ -35,14 +36,18 @@ const parseProjectManifest = (
   fallbackId: string,
 ): ProjectManifest => {
   const manifest = (parse(raw) ?? {}) as Partial<ProjectManifest>;
+  const slideshows = manifest.slideshows ?? [];
+  const main =
+    manifest.main?.trim() ||
+    (slideshows.length === 1 ? slideshows[0].id : "main");
 
   return {
     id: manifest.id ?? fallbackId,
-    slug: manifest.slug ?? fallbackId,
+    slug: manifest.slug ?? manifest.id ?? fallbackId,
     title: manifest.title ?? fallbackId,
     description: manifest.description,
-    main: manifest.main ?? "main",
-    slideshows: manifest.slideshows ?? [],
+    main,
+    slideshows,
     sources: manifest.sources ?? {},
   };
 };
@@ -69,6 +74,14 @@ const getSlideParts = (path: string) => {
 
 const getSlideSlug = (filename: string) =>
   filename.replace(/^\d+[-_]/, "").replace(/\.md$/, "");
+
+const normalizeSlideshow = (
+  slideshow: ProjectSlideshowDefinition,
+  mainSlideshowId: string,
+): ProjectSlideshowDefinition & { slug: string } => ({
+  ...slideshow,
+  slug: slideshow.id === mainSlideshowId ? "" : (slideshow.slug ?? slideshow.id),
+});
 
 const resolveWarpedMaps = (projectSlug: string, metadata: Record<string, any>) => {
   if (!metadata.warpedMaps) return metadata;
@@ -134,7 +147,8 @@ const buildProjects = () => {
           createSource(manifest.slug, source),
         ]),
       );
-      const slideshows: Slideshow[] = manifest.slideshows.map((slideshow) => {
+      const slideshows: Slideshow[] = manifest.slideshows.map((rawSlideshow) => {
+        const slideshow = normalizeSlideshow(rawSlideshow, manifest.main);
         const chapters = (
           slidesByProjectAndSlideshow.get(`${folder}/${slideshow.path}`) ?? []
         ).map((chapter) => ({

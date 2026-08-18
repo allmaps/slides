@@ -55,18 +55,20 @@ export type ProjectSourceDefinition = {
   url?: string;
 };
 
+export type ProjectSlideshowDefinition = {
+  id: string;
+  path: string;
+  slug?: string;
+  title?: string;
+};
+
 export type ProjectManifest = {
   id: string;
   slug: string;
   title: string;
   description?: string;
   main: string;
-  slideshows: Array<{
-    id: string;
-    path: string;
-    slug: string;
-    title?: string;
-  }>;
+  slideshows: ProjectSlideshowDefinition[];
   sources?: Record<string, ProjectSourceDefinition>;
 };
 
