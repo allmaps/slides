@@ -20,6 +20,13 @@ export type MapLayerProps = {
   duration?: number;
 };
 
+export type SubslideshowReference =
+  | string
+  | {
+      id: string;
+      title?: string;
+    };
+
 export type MapChapterProps = {
   location?: {
     zoom?: number;
@@ -40,6 +47,7 @@ export type MapChapterProps = {
   contain?: boolean;
   warpedMaps?: WarpedMapProps[] | WarpedMapProps;
   layers?: MapLayerProps[] | MapLayerProps;
+  subslideshows?: SubslideshowReference[] | SubslideshowReference;
 };
 
 export type MapChapter = MapChapterProps & {
@@ -72,7 +80,7 @@ export type ProjectManifest = {
   sources?: Record<string, ProjectSourceDefinition>;
 };
 
-export type Project = ProjectManifest & {
+export type Project = Omit<ProjectManifest, "slideshows" | "sources"> & {
   folder: string;
   assetBase: string;
   sources: Record<string, SourceSpecification>;
