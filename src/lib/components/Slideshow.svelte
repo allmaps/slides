@@ -3,7 +3,8 @@
 
   import Map from "$lib/components/Map.svelte";
   import { getGeoJsonLayers } from "$lib/shared/geojson";
-  import { getProjectAssetBase, joinUrl, withBaseUrl } from "$lib/shared/paths";
+  import { getProjectAssetBase } from "$lib/shared/paths";
+  import { getSlideshowRouteHref } from "$lib/shared/projects";
   import { DEFAULT_DURATION } from "$lib/shared/settings";
   import type {
     MapChapter,
@@ -66,7 +67,7 @@
       : (reference.title ?? slideshow.title);
 
   const getSubslideshowHref = (slideshow: Slideshow) =>
-    withBaseUrl(joinUrl(project.slug, slideshow.slug));
+    getSlideshowRouteHref(project, slideshow);
 
   const getChapterSubslideshows = (chapter: MapChapter) =>
     chapter.subslideshows

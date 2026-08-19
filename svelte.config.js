@@ -10,7 +10,13 @@ const getBasePath = (value) => {
   return basePath ? `/${basePath}` : "";
 };
 
+const TRUE_VALUES = new Set(["1", "true", "yes", "on"]);
+
+const isTruthy = (value) =>
+  TRUE_VALUES.has(value?.trim().toLowerCase() ?? "");
+
 const basePath = getBasePath(process.env.PUBLIC_URL);
+const singleProjectRoot = isTruthy(process.env.PUBLIC_SLIDES_SINGLE_PROJECT_ROOT);
 
 /** @type {import('@sveltejs/kit').Config} */
 const config = {
@@ -32,8 +38,11 @@ const config = {
     },
     prerender: {
       handleUnseenRoutes: ({ routes }) => {
+        const ignoredRoutes = singleProjectRoot
+          ? ["/[project]", "/[project]/[slideshow]"]
+          : ["/[project]/[slideshow]"];
         const unexpectedRoutes = routes.filter(
-          (route) => route !== "/[project]/[slideshow]",
+          (route) => !ignoredRoutes.includes(route),
         );
 
         if (unexpectedRoutes.length) {

@@ -30,3 +30,13 @@ pnpm run build
 ```
 
 You can preview the production build with `pnpm run preview`.
+
+## Routing
+
+By default, the root route shows a project overview, project main slideshows are
+served at `/:project`, and subslideshows are served at `/:project/:slideshow`.
+
+For a build with exactly one project, set
+`PUBLIC_SLIDES_SINGLE_PROJECT_ROOT=true` to publish that project at the root
+instead. In that mode, the main slideshow is served at `/` and subslideshows are
+served at `/:slideshow`.
