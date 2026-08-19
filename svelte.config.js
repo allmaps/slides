@@ -2,6 +2,16 @@ import adapter from "@sveltejs/adapter-static";
 import { mdsvex } from "mdsvex";
 import { join } from "path";
 
+const getBasePath = (value) => {
+  if (!value) return "";
+
+  const basePath = value.replace(/^\/+|\/+$/g, "");
+
+  return basePath ? `/${basePath}` : "";
+};
+
+const basePath = getBasePath(process.env.PUBLIC_URL);
+
 /** @type {import('@sveltejs/kit').Config} */
 const config = {
   kit: {
@@ -17,6 +27,9 @@ const config = {
       precompress: false,
       strict: true,
     }),
+    paths: {
+      base: basePath,
+    },
     prerender: {
       handleUnseenRoutes: ({ routes }) => {
         const unexpectedRoutes = routes.filter(

@@ -1,5 +1,5 @@
-import { env } from "$env/dynamic/public";
+import { base } from "$app/paths";
 
-const baseUrl = env.PUBLIC_URL ? env.PUBLIC_URL : "";
+const baseUrl = base;
 
 export default baseUrl;
