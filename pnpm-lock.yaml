@@ -57,6 +57,9 @@ importers:
       mdsvex:
         specifier: ^0.12.6
         version: 0.12.6(svelte@5.53.3)
+      remark-footnotes:
+        specifier: 2.0.0
+        version: 2.0.0
       sharp:
         specifier: ^0.34.5
         version: 0.34.5
@@ -1554,6 +1557,9 @@ packages:
   readdirp@4.1.2:
     resolution: {integrity: sha512-GDhwkLfywWL2s6vEjyhri+eXmfH6j1L7JE27WhqLeYzoh/A3DBaYGEj2H/HFZCn/kMfim73FXxEJTw06WtxQwg==}
     engines: {node: '>= 14.18.0'}
+
+  remark-footnotes@2.0.0:
+    resolution: {integrity: sha512-3Clt8ZMH75Ayjp9q4CorNeyjwIxHFcTkaektplKGl2A1jNGEUey8cKL0ZC5vJwfcD5GFGsNLImLG/NGzWIzoMQ==}
 
   resolve-protobuf-schema@2.1.0:
     resolution: {integrity: sha512-kI5ffTiZWmJaS/huM8wZfEMer1eRd7oJQhDuxeCLe3t7N7mX3z94CN0xPxBQxFYQTSNz9T0i+v6inKqSdK8xrQ==}
@@ -3844,6 +3850,8 @@ snapshots:
       quickselect: 3.0.0
 
   readdirp@4.1.2: {}
+
+  remark-footnotes@2.0.0: {}
 
   resolve-protobuf-schema@2.1.0:
     dependencies:
