@@ -26,7 +26,6 @@
   const chapters = $derived(slideshow.chapters);
   const sources = $derived(slideshow.sources);
 
-  let initialHash: string | undefined = $state(undefined);
   let index: number = $state(0);
   let loaded: boolean = $state(false);
   let scrollContainer: HTMLDivElement | undefined = $state();
@@ -89,18 +88,41 @@
           .filter((reference) => reference !== undefined)
       : [];
 
-  const scrollIntoView = (slug: string) => {
-    const elem = scrollContainer?.querySelector(`[data-id=${slug}]`);
-    elem?.scrollIntoView({ behavior: "smooth" });
+  const getCurrentHash = () => {
+    const hash = window.location.hash.slice(1);
+
+    try {
+      return decodeURIComponent(hash);
+    } catch {
+      return hash;
+    }
+  };
+
+  const getSectionBySlug = (slug: string) =>
+    Array.from(scrollContainer?.querySelectorAll<HTMLElement>("section") ?? [])
+      .find((section) => section.dataset.id === slug);
+
+  const waitForNextFrame = () =>
+    new Promise<void>((resolve) => {
+      requestAnimationFrame(() => resolve());
+    });
+
+  const scrollIntoView = (
+    slug: string,
+    behavior: ScrollBehavior = "smooth",
+  ) => {
+    const elem = getSectionBySlug(slug);
+    elem?.scrollIntoView({ behavior, block: "start" });
   };
 
   const replaceHash = (hash: string) => {
-    const nextUrl = `${window.location.pathname}${window.location.search}#${hash}`;
+    const encodedHash = encodeURIComponent(hash);
+    const nextUrl = `${window.location.pathname}${window.location.search}#${encodedHash}`;
     window.history.replaceState(window.history.state, "", nextUrl);
   };
 
   $effect(() => {
-    if (loaded && currentSlug && window.location.hash.slice(1) !== currentSlug) {
+    if (loaded && currentSlug && getCurrentHash() !== currentSlug) {
       replaceHash(currentSlug);
     }
   });
@@ -136,20 +158,23 @@
     loaded = false;
     visibleElements = [];
 
-    tick().then(() => {
+    tick().then(async () => {
       if (cancelled || !scrollContainer) return;
 
-      initialHash = window.location.hash.slice(1);
+      const initialHash = getCurrentHash();
       const initialHashIndex = chapters.findIndex(
         (chapter) => chapter.slug === initialHash,
       );
 
       if (initialHash && initialHashIndex >= 0) {
         index = initialHashIndex;
-        scrollIntoView(initialHash);
+        scrollIntoView(initialHash, "auto");
       } else {
         scrollContainer.scrollTop = 0;
       }
+
+      await waitForNextFrame();
+      if (cancelled || !scrollContainer) return;
 
       const options = {
         root: scrollContainer,
