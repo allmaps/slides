@@ -1,7 +1,13 @@
 import type { SourceSpecification } from "maplibre-gl";
 import { parse } from "yaml";
 
-import { getProjectAssetBase, resolveProjectAssetUrl } from "$lib/shared/paths";
+import {
+  getProjectAssetBase,
+  joinUrl,
+  resolveProjectAssetUrl,
+  withBaseUrl,
+} from "$lib/shared/paths";
+import { isSingleProjectRootRequested } from "$lib/shared/routing";
 import type {
   MapChapter,
   Project,
@@ -182,6 +188,25 @@ export const getProjects = () => projects;
 export const getProject = (projectSlug: string) =>
   projects.find((project) => project.slug === projectSlug);
 
+const getMainSlideshow = (project: Project) =>
+  project.slideshows.find((candidate) => candidate.id === project.main);
+
+export const isSingleProjectRootMode = () =>
+  isSingleProjectRootRequested() && projects.length === 1;
+
+export const getRootSlideshowByRoute = (slideshowSlug?: string) => {
+  if (!isSingleProjectRootMode()) return undefined;
+
+  const project = projects[0];
+  const slideshow = slideshowSlug
+    ? project.slideshows.find((candidate) => candidate.slug === slideshowSlug)
+    : getMainSlideshow(project);
+
+  if (!slideshow) return undefined;
+
+  return { project, slideshow };
+};
+
 export const getSlideshowByRoute = (
   projectSlug: string,
   slideshowSlug?: string,
@@ -191,20 +216,46 @@ export const getSlideshowByRoute = (
 
   const slideshow = slideshowSlug
     ? project.slideshows.find((candidate) => candidate.slug === slideshowSlug)
-    : project.slideshows.find((candidate) => candidate.id === project.main);
+    : getMainSlideshow(project);
 
   if (!slideshow) return undefined;
 
   return { project, slideshow };
 };
 
-export const getMainRouteEntries = () =>
-  projects.map((project) => ({
+export const getProjectRouteHref = (project: Project) =>
+  isSingleProjectRootMode() && projects[0]?.slug === project.slug
+    ? withBaseUrl("")
+    : withBaseUrl(project.slug);
+
+export const getSlideshowRouteHref = (
+  project: Project,
+  slideshow: Slideshow,
+) =>
+  isSingleProjectRootMode() && projects[0]?.slug === project.slug
+    ? withBaseUrl(slideshow.slug)
+    : withBaseUrl(joinUrl(project.slug, slideshow.slug));
+
+export const getMainRouteEntries = () => {
+  if (isSingleProjectRootMode()) {
+    const project = projects[0];
+
+    return project.slideshows
+      .filter((slideshow) => slideshow.id !== project.main && slideshow.slug)
+      .map((slideshow) => ({
+        project: slideshow.slug,
+      }));
+  }
+
+  return projects.map((project) => ({
     project: project.slug,
   }));
+};
 
-export const getSubslideshowRouteEntries = () =>
-  projects.flatMap((project) =>
+export const getSubslideshowRouteEntries = () => {
+  if (isSingleProjectRootMode()) return [];
+
+  return projects.flatMap((project) =>
     project.slideshows
       .filter((slideshow) => slideshow.id !== project.main && slideshow.slug)
       .map((slideshow) => ({
@@ -212,3 +263,4 @@ export const getSubslideshowRouteEntries = () =>
         slideshow: slideshow.slug,
       })),
   );
+};

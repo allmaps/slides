@@ -4,7 +4,7 @@
 
   let { data } = $props();
 
-  const route = $derived(getSlideshowByRoute(data.project));
+  const route = $derived(getSlideshowByRoute(data.project, data.slideshow));
 </script>
 
 {#if route}
