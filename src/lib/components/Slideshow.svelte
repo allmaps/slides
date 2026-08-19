@@ -1,12 +1,17 @@
 <script lang="ts">
-  import { setContext } from "svelte";
-  import { onMount } from "svelte";
+  import { onMount, setContext, tick } from "svelte";
 
   import Map from "$lib/components/Map.svelte";
   import { getGeoJsonLayers } from "$lib/shared/geojson";
-  import { getProjectAssetBase } from "$lib/shared/paths";
+  import { getProjectAssetBase, joinUrl, withBaseUrl } from "$lib/shared/paths";
   import { DEFAULT_DURATION } from "$lib/shared/settings";
-  import type { Project, Slideshow } from "$lib/shared/types";
+  import type {
+    MapChapter,
+    Project,
+    Slideshow,
+    SubslideshowReference,
+  } from "$lib/shared/types";
+  import { getValueAsArray } from "$lib/shared/utils";
 
   type Props = {
     project: Project;
@@ -17,22 +22,22 @@
 
   setContext("projectAssetBase", getProjectAssetBase(project.slug));
 
-  const chapters = slideshow.chapters;
-  const sources = slideshow.sources;
+  const chapters = $derived(slideshow.chapters);
+  const sources = $derived(slideshow.sources);
 
   let initialHash: string | undefined = $state(undefined);
   let index: number = $state(0);
   let loaded: boolean = $state(false);
-  let scrollContainer: HTMLDivElement;
+  let scrollContainer: HTMLDivElement | undefined = $state();
   let innerWidth: number = $state(0);
   let offsetHeight: number = $state(0);
   let clientWidth: number = $state(0);
   let visibleElements: string[] = $state(new Array());
   let isDarkMode: boolean | undefined = $state(undefined);
 
-  let layers = Object.entries(sources).flatMap(([sourceId, source]) =>
+  const layers = $derived(Object.entries(sources).flatMap(([sourceId, source]) =>
     source.type === "geojson" ? getGeoJsonLayers(sourceId, "visible") : [],
-  );
+  ));
 
   const padding = $derived({
     top: 25,
@@ -44,59 +49,143 @@
   const currentChapter = $derived(chapters[index]);
   const currentSlug = $derived(currentChapter?.slug);
   const firstChapter = $derived(chapters[0]);
+  const slideshowKey = $derived(`${project.slug}:${slideshow.id}`);
+  const observerKey = $derived(
+    `${slideshow.id}:${chapters.map((chapter) => chapter.slug).join("\0")}`,
+  );
+
+  const getSubslideshowId = (reference: SubslideshowReference) =>
+    typeof reference === "string" ? reference : reference.id;
+
+  const getSubslideshowTitle = (
+    reference: SubslideshowReference,
+    slideshow: Slideshow,
+  ) =>
+    typeof reference === "string"
+      ? slideshow.title
+      : (reference.title ?? slideshow.title);
+
+  const getSubslideshowHref = (slideshow: Slideshow) =>
+    withBaseUrl(joinUrl(project.slug, slideshow.slug));
+
+  const getChapterSubslideshows = (chapter: MapChapter) =>
+    chapter.subslideshows
+      ? getValueAsArray(chapter.subslideshows)
+          .map((reference) => {
+            const id = getSubslideshowId(reference);
+            const subslideshow = project.slideshows.find(
+              (candidate) => candidate.id === id,
+            );
+
+            if (!subslideshow?.slug) return undefined;
+
+            return {
+              id,
+              href: getSubslideshowHref(subslideshow),
+              title: getSubslideshowTitle(reference, subslideshow),
+            };
+          })
+          .filter((reference) => reference !== undefined)
+      : [];
 
   const scrollIntoView = (slug: string) => {
-    const elem = scrollContainer.querySelector(`[data-id=${slug}]`);
+    const elem = scrollContainer?.querySelector(`[data-id=${slug}]`);
     elem?.scrollIntoView({ behavior: "smooth" });
   };
 
+  const replaceHash = (hash: string) => {
+    const nextUrl = `${window.location.pathname}${window.location.search}#${hash}`;
+    window.history.replaceState(window.history.state, "", nextUrl);
+  };
+
   $effect(() => {
-    if (loaded && currentSlug) {
-      window.location.hash = currentSlug;
+    if (loaded && currentSlug && window.location.hash.slice(1) !== currentSlug) {
+      replaceHash(currentSlug);
     }
   });
 
   onMount(() => {
+    let media: MediaQueryList | undefined;
+    const handleMediaChange = (event: MediaQueryListEvent) => {
+      isDarkMode = event.matches;
+    };
+
     try {
-      const media = window.matchMedia("(prefers-color-scheme: dark)");
+      media = window.matchMedia("(prefers-color-scheme: dark)");
       isDarkMode = media.matches;
-      media.addEventListener("change", (event) => {
-        isDarkMode = event.matches;
-      });
+      media.addEventListener("change", handleMediaChange);
     } catch {
       isDarkMode = false;
     }
 
-    initialHash = window.location.hash.slice(1);
-    if (initialHash) {
-      scrollIntoView(initialHash);
-    }
+    return () => {
+      media?.removeEventListener("change", handleMediaChange);
+    };
+  });
 
-    const options = {
-      root: scrollContainer,
-      rootMargin: "-50%",
-      threshold: 0,
-    };
-    const callback = (entries: IntersectionObserverEntry[]) => {
-      visibleElements = [];
-      entries.forEach((entry) => {
-        if (entry.isIntersecting) {
-          const elem = entry.target as HTMLElement;
-          const currentIndex = Number(elem.dataset.index);
-          const slug = elem.getAttribute("id");
-          if (slug) {
-            visibleElements.push(slug);
+  $effect(() => {
+    observerKey;
+
+    if (!scrollContainer) return;
+
+    let observer: IntersectionObserver | undefined;
+    let cancelled = false;
+
+    index = 0;
+    loaded = false;
+    visibleElements = [];
+
+    tick().then(() => {
+      if (cancelled || !scrollContainer) return;
+
+      initialHash = window.location.hash.slice(1);
+      const initialHashIndex = chapters.findIndex(
+        (chapter) => chapter.slug === initialHash,
+      );
+
+      if (initialHash && initialHashIndex >= 0) {
+        index = initialHashIndex;
+        scrollIntoView(initialHash);
+      } else {
+        scrollContainer.scrollTop = 0;
+      }
+
+      const options = {
+        root: scrollContainer,
+        rootMargin: "-50%",
+        threshold: 0,
+      };
+      const callback = (entries: IntersectionObserverEntry[]) => {
+        const nextVisibleElements: string[] = [];
+
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            const elem = entry.target as HTMLElement;
+            const currentIndex = Number(elem.dataset.index);
+            const slug = elem.getAttribute("id");
+
+            if (slug) {
+              nextVisibleElements.push(slug);
+            }
+            index = currentIndex;
           }
-          index = currentIndex;
-        }
+        });
+
+        visibleElements = nextVisibleElements;
+      };
+
+      observer = new IntersectionObserver(callback, options);
+      const sections = scrollContainer.querySelectorAll("section");
+      sections.forEach((element) => {
+        observer?.observe(element);
       });
-    };
-    const observer = new IntersectionObserver(callback, options);
-    const sections = scrollContainer.querySelectorAll("section");
-    sections.forEach((element) => {
-      observer.observe(element);
+      loaded = true;
     });
-    loaded = true;
+
+    return () => {
+      cancelled = true;
+      observer?.disconnect();
+    };
   });
 </script>
 
@@ -112,7 +201,7 @@
 >
   <div class="min-h-0 md:row-span-full">
     {#if isDarkMode !== undefined}
-      {#key isDarkMode}
+      {#key `${slideshowKey}:${isDarkMode}`}
         <Map
           {chapters}
           {index}
@@ -135,6 +224,7 @@
     {#each chapters as chapter, index}
       {@const Component = chapter.Component}
       {@const isActive = currentSlug === chapter.slug}
+      {@const subslideshows = getChapterSubslideshows(chapter)}
       <section
         class="pt-5 pb-5 min-h-[60%] {isActive
           ? 'opacity-100'
@@ -144,6 +234,18 @@
         id={chapter.slug}
       >
         <Component />
+        {#if subslideshows.length}
+          <div class="mt-6 flex flex-wrap gap-2">
+            {#each subslideshows as subslideshow}
+              <a
+                class="inline-block border border-black/20 px-3 py-2 text-sm font-medium hover:bg-black/5 dark:border-white/25 dark:hover:bg-white/10"
+                href={subslideshow.href}
+              >
+                {subslideshow.title}
+              </a>
+            {/each}
+          </div>
+        {/if}
         {#if index === 0}
           <div class="pt-10">
             <h2>Chapters</h2>

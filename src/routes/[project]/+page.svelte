@@ -4,9 +4,11 @@
 
   let { data } = $props();
 
-  const route = getSlideshowByRoute(data.project);
+  const route = $derived(getSlideshowByRoute(data.project));
 </script>
 
 {#if route}
-  <Slideshow project={route.project} slideshow={route.slideshow} />
+  {#key `${route.project.slug}:${route.slideshow.id}`}
+    <Slideshow project={route.project} slideshow={route.slideshow} />
+  {/key}
 {/if}
