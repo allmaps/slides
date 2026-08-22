@@ -9,8 +9,9 @@ const PROJECT_ASSET_FOLDERS = new Set([
   "sprites",
 ]);
 
-export const isExternalUrl = (value: string) =>
-  EXTERNAL_URL_PATTERN.test(value) || value.startsWith("//");
+export const isExternalUrl = (value: string | null | undefined) =>
+  typeof value === "string" &&
+  (EXTERNAL_URL_PATTERN.test(value) || value.startsWith("//"));
 
 export const joinUrl = (...segments: string[]) => {
   const cleanSegments = segments
@@ -47,10 +48,15 @@ const normalizeProjectAssetPath = (path: string) => {
   return cleanPath;
 };
 
-export const getContentAssetUrl = (projectFolder: string, path: string) => {
-  if (isExternalUrl(path)) return path;
+export const getContentAssetUrl = (
+  projectFolder: string,
+  path: string | null | undefined,
+) => {
+  const cleanPath = path?.trim();
+  if (!cleanPath) return undefined;
+  if (isExternalUrl(cleanPath)) return cleanPath;
 
-  const assetPath = normalizeProjectAssetPath(path);
+  const assetPath = normalizeProjectAssetPath(cleanPath);
   const assetKey = `./${projectFolder}/${assetPath}`;
 
   return assetUrls[assetKey];

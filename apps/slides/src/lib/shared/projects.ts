@@ -78,20 +78,38 @@ const normalizeSlideshow = (
   slug: slideshow.id === mainSlideshowId ? "" : (slideshow.slug ?? slideshow.id),
 });
 
+const hasWarpedMapUrl = (warpedMap: unknown): warpedMap is WarpedMapProps =>
+  typeof warpedMap === "object" &&
+  warpedMap !== null &&
+  typeof (warpedMap as { url?: unknown }).url === "string" &&
+  (warpedMap as { url: string }).url.trim().length > 0;
+
 const resolveWarpedMaps = (
   projectFolder: string,
   metadata: Record<string, any>,
 ) => {
   if (!metadata.warpedMaps) return metadata;
 
+  const warpedMaps = getValueAsArray(metadata.warpedMaps)
+    .filter(hasWarpedMapUrl)
+    .map((warpedMap) => {
+      const url = warpedMap.url.trim();
+
+      return {
+        ...warpedMap,
+        url: getContentAssetUrl(projectFolder, url) ?? url,
+      };
+    });
+
+  if (!warpedMaps.length) {
+    const metadataWithoutWarpedMaps = { ...metadata };
+    delete metadataWithoutWarpedMaps.warpedMaps;
+    return metadataWithoutWarpedMaps;
+  }
+
   return {
     ...metadata,
-    warpedMaps: getValueAsArray(metadata.warpedMaps).map(
-      (warpedMap: WarpedMapProps) => ({
-        ...warpedMap,
-        url: getContentAssetUrl(projectFolder, warpedMap.url) ?? warpedMap.url,
-      }),
-    ),
+    warpedMaps,
   };
 };
 
