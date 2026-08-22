@@ -82,7 +82,6 @@ export type ProjectManifest = {
 
 export type Project = Omit<ProjectManifest, "slideshows" | "sources"> & {
   folder: string;
-  assetBase: string;
   sources: Record<string, SourceSpecification>;
   slideshows: Slideshow[];
 };

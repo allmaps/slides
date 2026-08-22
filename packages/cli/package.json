@@ -7,10 +7,17 @@
     "slides": "./bin/slides.js"
   },
   "scripts": {
-    "iiif": "node src/commands/build-iiif.ts"
+    "dev": "node bin/slides.js dev",
+    "build": "node bin/slides.js build",
+    "preview": "node bin/slides.js preview",
+    "check": "node bin/slides.js check",
+    "validate": "node bin/slides.js validate",
+    "sync": "node bin/slides.js validate",
+    "iiif": "node bin/slides.js iiif"
   },
   "dependencies": {
     "@iiif/builder": "^2.0.1",
+    "commander": "^14.0.2",
     "sharp": "^0.34.5",
     "yaml": "^2.9.0"
   },

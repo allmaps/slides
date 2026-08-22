@@ -6,6 +6,13 @@ import remarkFootnotes from "remark-footnotes";
 const getBasePath = (value) => {
   if (!value) return "";
 
+  try {
+    const url = new URL(value);
+    return getBasePath(url.pathname);
+  } catch {
+    // Accept both URL strings and plain path strings.
+  }
+
   const basePath = value.replace(/^\/+|\/+$/g, "");
 
   return basePath ? `/${basePath}` : "";
@@ -16,7 +23,9 @@ const TRUE_VALUES = new Set(["1", "true", "yes", "on"]);
 const isTruthy = (value) =>
   TRUE_VALUES.has(value?.trim().toLowerCase() ?? "");
 
-const basePath = getBasePath(process.env.PUBLIC_URL);
+const basePath = getBasePath(
+  process.env.PUBLIC_BASE_PATH ?? process.env.PUBLIC_URL,
+);
 const singleProjectRoot = isTruthy(process.env.PUBLIC_SLIDES_SINGLE_PROJECT_ROOT);
 
 /** @type {import('@sveltejs/kit').Config} */

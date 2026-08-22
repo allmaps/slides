@@ -9,10 +9,11 @@ import {
   writeFile,
 } from "node:fs/promises";
 import path from "node:path";
-import { parseArgs } from "node:util";
 
 import { IIIFBuilder } from "@iiif/builder";
 import sharp from "sharp";
+
+import { loadSlidesConfig } from "../config.ts";
 
 type CliOptions = {
   force: boolean;
@@ -22,6 +23,22 @@ type CliOptions = {
   outputRoot: string;
   outputFormats: OutputFormat[];
   tileSize: number;
+};
+
+type CliDefaults = {
+  inputRoot: string;
+  outputRoot: string;
+  idBase?: string;
+};
+
+export type BuildIiifCommandOptions = {
+  configPath?: string;
+  force?: boolean;
+  id?: string;
+  input?: string;
+  output?: string;
+  tileSize?: string;
+  webp?: boolean;
 };
 
 type ImageServiceInfo = {
@@ -113,24 +130,6 @@ const IMAGE_EXTENSIONS = new Map<string, string>([
   [".webp", "image/webp"],
 ]);
 
-function showHelp() {
-  console.log(`Usage: slides iiif [options]
-
-Create static IIIF Image API level 0 derivatives for images in static/images.
-
-Options:
-  --force, -f             Recreate existing image derivatives
-  --id <uri>              Public IIIF base URI (default: PUBLIC_URL/iiif)
-  --input <path>          Source image folder (default: static/images)
-  --output <path>         IIIF output folder (default: static/iiif)
-  --tile-size <pixels>    Tile size passed to sharp (default: 1024)
-  --webp                  Generate WebP derivatives alongside JPEG (default)
-  --no-webp               Generate JPEG derivatives only
-  --help, -h              Show this help message
-
-PUBLIC_URL is read from the current environment, then from .env if present.`);
-}
-
 function normalizePublicBase(value: string) {
   return value.replace(/\/+$/, "") || "/";
 }
@@ -171,10 +170,13 @@ function getMimeType(filename: string) {
   return IMAGE_EXTENSIONS.get(extension);
 }
 
-function parsePositiveInteger(value: string | undefined, fallback: number) {
+function parsePositiveInteger(
+  value: string | number | undefined,
+  fallback: number,
+) {
   if (!value) return fallback;
 
-  const parsed = Number.parseInt(value, 10);
+  const parsed = Number.parseInt(String(value), 10);
   if (!Number.isInteger(parsed) || parsed <= 0) {
     throw new Error(`Expected a positive integer, received "${value}"`);
   }
@@ -186,102 +188,31 @@ function getOutputFormats(enableWebp: boolean): OutputFormat[] {
   return enableWebp ? [DEFAULT_OUTPUT_FORMAT, "webp"] : [DEFAULT_OUTPUT_FORMAT];
 }
 
-function parseEnvValue(value: string) {
-  const trimmed = value.trim();
-
-  if (
-    (trimmed.startsWith('"') && trimmed.endsWith('"')) ||
-    (trimmed.startsWith("'") && trimmed.endsWith("'"))
-  ) {
-    return trimmed.slice(1, -1);
-  }
-
-  return trimmed;
-}
-
-async function getPublicUrl() {
+function getPublicUrl() {
   if (process.env.PUBLIC_URL !== undefined) {
     return normalizePublicBase(process.env.PUBLIC_URL);
-  }
-
-  try {
-    const envFile = await readFile(path.resolve(".env"), "utf8");
-    const publicUrlMatch = envFile
-      .split(/\r?\n/)
-      .map((line) => line.match(/^\s*(?:export\s+)?PUBLIC_URL\s*=\s*(.*)\s*$/))
-      .find((match) => match);
-
-    if (publicUrlMatch) {
-      return normalizePublicBase(parseEnvValue(publicUrlMatch[1] ?? ""));
-    }
-  } catch (error) {
-    if (error instanceof Error && "code" in error && error.code === "ENOENT") {
-      return "/";
-    }
-
-    throw error;
   }
 
   return "/";
 }
 
-function parseCliOptions(publicUrl: string): CliOptions {
-  const args = process.argv.slice(2);
-  const normalizedArgs = args[0] === "--" ? args.slice(1) : args;
-
-  const { values } = parseArgs({
-    args: normalizedArgs,
-    options: {
-      force: {
-        type: "boolean",
-        short: "f",
-      },
-      help: {
-        type: "boolean",
-        short: "h",
-      },
-      id: {
-        type: "string",
-      },
-      input: {
-        type: "string",
-      },
-      output: {
-        type: "string",
-      },
-      "tile-size": {
-        type: "string",
-      },
-      webp: {
-        type: "boolean",
-      },
-      "no-webp": {
-        type: "boolean",
-      },
-    },
-  });
-
-  if (values.help) {
-    showHelp();
-    process.exit(0);
-  }
-
-  if (values.webp === true && values["no-webp"] === true) {
-    throw new Error('Use either "--webp" or "--no-webp", not both.');
-  }
-
-  const enableWebp = values["no-webp"]
-    ? false
-    : (values.webp ?? DEFAULT_ENABLE_WEBP);
+function parseCliOptions(
+  publicUrl: string,
+  commandOptions: BuildIiifCommandOptions,
+  defaults: CliDefaults,
+): CliOptions {
+  const enableWebp = commandOptions.webp ?? DEFAULT_ENABLE_WEBP;
 
   return {
-    force: values.force ?? false,
-    idBase: normalizePublicBase(values.id ?? joinPublicId(publicUrl, "iiif")),
+    force: commandOptions.force ?? false,
+    idBase: normalizePublicBase(
+      commandOptions.id ?? defaults.idBase ?? joinPublicId(publicUrl, "iiif"),
+    ),
     publicUrl,
-    inputRoot: path.resolve(values.input ?? DEFAULT_INPUT_ROOT),
-    outputRoot: path.resolve(values.output ?? DEFAULT_OUTPUT_ROOT),
+    inputRoot: path.resolve(commandOptions.input ?? defaults.inputRoot),
+    outputRoot: path.resolve(commandOptions.output ?? defaults.outputRoot),
     outputFormats: getOutputFormats(enableWebp),
-    tileSize: parsePositiveInteger(values["tile-size"], DEFAULT_TILE_SIZE),
+    tileSize: parsePositiveInteger(commandOptions.tileSize, DEFAULT_TILE_SIZE),
   };
 }
 
@@ -1004,9 +935,15 @@ function groupImagesByFolder(images: ProcessedImage[]) {
   return [...imagesByFolder.entries()].sort(([a], [b]) => a.localeCompare(b));
 }
 
-async function main() {
-  const publicUrl = await getPublicUrl();
-  const options = parseCliOptions(publicUrl);
+export async function runBuildIiifCommand(
+  commandOptions: BuildIiifCommandOptions = {},
+) {
+  const { configPath } = commandOptions;
+  const config = await loadSlidesConfig(configPath);
+  process.env.PUBLIC_URL = config.publicUrl;
+
+  const publicUrl = getPublicUrl();
+  const options = parseCliOptions(publicUrl, commandOptions, config.iiif);
 
   const files = await findImageFiles(
     options.inputRoot,
@@ -1058,5 +995,3 @@ async function main() {
   await writeJson(collectionPath, collection);
   console.log(`write  ${path.relative(process.cwd(), collectionPath)}`);
 }
-
-await main();

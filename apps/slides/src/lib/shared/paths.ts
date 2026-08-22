@@ -1,10 +1,13 @@
 import baseUrl from "$lib/shared/base-url";
+import { assetUrls } from "@allmaps/slides-content";
 
 const EXTERNAL_URL_PATTERN = /^[a-z][a-z\d+.-]*:/i;
-
-export type ProjectAssetUrlOptions = {
-  useProjectSubdirectory?: boolean;
-};
+const PROJECT_ASSET_FOLDERS = new Set([
+  "annotations",
+  "geojson",
+  "images",
+  "sprites",
+]);
 
 export const isExternalUrl = (value: string) =>
   EXTERNAL_URL_PATTERN.test(value) || value.startsWith("//");
@@ -32,31 +35,23 @@ export const withBaseUrl = (path: string) => {
   return `${cleanBase}/${cleanPath}`;
 };
 
-const getProjectAssetPath = (
-  projectSlug: string,
-  assetPath = "",
-  options: ProjectAssetUrlOptions = {},
-) =>
-  options.useProjectSubdirectory === false
-    ? joinUrl("assets", assetPath)
-    : joinUrl("assets", projectSlug, assetPath);
+const normalizeProjectAssetPath = (path: string) => {
+  const cleanPath = path.replace(/^\.?\//, "");
+  if (cleanPath.startsWith("assets/")) return cleanPath;
 
-export const getProjectAssetBase = (
-  projectSlug: string,
-  options: ProjectAssetUrlOptions = {},
-) => withBaseUrl(getProjectAssetPath(projectSlug, "", options));
+  const [firstSegment] = cleanPath.split("/");
+  if (PROJECT_ASSET_FOLDERS.has(firstSegment)) {
+    return joinUrl("assets", cleanPath);
+  }
 
-export const resolveProjectAssetUrl = (
-  projectSlug: string,
-  path: string,
-  options: ProjectAssetUrlOptions = {},
-) => {
+  return cleanPath;
+};
+
+export const getContentAssetUrl = (projectFolder: string, path: string) => {
   if (isExternalUrl(path)) return path;
 
-  const cleanPath = path.replace(/^\/+/, "");
-  const assetPath = cleanPath.startsWith("assets/")
-    ? cleanPath.slice("assets/".length)
-    : cleanPath;
+  const assetPath = normalizeProjectAssetPath(path);
+  const assetKey = `./${projectFolder}/${assetPath}`;
 
-  return withBaseUrl(getProjectAssetPath(projectSlug, assetPath, options));
+  return assetUrls[assetKey];
 };
