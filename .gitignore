@@ -4,9 +4,8 @@ apps/*/node_modules
 packages/*/node_modules
 
 static/iiif
-static/assets
 apps/*/static/iiif
-apps/*/static/assets
+apps/*/.slides
 
 # Output
 .output

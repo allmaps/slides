@@ -1,12 +1,11 @@
 import type { SourceSpecification } from "maplibre-gl";
+import { projectFiles, slideFiles } from "@allmaps/slides-content";
 import { parse } from "yaml";
 
 import {
-  getProjectAssetBase,
+  getContentAssetUrl,
   joinUrl,
-  resolveProjectAssetUrl,
   withBaseUrl,
-  type ProjectAssetUrlOptions,
 } from "$lib/shared/paths";
 import { isSingleProjectRootRequested } from "$lib/shared/routing";
 import type {
@@ -19,24 +18,6 @@ import type {
   WarpedMapProps,
 } from "$lib/shared/types";
 import { getValueAsArray } from "$lib/shared/utils";
-
-type MarkdownModule = {
-  default: any;
-  metadata: Record<string, unknown>;
-};
-
-const projectFiles = import.meta.glob("$content/*/project.yml", {
-  eager: true,
-  import: "default",
-  query: "?raw",
-}) as Record<string, string>;
-
-const slideFiles = import.meta.glob(
-  "$content/*/slideshows/**/*.md",
-  {
-    eager: true,
-  },
-) as Record<string, MarkdownModule>;
 
 const parseProjectManifest = (
   raw: string,
@@ -60,22 +41,29 @@ const parseProjectManifest = (
 };
 
 const getProjectFolder = (path: string) => {
-  const match = path.match(/content\/([^/]+)\/project\.yml$/);
-  if (!match) throw new Error(`Could not infer project folder from ${path}`);
+  const parts = path.replace(/\\/g, "/").split("/");
+  const manifestIndex = parts.lastIndexOf("project.yml");
+  const projectFolder = manifestIndex > 0 ? parts[manifestIndex - 1] : undefined;
+  if (!projectFolder) throw new Error(`Could not infer project folder from ${path}`);
 
-  return match[1];
+  return projectFolder;
 };
 
 const getSlideParts = (path: string) => {
-  const match = path.match(
-    /content\/([^/]+)\/slideshows\/(.+)\/([^/]+)\.md$/,
-  );
-  if (!match) throw new Error(`Could not infer slide path from ${path}`);
+  const parts = path.replace(/\\/g, "/").split("/");
+  const slideshowsIndex = parts.lastIndexOf("slideshows");
+  const filename = parts.at(-1)?.replace(/\.md$/, "");
+  const projectFolder =
+    slideshowsIndex > 0 ? parts[slideshowsIndex - 1] : undefined;
+
+  if (!projectFolder || slideshowsIndex === -1 || !filename) {
+    throw new Error(`Could not infer slide path from ${path}`);
+  }
 
   return {
-    projectFolder: match[1],
-    slideshowPath: `slideshows/${match[2]}`,
-    filename: match[3],
+    projectFolder,
+    slideshowPath: `slideshows/${parts.slice(slideshowsIndex + 1, -1).join("/")}`,
+    filename,
   };
 };
 
@@ -91,9 +79,8 @@ const normalizeSlideshow = (
 });
 
 const resolveWarpedMaps = (
-  projectSlug: string,
+  projectFolder: string,
   metadata: Record<string, any>,
-  assetUrlOptions: ProjectAssetUrlOptions,
 ) => {
   if (!metadata.warpedMaps) return metadata;
 
@@ -102,48 +89,38 @@ const resolveWarpedMaps = (
     warpedMaps: getValueAsArray(metadata.warpedMaps).map(
       (warpedMap: WarpedMapProps) => ({
         ...warpedMap,
-        url: resolveProjectAssetUrl(
-          projectSlug,
-          warpedMap.url,
-          assetUrlOptions,
-        ),
+        url: getContentAssetUrl(projectFolder, warpedMap.url) ?? warpedMap.url,
       }),
     ),
   };
 };
 
 const createSource = (
-  projectSlug: string,
+  projectFolder: string,
   source: ProjectSourceDefinition,
-  assetUrlOptions: ProjectAssetUrlOptions,
 ): SourceSpecification => {
   if (source.type === "geojson") {
     return {
       type: "geojson",
-      data: resolveProjectAssetUrl(
-        projectSlug,
-        source.path ?? source.url ?? "",
-        assetUrlOptions,
-      ),
+      data:
+        getContentAssetUrl(projectFolder, source.path ?? source.url ?? "") ??
+        source.path ??
+        source.url ??
+        "",
     };
   }
 
+  const sourceUrl = source.url ?? source.path;
+
   return {
     ...source,
-    url: source.url
-      ? resolveProjectAssetUrl(projectSlug, source.url, assetUrlOptions)
-      : source.path
-        ? resolveProjectAssetUrl(projectSlug, source.path, assetUrlOptions)
-        : undefined,
+    url: sourceUrl
+      ? (getContentAssetUrl(projectFolder, sourceUrl) ?? sourceUrl)
+      : undefined,
   } as SourceSpecification;
 };
 
 const buildProjects = () => {
-  const singleProjectRootMode =
-    isSingleProjectRootRequested() && Object.keys(projectFiles).length === 1;
-  const assetUrlOptions = {
-    useProjectSubdirectory: !singleProjectRootMode,
-  };
   const slidesByProjectAndSlideshow = new Map<string, MapChapter[]>();
 
   for (const [path, mod] of Object.entries(slideFiles).toSorted(([a], [b]) =>
@@ -169,7 +146,7 @@ const buildProjects = () => {
       const sources = Object.fromEntries(
         Object.entries(manifest.sources ?? {}).map(([sourceId, source]) => [
           sourceId,
-          createSource(manifest.slug, source, assetUrlOptions),
+          createSource(folder, source),
         ]),
       );
       const slideshows: Slideshow[] = manifest.slideshows.map((rawSlideshow) => {
@@ -178,7 +155,7 @@ const buildProjects = () => {
           slidesByProjectAndSlideshow.get(`${folder}/${slideshow.path}`) ?? []
         ).map((chapter) => ({
           ...chapter,
-          ...resolveWarpedMaps(manifest.slug, chapter, assetUrlOptions),
+          ...resolveWarpedMaps(folder, chapter),
         }));
 
         return {
@@ -194,7 +171,6 @@ const buildProjects = () => {
         folder,
         sources,
         slideshows,
-        assetBase: getProjectAssetBase(manifest.slug, assetUrlOptions),
       };
     })
     .toSorted((a, b) => a.title.localeCompare(b.title));

@@ -20,7 +20,7 @@
 
   let { project, slideshow }: Props = $props();
 
-  setContext("projectAssetBase", project.assetBase);
+  setContext("projectFolder", project.folder);
 
   const chapters = $derived(slideshow.chapters);
   const sources = $derived(slideshow.sources);

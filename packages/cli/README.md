@@ -1,9 +1,65 @@
 # Slides CLI
 
+The CLI is the boundary between reusable app code and editable story content. It
+loads a Slides config file, validates project folders, sets the public
+environment variables expected by SvelteKit, and then runs the app package.
+
+## Commands
+
+```sh
+slides dev --config slides.config.yml
+slides build --config slides.config.yml
+slides preview --config slides.config.yml
+slides check --config slides.config.yml
+slides validate --config slides.config.yml
+```
+
+`slides dev` keeps watching the configured content directory and reports
+validation errors. The app imports markdown, config, and assets directly from the
+`@allmaps/slides-content` workspace package.
+
+The configured content directory must contain a `package.json` named
+`@allmaps/slides-content` and an `index.ts` entry point exporting the content
+globs consumed by the app.
+
+## Config
+
+The config file can be YAML or JSON. Paths are resolved relative to the config
+file.
+
+```yml
+site:
+  basePath: ${SLIDES_BASE_PATH}
+  publicUrl: ${SLIDES_PUBLIC_URL}
+
+content:
+  directory: content
+
+routing:
+  singleProjectRoot: false
+
+protomaps:
+  key: ${PUBLIC_PROTOMAPS_KEY}
+```
+
+Useful fields:
+
+| Field | Default | Description |
+| --- | --- | --- |
+| `app.directory` | workspace `apps/slides` | SvelteKit app directory. |
+| `content.directory` | `content` | Source project content folder. |
+| `site.basePath` | empty | SvelteKit base path, for example `/kattenburg-atlas`. |
+| `site.publicUrl` | `site.basePath` | Absolute public URL used by commands that need IDs. |
+| `routing.singleProjectRoot` | `false` | Publish the only project at `/` instead of `/:project`. |
+| `protomaps.key` | empty | Public Protomaps key passed to the app. |
+
+Environment placeholders such as `${PUBLIC_PROTOMAPS_KEY}` are expanded before
+the config is applied.
+
 ## `slides iiif`
 
 Build static IIIF Image API level 0 derivatives, IIIF Presentation manifests,
-and a root IIIF collection from the images in `static/images`.
+and a root IIIF collection from a configured image directory.
 
 Run it with:
 
@@ -28,15 +84,15 @@ lists those manifests.
 | --- | --- | --- |
 | `--force`, `-f` | off | Recreate existing image derivatives instead of skipping current ones. |
 | `--id <uri>` | `PUBLIC_URL/iiif` | Public IIIF base URI used in `info.json`, manifests, and collection IDs. |
-| `--input <path>` | `static/images` | Source image folder to scan recursively. |
-| `--output <path>` | `static/iiif` | Output folder for IIIF derivatives and JSON files. |
+| `--input <path>` | `iiif.input` or `apps/slides/static/images` | Source image folder to scan recursively. |
+| `--output <path>` | `iiif.output` or `apps/slides/static/iiif` | Output folder for IIIF derivatives and JSON files. |
 | `--tile-size <pixels>` | `1024` | Tile width and height used for the image pyramid. |
 | `--webp` | on | Generate WebP derivatives alongside JPEG and advertise WebP in `info.json`. |
 | `--no-webp` | off | Generate JPEG derivatives only and omit WebP properties from `info.json`. |
 | `--help`, `-h` | off | Print the CLI help text. |
 
-`PUBLIC_URL` is read from the current environment first, then from `.env` if it
-exists. If neither is set, IDs are rooted at `/iiif`.
+`PUBLIC_URL` is set from the Slides config. If no public URL is configured, IDs
+are rooted at `/iiif`.
 
 ### Examples
 
@@ -55,7 +111,7 @@ slides iiif --no-webp
 Use a deployment URL for all IIIF IDs:
 
 ```sh
-PUBLIC_URL=https://tu-delft-heritage.github.io/gravity-expeditions-app slides iiif --force
+slides iiif --config slides.config.yml --force
 ```
 
 Write to a temporary output folder:

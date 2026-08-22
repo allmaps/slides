@@ -6,7 +6,6 @@
   "scripts": {
     "dev": "vite dev",
     "build": "vite build",
-    "iiif": "slides iiif",
     "preview": "vite preview",
     "prepare": "svelte-kit sync || echo ''",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
@@ -14,17 +13,14 @@
   },
   "devDependencies": {
     "@allmaps/annotation": "1.0.0-beta.36",
-    "@iiif/builder": "^2.0.1",
     "@sveltejs/adapter-auto": "^7.0.0",
     "@sveltejs/kit": "^2.50.2",
     "@sveltejs/vite-plugin-svelte": "^6.2.4",
     "@tailwindcss/typography": "^0.5.19",
     "@tailwindcss/vite": "^4.2.0",
     "@types/node": "^25.9.1",
-    "@allmaps/slides-cli": "workspace:*",
     "mdsvex": "^0.12.6",
     "remark-footnotes": "2.0.0",
-    "sharp": "^0.34.5",
     "svelte": "^5.51.0",
     "svelte-check": "^4.3.6",
     "tailwindcss": "^4.2.0",
@@ -33,6 +29,7 @@
   },
   "dependencies": {
     "@allmaps/maplibre": "1.0.0-beta.43",
+    "@allmaps/slides-content": "workspace:*",
     "@protomaps/basemaps": "^5.7.2",
     "@sveltejs/adapter-static": "^3.0.10",
     "@turf/turf": "^7.3.5",
