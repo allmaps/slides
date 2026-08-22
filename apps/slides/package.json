@@ -1,12 +1,12 @@
 {
-  "name": "slides",
+  "name": "@allmaps/slides",
   "private": true,
   "version": "0.0.1",
   "type": "module",
   "scripts": {
     "dev": "vite dev",
     "build": "vite build",
-    "iiif": "node scripts/build-iiif.ts",
+    "iiif": "slides iiif",
     "preview": "vite preview",
     "prepare": "svelte-kit sync || echo ''",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
@@ -21,6 +21,7 @@
     "@tailwindcss/typography": "^0.5.19",
     "@tailwindcss/vite": "^4.2.0",
     "@types/node": "^25.9.1",
+    "@allmaps/slides-cli": "workspace:*",
     "mdsvex": "^0.12.6",
     "remark-footnotes": "2.0.0",
     "sharp": "^0.34.5",

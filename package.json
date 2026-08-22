@@ -1,0 +1,13 @@
+{
+  "name": "slides-workspace",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "scripts": {
+    "dev": "pnpm --filter @allmaps/slides dev",
+    "build": "pnpm --filter @allmaps/slides build",
+    "preview": "pnpm --filter @allmaps/slides preview",
+    "check": "pnpm --filter @allmaps/slides check",
+    "iiif": "pnpm --filter @allmaps/slides-cli iiif"
+  }
+}

@@ -1,6 +1,6 @@
-# Scripts
+# Slides CLI
 
-## `build-iiif.ts`
+## `slides iiif`
 
 Build static IIIF Image API level 0 derivatives, IIIF Presentation manifests,
 and a root IIIF collection from the images in `static/images`.
@@ -8,13 +8,13 @@ and a root IIIF collection from the images in `static/images`.
 Run it with:
 
 ```sh
-pnpm iiif
+slides iiif
 ```
 
-or directly:
+or through the workspace script:
 
 ```sh
-node scripts/build-iiif.ts
+pnpm iiif
 ```
 
 The script writes output to `static/iiif` by default. Each image gets its own
@@ -43,25 +43,25 @@ exists. If neither is set, IDs are rooted at `/iiif`.
 Regenerate everything, including WebP:
 
 ```sh
-pnpm iiif -- --force
+slides iiif --force
 ```
 
 Generate JPEG-only derivatives:
 
 ```sh
-pnpm iiif -- --no-webp
+slides iiif --no-webp
 ```
 
 Use a deployment URL for all IIIF IDs:
 
 ```sh
-PUBLIC_URL=https://tu-delft-heritage.github.io/gravity-expeditions-app pnpm iiif -- --force
+PUBLIC_URL=https://tu-delft-heritage.github.io/gravity-expeditions-app slides iiif --force
 ```
 
 Write to a temporary output folder:
 
 ```sh
-node scripts/build-iiif.ts --input static/images/maps --output /tmp/gravity-iiif-maps
+slides iiif --input static/images/maps --output /tmp/gravity-iiif-maps
 ```
 
 ### Output Notes

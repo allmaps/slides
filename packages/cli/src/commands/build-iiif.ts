@@ -114,7 +114,7 @@ const IMAGE_EXTENSIONS = new Map<string, string>([
 ]);
 
 function showHelp() {
-  console.log(`Usage: node scripts/build-iiif.ts [options]
+  console.log(`Usage: slides iiif [options]
 
 Create static IIIF Image API level 0 derivatives for images in static/images.
 
