@@ -2,9 +2,6 @@ site:
   basePath: ${SLIDES_BASE_PATH}
   publicUrl: ${SLIDES_PUBLIC_URL}
 
-content:
-  directory: content
-
 routing:
   singleProjectRoot: false
 

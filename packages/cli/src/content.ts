@@ -3,7 +3,10 @@ import path from "node:path";
 
 import { parse } from "yaml";
 
-import type { SlidesConfig } from "./config.ts";
+import {
+  CONTENT_PACKAGE_NAME,
+  type SlidesConfig,
+} from "./config.ts";
 
 type ProjectManifest = {
   id?: string;
@@ -30,8 +33,6 @@ type ContentWatcher = {
 
 const manifestFilename = "project.yml";
 const packageFilename = "package.json";
-const packageEntryFilename = "index.ts";
-const contentPackageName = "@allmaps/slides-content";
 const WATCH_INTERVAL_MS = 1000;
 
 const getDirectoryEntries = async (directory: string) => {
@@ -70,13 +71,11 @@ const getProjectManifestPath = (projectDir: string) =>
 
 const validateContentPackage = async (contentDir: string) => {
   const packagePath = path.join(contentDir, packageFilename);
-  const packageEntryPath = path.join(contentDir, packageEntryFilename);
   const packageStat = await getPathStat(packagePath);
-  const packageEntryStat = await getPathStat(packageEntryPath);
 
   if (!packageStat?.isFile()) {
     throw new Error(
-      `${packagePath} is required so the app can import @allmaps/slides-content`,
+      `${packagePath} is required so the app can import ${CONTENT_PACKAGE_NAME}`,
     );
   }
 
@@ -84,15 +83,9 @@ const validateContentPackage = async (contentDir: string) => {
     await readFile(packagePath, "utf8"),
   ) as ContentPackage;
 
-  if (packageJson.name !== contentPackageName) {
+  if (packageJson.name !== CONTENT_PACKAGE_NAME) {
     throw new Error(
-      `${packagePath} must define "name": "${contentPackageName}"`,
-    );
-  }
-
-  if (!packageEntryStat?.isFile()) {
-    throw new Error(
-      `${packageEntryPath} is required so the app can import the content package`,
+      `${packagePath} must define "name": "${CONTENT_PACKAGE_NAME}"`,
     );
   }
 };
@@ -156,7 +149,7 @@ export const formatContentResult = (
       ? result.projects[0].slug
       : `${result.projects.length} projects`;
 
-  return `Loaded ${projectLabel} from ${path.relative(process.cwd(), config.sourceContentDir)} as @allmaps/slides-content.`;
+  return `Loaded ${projectLabel} from ${path.relative(process.cwd(), config.sourceContentDir)} as ${CONTENT_PACKAGE_NAME}.`;
 };
 
 export const watchContent = (
