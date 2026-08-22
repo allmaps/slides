@@ -1,0 +1,21 @@
+{
+  "name": "@allmaps/slides-cli",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "bin": {
+    "slides": "./bin/slides.js"
+  },
+  "scripts": {
+    "iiif": "node src/commands/build-iiif.ts"
+  },
+  "dependencies": {
+    "@iiif/builder": "^2.0.1",
+    "sharp": "^0.34.5",
+    "yaml": "^2.9.0"
+  },
+  "devDependencies": {
+    "@types/node": "^25.9.1",
+    "typescript": "^5.9.3"
+  }
+}
