@@ -7,11 +7,23 @@ import { parse } from "yaml";
 
 const contentRoot = path.resolve("content");
 const staticProjectAssetsRoot = path.resolve("static", "assets");
+const TRUE_VALUES = new Set(["1", "true", "yes", "on"]);
 
 type ProjectAssetManifest = {
   id?: string;
   slug?: string;
 };
+
+type ProjectAssets = {
+  slug: string;
+  assetDir: string;
+};
+
+const isTruthy = (value: string | undefined) =>
+  TRUE_VALUES.has(value?.trim().toLowerCase() ?? "");
+
+const isSingleProjectRootRequested = () =>
+  isTruthy(process.env.PUBLIC_SLIDES_SINGLE_PROJECT_ROOT);
 
 const getProjectSlug = (projectDir: string, fallback: string) => {
   const manifestPath = path.join(projectDir, "project.yml");
@@ -22,25 +34,65 @@ const getProjectSlug = (projectDir: string, fallback: string) => {
   return manifest?.slug ?? manifest?.id ?? fallback;
 };
 
-const syncProjectAssets = () => {
-  fs.rmSync(staticProjectAssetsRoot, { recursive: true, force: true });
+const getProjectsWithManifests = () => {
+  if (!fs.existsSync(contentRoot)) return [];
 
-  if (!fs.existsSync(contentRoot)) return;
+  const projects: ProjectAssets[] = [];
 
   for (const dirent of fs.readdirSync(contentRoot, { withFileTypes: true })) {
     if (!dirent.isDirectory()) continue;
 
     const projectDir = path.join(contentRoot, dirent.name);
     const manifestPath = path.join(projectDir, "project.yml");
-    const assetDir = path.join(projectDir, "assets");
 
-    if (!fs.existsSync(manifestPath) || !fs.existsSync(assetDir)) continue;
+    if (!fs.existsSync(manifestPath)) continue;
 
-    const projectSlug = getProjectSlug(projectDir, dirent.name);
-    const targetDir = path.join(staticProjectAssetsRoot, projectSlug);
+    projects.push({
+      slug: getProjectSlug(projectDir, dirent.name),
+      assetDir: path.join(projectDir, "assets"),
+    });
+  }
+
+  return projects;
+};
+
+const isExternalAssetRoot = () => {
+  try {
+    const assetRoot = fs.lstatSync(staticProjectAssetsRoot);
+
+    if (assetRoot.isSymbolicLink()) return true;
+    if (!assetRoot.isDirectory()) return false;
+
+    return fs
+      .readdirSync(staticProjectAssetsRoot)
+      .some((entry) =>
+        fs
+          .lstatSync(path.join(staticProjectAssetsRoot, entry))
+          .isSymbolicLink(),
+      );
+  } catch {
+    return false;
+  }
+};
+
+const syncProjectAssets = () => {
+  if (isExternalAssetRoot()) return;
+
+  fs.rmSync(staticProjectAssetsRoot, { recursive: true, force: true });
+
+  const projects = getProjectsWithManifests();
+  const useRootAssetDirectory =
+    isSingleProjectRootRequested() && projects.length === 1;
+
+  for (const project of projects) {
+    if (!fs.existsSync(project.assetDir)) continue;
+
+    const targetDir = useRootAssetDirectory
+      ? staticProjectAssetsRoot
+      : path.join(staticProjectAssetsRoot, project.slug);
 
     fs.mkdirSync(path.dirname(targetDir), { recursive: true });
-    fs.cpSync(assetDir, targetDir, { recursive: true });
+    fs.cpSync(project.assetDir, targetDir, { recursive: true });
   }
 };
 

@@ -3,7 +3,6 @@
 
   import Map from "$lib/components/Map.svelte";
   import { getGeoJsonLayers } from "$lib/shared/geojson";
-  import { getProjectAssetBase } from "$lib/shared/paths";
   import { getSlideshowRouteHref } from "$lib/shared/projects";
   import { DEFAULT_DURATION } from "$lib/shared/settings";
   import type {
@@ -21,7 +20,7 @@
 
   let { project, slideshow }: Props = $props();
 
-  setContext("projectAssetBase", getProjectAssetBase(project.slug));
+  setContext("projectAssetBase", project.assetBase);
 
   const chapters = $derived(slideshow.chapters);
   const sources = $derived(slideshow.sources);
