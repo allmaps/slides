@@ -6,6 +6,7 @@ import {
   joinUrl,
   resolveProjectAssetUrl,
   withBaseUrl,
+  type ProjectAssetUrlOptions,
 } from "$lib/shared/paths";
 import { isSingleProjectRootRequested } from "$lib/shared/routing";
 import type {
@@ -89,7 +90,11 @@ const normalizeSlideshow = (
   slug: slideshow.id === mainSlideshowId ? "" : (slideshow.slug ?? slideshow.id),
 });
 
-const resolveWarpedMaps = (projectSlug: string, metadata: Record<string, any>) => {
+const resolveWarpedMaps = (
+  projectSlug: string,
+  metadata: Record<string, any>,
+  assetUrlOptions: ProjectAssetUrlOptions,
+) => {
   if (!metadata.warpedMaps) return metadata;
 
   return {
@@ -97,7 +102,11 @@ const resolveWarpedMaps = (projectSlug: string, metadata: Record<string, any>) =
     warpedMaps: getValueAsArray(metadata.warpedMaps).map(
       (warpedMap: WarpedMapProps) => ({
         ...warpedMap,
-        url: resolveProjectAssetUrl(projectSlug, warpedMap.url),
+        url: resolveProjectAssetUrl(
+          projectSlug,
+          warpedMap.url,
+          assetUrlOptions,
+        ),
       }),
     ),
   };
@@ -106,25 +115,35 @@ const resolveWarpedMaps = (projectSlug: string, metadata: Record<string, any>) =
 const createSource = (
   projectSlug: string,
   source: ProjectSourceDefinition,
+  assetUrlOptions: ProjectAssetUrlOptions,
 ): SourceSpecification => {
   if (source.type === "geojson") {
     return {
       type: "geojson",
-      data: resolveProjectAssetUrl(projectSlug, source.path ?? source.url ?? ""),
+      data: resolveProjectAssetUrl(
+        projectSlug,
+        source.path ?? source.url ?? "",
+        assetUrlOptions,
+      ),
     };
   }
 
   return {
     ...source,
     url: source.url
-      ? resolveProjectAssetUrl(projectSlug, source.url)
+      ? resolveProjectAssetUrl(projectSlug, source.url, assetUrlOptions)
       : source.path
-        ? resolveProjectAssetUrl(projectSlug, source.path)
+        ? resolveProjectAssetUrl(projectSlug, source.path, assetUrlOptions)
         : undefined,
   } as SourceSpecification;
 };
 
 const buildProjects = () => {
+  const singleProjectRootMode =
+    isSingleProjectRootRequested() && Object.keys(projectFiles).length === 1;
+  const assetUrlOptions = {
+    useProjectSubdirectory: !singleProjectRootMode,
+  };
   const slidesByProjectAndSlideshow = new Map<string, MapChapter[]>();
 
   for (const [path, mod] of Object.entries(slideFiles).toSorted(([a], [b]) =>
@@ -150,7 +169,7 @@ const buildProjects = () => {
       const sources = Object.fromEntries(
         Object.entries(manifest.sources ?? {}).map(([sourceId, source]) => [
           sourceId,
-          createSource(manifest.slug, source),
+          createSource(manifest.slug, source, assetUrlOptions),
         ]),
       );
       const slideshows: Slideshow[] = manifest.slideshows.map((rawSlideshow) => {
@@ -159,7 +178,7 @@ const buildProjects = () => {
           slidesByProjectAndSlideshow.get(`${folder}/${slideshow.path}`) ?? []
         ).map((chapter) => ({
           ...chapter,
-          ...resolveWarpedMaps(manifest.slug, chapter),
+          ...resolveWarpedMaps(manifest.slug, chapter, assetUrlOptions),
         }));
 
         return {
@@ -175,7 +194,7 @@ const buildProjects = () => {
         folder,
         sources,
         slideshows,
-        assetBase: getProjectAssetBase(manifest.slug),
+        assetBase: getProjectAssetBase(manifest.slug, assetUrlOptions),
       };
     })
     .toSorted((a, b) => a.title.localeCompare(b.title));

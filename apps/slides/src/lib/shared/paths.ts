@@ -2,6 +2,10 @@ import baseUrl from "$lib/shared/base-url";
 
 const EXTERNAL_URL_PATTERN = /^[a-z][a-z\d+.-]*:/i;
 
+export type ProjectAssetUrlOptions = {
+  useProjectSubdirectory?: boolean;
+};
+
 export const isExternalUrl = (value: string) =>
   EXTERNAL_URL_PATTERN.test(value) || value.startsWith("//");
 
@@ -28,10 +32,25 @@ export const withBaseUrl = (path: string) => {
   return `${cleanBase}/${cleanPath}`;
 };
 
-export const getProjectAssetBase = (projectSlug: string) =>
-  withBaseUrl(joinUrl("assets", projectSlug));
+const getProjectAssetPath = (
+  projectSlug: string,
+  assetPath = "",
+  options: ProjectAssetUrlOptions = {},
+) =>
+  options.useProjectSubdirectory === false
+    ? joinUrl("assets", assetPath)
+    : joinUrl("assets", projectSlug, assetPath);
 
-export const resolveProjectAssetUrl = (projectSlug: string, path: string) => {
+export const getProjectAssetBase = (
+  projectSlug: string,
+  options: ProjectAssetUrlOptions = {},
+) => withBaseUrl(getProjectAssetPath(projectSlug, "", options));
+
+export const resolveProjectAssetUrl = (
+  projectSlug: string,
+  path: string,
+  options: ProjectAssetUrlOptions = {},
+) => {
   if (isExternalUrl(path)) return path;
 
   const cleanPath = path.replace(/^\/+/, "");
@@ -39,5 +58,5 @@ export const resolveProjectAssetUrl = (projectSlug: string, path: string) => {
     ? cleanPath.slice("assets/".length)
     : cleanPath;
 
-  return withBaseUrl(joinUrl("assets", projectSlug, assetPath));
+  return withBaseUrl(getProjectAssetPath(projectSlug, assetPath, options));
 };
