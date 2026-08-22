@@ -14,13 +14,13 @@ slides check --config slides.config.yml
 slides validate --config slides.config.yml
 ```
 
-`slides dev` keeps watching the configured content directory and reports
-validation errors. The app imports markdown, config, and assets directly from the
-`@allmaps/slides-content` workspace package.
+`slides dev` resolves `@allmaps/slides-content` from the SvelteKit app package,
+watches that resolved package root, and reports validation errors. The app
+imports markdown, config, and assets from the same workspace package.
 
-The configured content directory must contain a `package.json` named
-`@allmaps/slides-content` and an `index.ts` entry point exporting the content
-globs consumed by the app.
+That content package must contain a `package.json` named
+`@allmaps/slides-content`. Its exported entry point should provide the content
+globs consumed by the app; the repository template uses `content/index.ts`.
 
 ## Config
 
@@ -31,9 +31,6 @@ file.
 site:
   basePath: ${SLIDES_BASE_PATH}
   publicUrl: ${SLIDES_PUBLIC_URL}
-
-content:
-  directory: content
 
 routing:
   singleProjectRoot: false
@@ -47,7 +44,6 @@ Useful fields:
 | Field | Default | Description |
 | --- | --- | --- |
 | `app.directory` | workspace `apps/slides` | SvelteKit app directory. |
-| `content.directory` | `content` | Source project content folder. |
 | `site.basePath` | empty | SvelteKit base path, for example `/kattenburg-atlas`. |
 | `site.publicUrl` | `site.basePath` | Absolute public URL used by commands that need IDs. |
 | `routing.singleProjectRoot` | `false` | Publish the only project at `/` instead of `/:project`. |

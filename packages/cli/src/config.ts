@@ -1,4 +1,5 @@
 import { access, readFile } from "node:fs/promises";
+import { createRequire } from "node:module";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -6,9 +7,6 @@ import { parse } from "yaml";
 
 type RawSlidesConfig = {
   app?: {
-    directory?: string;
-  };
-  content?: {
     directory?: string;
   };
   site?: {
@@ -27,6 +25,10 @@ type RawSlidesConfig = {
     output?: string;
     id?: string;
   };
+};
+
+type PackageJson = {
+  name?: string;
 };
 
 export type SlidesConfig = {
@@ -54,6 +56,7 @@ const CONFIG_FILENAMES = [
 ];
 const TRUE_VALUES = new Set(["1", "true", "yes", "on"]);
 const FALSE_VALUES = new Set(["0", "false", "no", "off"]);
+export const CONTENT_PACKAGE_NAME = "@allmaps/slides-content";
 
 const packageRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -140,6 +143,52 @@ const findDefaultConfig = async (cwd: string) => {
   }
 };
 
+const findPackageRoot = async (entryPath: string, packageName: string) => {
+  let currentDir = path.dirname(entryPath);
+
+  while (true) {
+    const packagePath = path.join(currentDir, "package.json");
+
+    if (await fileExists(packagePath)) {
+      const packageJson = JSON.parse(
+        await readFile(packagePath, "utf8"),
+      ) as PackageJson;
+
+      if (packageJson.name === packageName) {
+        return currentDir;
+      }
+    }
+
+    const parentDir = path.dirname(currentDir);
+    if (parentDir === currentDir) {
+      throw new Error(
+        `Could not find package root for ${packageName} from ${entryPath}`,
+      );
+    }
+
+    currentDir = parentDir;
+  }
+};
+
+const resolveContentPackageRoot = async (appDir: string) => {
+  const appPackagePath = path.join(appDir, "package.json");
+  const requireFromApp = createRequire(appPackagePath);
+  let contentEntryPath: string;
+
+  try {
+    contentEntryPath = requireFromApp.resolve(CONTENT_PACKAGE_NAME);
+  } catch (error) {
+    const detail = error instanceof Error ? `\n${error.message}` : "";
+
+    throw new Error(
+      `Could not resolve ${CONTENT_PACKAGE_NAME} from ${appPackagePath}. ` +
+        `Install dependencies after linking the content package into the Slides workspace.${detail}`,
+    );
+  }
+
+  return findPackageRoot(contentEntryPath, CONTENT_PACKAGE_NAME);
+};
+
 export const loadSlidesConfig = async (
   configPath: string | undefined,
   cwd = process.cwd(),
@@ -153,10 +202,7 @@ export const loadSlidesConfig = async (
     rootDir,
     getString(raw.app?.directory, path.join(workspaceRoot, "apps", "slides")),
   );
-  const sourceContentDir = resolveFrom(
-    rootDir,
-    getString(raw.content?.directory, "content"),
-  );
+  const sourceContentDir = await resolveContentPackageRoot(appDir);
   const publicBasePath = getString(
     raw.site?.basePath,
     process.env.PUBLIC_BASE_PATH ?? "",

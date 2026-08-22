@@ -17,8 +17,10 @@ This repository is a pnpm workspace:
   one or more story-map projects and exports their markdown, config, and assets.
 - `packages/cli` validates content and starts/builds the app.
 
-The root `slides.config.yml` tells the CLI which content directory to use and
-which public settings to pass to SvelteKit.
+The root `slides.config.yml` tells the CLI which public settings to pass to
+SvelteKit. The content itself is resolved through the
+`@allmaps/slides-content` workspace package, the same package imported by the
+app.
 
 Install dependencies with `pnpm install`, start a development server:
 
@@ -30,8 +32,9 @@ pnpm run dev -- --open
 ```
 
 During development, the app imports content directly from
-`@allmaps/slides-content`. The CLI watches `content/` and reports validation
-errors, but it no longer copies markdown or assets into the app.
+`@allmaps/slides-content`. The CLI resolves and watches that same package and
+reports validation errors, but it no longer copies markdown or assets into the
+app.
 
 The content package has a small entry point:
 
@@ -84,8 +87,6 @@ GitHub Pages base paths and public API keys:
 site:
   basePath: ${SLIDES_BASE_PATH}
   publicUrl: ${SLIDES_PUBLIC_URL}
-content:
-  directory: content
 routing:
   singleProjectRoot: false
 protomaps:

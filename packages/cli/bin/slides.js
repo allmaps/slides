@@ -42,7 +42,7 @@ addConfigOption(
   program
     .command("validate")
     .alias("sync")
-    .description("Validate the configured Slides content package"),
+    .description("Validate the Slides content package"),
 ).action((options) => runSyncCommand({ configPath: options.config }));
 
 addConfigOption(
