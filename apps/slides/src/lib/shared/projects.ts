@@ -43,8 +43,10 @@ const parseProjectManifest = (
 const getProjectFolder = (path: string) => {
   const parts = path.replace(/\\/g, "/").split("/");
   const manifestIndex = parts.lastIndexOf("project.yml");
-  const projectFolder = manifestIndex > 0 ? parts[manifestIndex - 1] : undefined;
-  if (!projectFolder) throw new Error(`Could not infer project folder from ${path}`);
+  const projectFolder = manifestIndex > 1 ? parts[manifestIndex - 1] : "";
+  if (manifestIndex === -1) {
+    throw new Error(`Could not infer project folder from ${path}`);
+  }
 
   return projectFolder;
 };
@@ -53,10 +55,9 @@ const getSlideParts = (path: string) => {
   const parts = path.replace(/\\/g, "/").split("/");
   const slideshowsIndex = parts.lastIndexOf("slideshows");
   const filename = parts.at(-1)?.replace(/\.md$/, "");
-  const projectFolder =
-    slideshowsIndex > 0 ? parts[slideshowsIndex - 1] : undefined;
+  const projectFolder = slideshowsIndex > 1 ? parts[slideshowsIndex - 1] : "";
 
-  if (!projectFolder || slideshowsIndex === -1 || !filename) {
+  if (slideshowsIndex === -1 || !filename) {
     throw new Error(`Could not infer slide path from ${path}`);
   }
 
@@ -66,6 +67,9 @@ const getSlideParts = (path: string) => {
     filename,
   };
 };
+
+const getProjectSlideshowKey = (projectFolder: string, slideshowPath: string) =>
+  `${projectFolder}\0${slideshowPath}`;
 
 const getSlideSlug = (filename: string) =>
   filename.replace(/^\d+[-_]/, "").replace(/\.md$/, "");
@@ -145,7 +149,7 @@ const buildProjects = () => {
     a.localeCompare(b),
   )) {
     const { projectFolder, slideshowPath, filename } = getSlideParts(path);
-    const key = `${projectFolder}/${slideshowPath}`;
+    const key = getProjectSlideshowKey(projectFolder, slideshowPath);
     const slides = slidesByProjectAndSlideshow.get(key) ?? [];
 
     slides.push({
@@ -170,7 +174,9 @@ const buildProjects = () => {
       const slideshows: Slideshow[] = manifest.slideshows.map((rawSlideshow) => {
         const slideshow = normalizeSlideshow(rawSlideshow, manifest.main);
         const chapters = (
-          slidesByProjectAndSlideshow.get(`${folder}/${slideshow.path}`) ?? []
+          slidesByProjectAndSlideshow.get(
+            getProjectSlideshowKey(folder, slideshow.path),
+          ) ?? []
         ).map((chapter) => ({
           ...chapter,
           ...resolveWarpedMaps(folder, chapter),

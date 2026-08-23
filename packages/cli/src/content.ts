@@ -92,7 +92,22 @@ const validateContentPackage = async (contentDir: string) => {
 
 const findProjects = async (contentDir: string): Promise<ContentProject[]> => {
   const projects: ContentProject[] = [];
+  const rootManifestPath = getProjectManifestPath(contentDir);
   const entries = await readdir(contentDir, { withFileTypes: true });
+
+  try {
+    const manifest = await parseProjectManifest(rootManifestPath);
+
+    projects.push({
+      folder: "",
+      slug: manifest.slug ?? manifest.id ?? path.basename(contentDir),
+      manifestPath: rootManifestPath,
+    });
+  } catch (error) {
+    if (!(error instanceof Error && "code" in error && error.code === "ENOENT")) {
+      throw error;
+    }
+  }
 
   for (const entry of entries) {
     if (!entry.isDirectory()) continue;

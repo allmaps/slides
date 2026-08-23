@@ -13,14 +13,13 @@ Application to create map stories using MapLibre, Protomaps and Allmaps.
 This repository is a pnpm workspace:
 
 - `apps/slides` contains the SvelteKit application.
-- `content` is the `@allmaps/slides-content` workspace package. It contains
-  one or more story-map projects and exports their markdown, config, and assets.
+- `content/gravity-at-sea` is the `@allmaps/slides-content` workspace package.
+  It exports the Gravity at Sea markdown, config, and assets.
 - `packages/cli` validates content and starts/builds the app.
 
-The root `slides.config.yml` tells the CLI which public settings to pass to
-SvelteKit. The content itself is resolved through the
-`@allmaps/slides-content` workspace package, the same package imported by the
-app.
+The content package's `slides.config.yml` tells the CLI which public settings to
+pass to SvelteKit. The content itself is resolved through the
+`@allmaps/slides-content` workspace package, the same package imported by the app.
 
 Install dependencies with `pnpm install`, start a development server:
 
@@ -40,17 +39,31 @@ The content package has a small entry point:
 
 ```txt
 content/
-  package.json
-  index.ts
   gravity-at-sea/
+    package.json
+    index.ts
+    slides.config.yml
     project.yml
     slideshows/
     assets/
 ```
 
-`content/index.ts` exports Vite glob imports for project config, markdown slides,
-and project assets. Asset paths in markdown/frontmatter are resolved relative to
-the current project folder.
+`content/gravity-at-sea/index.ts` exports Vite glob imports for project config,
+markdown slides, and project assets. Asset paths in markdown/frontmatter are
+resolved relative to the current project folder.
+
+The content entry point also supports the older nested-project shape, where
+project folders live below the package root:
+
+```txt
+content-package/
+  package.json
+  index.ts
+  some-project/
+    project.yml
+    slideshows/
+    assets/
+```
 
 ## Building
 
@@ -65,7 +78,7 @@ You can preview the production build with `pnpm run preview`.
 Use another config file by calling the CLI directly:
 
 ```sh
-pnpm exec slides build --config slides.production.yml
+pnpm exec slides build --config content/gravity-at-sea/slides.production.yml
 ```
 
 ## Routing
@@ -80,8 +93,8 @@ subslideshows are served at `/:slideshow`.
 
 ## Config
 
-`slides.config.yml` supports environment placeholders, which is useful for
-GitHub Pages base paths and public API keys:
+`content/gravity-at-sea/slides.config.yml` supports environment placeholders,
+which is useful for GitHub Pages base paths and public API keys:
 
 ```yml
 site:

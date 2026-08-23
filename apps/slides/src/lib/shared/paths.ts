@@ -57,7 +57,9 @@ export const getContentAssetUrl = (
   if (isExternalUrl(cleanPath)) return cleanPath;
 
   const assetPath = normalizeProjectAssetPath(cleanPath);
-  const assetKey = `./${projectFolder}/${assetPath}`;
+  const assetKey = projectFolder
+    ? `./${projectFolder}/${assetPath}`
+    : `./${assetPath}`;
 
-  return assetUrls[assetKey];
+  return assetUrls[assetKey] ?? assetUrls[`./${assetPath}`];
 };
