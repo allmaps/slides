@@ -1,6 +1,6 @@
 packages:
   - apps/*
-  - content
+  - content/*
   - packages/*
 
 allowBuilds:

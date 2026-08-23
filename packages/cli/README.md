@@ -7,11 +7,11 @@ environment variables expected by SvelteKit, and then runs the app package.
 ## Commands
 
 ```sh
-slides dev --config slides.config.yml
-slides build --config slides.config.yml
-slides preview --config slides.config.yml
-slides check --config slides.config.yml
-slides validate --config slides.config.yml
+slides dev --config content/gravity-at-sea/slides.config.yml
+slides build --config content/gravity-at-sea/slides.config.yml
+slides preview --config content/gravity-at-sea/slides.config.yml
+slides check --config content/gravity-at-sea/slides.config.yml
+slides validate --config content/gravity-at-sea/slides.config.yml
 ```
 
 `slides dev` resolves `@allmaps/slides-content` from the SvelteKit app package,
@@ -20,7 +20,8 @@ imports markdown, config, and assets from the same workspace package.
 
 That content package must contain a `package.json` named
 `@allmaps/slides-content`. Its exported entry point should provide the content
-globs consumed by the app; the repository template uses `content/index.ts`.
+globs consumed by the app; the Gravity package uses
+`content/gravity-at-sea/index.ts`.
 
 ## Config
 
@@ -107,7 +108,7 @@ slides iiif --no-webp
 Use a deployment URL for all IIIF IDs:
 
 ```sh
-slides iiif --config slides.config.yml --force
+slides iiif --config content/gravity-at-sea/slides.config.yml --force
 ```
 
 Write to a temporary output folder:
