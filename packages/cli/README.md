@@ -54,6 +54,14 @@ Useful fields:
 | `site.publicUrl` | `site.basePath` | Absolute public URL used by commands that need IDs. |
 | `routing.singleProjectRoot` | `false` | Publish the only project at `/` instead of `/:project`. |
 | `protomaps.key` | empty | Public Protomaps key passed to the app. |
+| `iiif.enabled` | `true` | Generate and serve IIIF derivatives. |
+| `iiif.input` | `assets/images` | Source image root for manual IIIF generation and imported image paths. |
+| `iiif.output` | `static/iiif` | Output folder used by the manual `slides iiif` command. |
+| `iiif.id` | `PUBLIC_URL/iiif` | Public IIIF base URI used in generated metadata. |
+| `iiif.sizes` | `true` | Generate fixed-size full-image derivatives and advertise them in `info.json`. |
+| `iiif.tiles` | `true` | Generate tile pyramid derivatives and advertise them in `info.json`. |
+| `iiif.tileSize` | `1024` | Tile width and height. |
+| `iiif.webp` | `true` | Generate and advertise WebP derivatives. |
 
 Environment placeholders such as `${PUBLIC_PROTOMAPS_KEY}` are expanded before
 the config is applied.
@@ -80,14 +88,25 @@ IIIF Image API folder named after the source filename without the extension.
 Each source subfolder gets a `manifest.json`, and `static/iiif/collection.json`
 lists those manifests.
 
+During `slides dev` and `slides build`, the Slides app also loads the IIIF
+generator as a Vite plugin. Content packages can expose lazy `?iiif` imports
+from their image assets; the plugin uses those imports as the app's IIIF source
+list, caches derivatives in `.svelte-kit/iiif`, and prerenders stable static
+files under the app's `/iiif` route. The configured `iiif.input` folder is used
+as the root for deriving stable IIIF paths from those imports. This uses the
+same generator as the CLI command; the route output is written by SvelteKit
+rather than directly to `iiif.output`.
+
 ### Options
 
 | Option | Default | Description |
 | --- | --- | --- |
 | `--force`, `-f` | off | Recreate existing image derivatives instead of skipping current ones. |
 | `--id <uri>` | `PUBLIC_URL/iiif` | Public IIIF base URI used in `info.json`, manifests, and collection IDs. |
-| `--input <path>` | `iiif.input` or `apps/slides/static/images` | Source image folder to scan recursively. |
-| `--output <path>` | `iiif.output` or `apps/slides/static/iiif` | Output folder for IIIF derivatives and JSON files. |
+| `--input <path>` | `iiif.input` or `assets/images` | Source image folder to scan recursively. |
+| `--output <path>` | `iiif.output` or `static/iiif` | Output folder for IIIF derivatives and JSON files. |
+| `--sizes` / `--no-sizes` | `iiif.sizes` | Generate or skip fixed-size full-image derivatives. |
+| `--tiles` / `--no-tiles` | `iiif.tiles` | Generate or skip tile pyramid derivatives. |
 | `--tile-size <pixels>` | `1024` | Tile width and height used for the image pyramid. |
 | `--webp` | on | Generate WebP derivatives alongside JPEG and advertise WebP in `info.json`. |
 | `--no-webp` | off | Generate JPEG derivatives only and omit WebP properties from `info.json`. |
@@ -124,13 +143,15 @@ slides iiif --input static/images/maps --output /tmp/gravity-iiif-maps
 
 ### Output Notes
 
-- Full-image fixed sizes are generated under `full/<width>,<height>/0/default.jpg`
-  and, when WebP is enabled, `default.webp`.
 - The original image is generated under `full/max/0/default.jpg`.
+- When `sizes` is enabled, fixed sizes are generated under
+  `full/<width>,<height>/0/default.jpg` and, when WebP is enabled,
+  `default.webp`.
 - Tile pyramid outputs use explicit region folders such as
   `0,0,6335,2395/792,300/0/default.jpg`.
-- `info.json` includes `tiles.width`, `tiles.height`, `sizes`, and, when WebP is
-  enabled, `extraFormats` and `preferredFormats`.
+- `info.json` includes `tiles.width` and `tiles.height` when `tiles` is enabled,
+  `sizes` when `sizes` is enabled, and, when WebP is enabled, `extraFormats`
+  and `preferredFormats`.
 - WebP has a maximum supported dimension. Oversized WebP derivatives are skipped
   per file, while supported fixed sizes and tiles are still generated as WebP.
 

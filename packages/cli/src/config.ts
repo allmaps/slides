@@ -21,9 +21,14 @@ type RawSlidesConfig = {
   };
   interface?: Record<string, unknown>;
   iiif?: {
+    enabled?: boolean | string | number;
     input?: string;
     output?: string;
     id?: string;
+    sizes?: boolean | string | number;
+    tiles?: boolean | string | number;
+    tileSize?: string | number;
+    webp?: boolean | string | number;
   };
 };
 
@@ -60,9 +65,14 @@ export type SlidesConfig = {
   protomapsKey: string;
   singleProjectRoot: boolean;
   iiif: {
+    enabled: boolean;
     inputRoot: string;
     outputRoot: string;
     idBase: string | undefined;
+    sizes: boolean;
+    tiles: boolean;
+    tileSize: string | undefined;
+    webp: boolean | undefined;
   };
   raw: RawSlidesConfig;
 };
@@ -75,6 +85,8 @@ const CONFIG_FILENAMES = [
 const WORKSPACE_FILENAME = "pnpm-workspace.yaml";
 const TRUE_VALUES = new Set(["1", "true", "yes", "on"]);
 const FALSE_VALUES = new Set(["0", "false", "no", "off"]);
+const DEFAULT_IIIF_INPUT = path.join("assets", "images");
+const DEFAULT_IIIF_OUTPUT = path.join("static", "iiif");
 
 const packageRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -403,28 +415,53 @@ export const loadSlidesConfig = async (
     protomapsKey,
     singleProjectRoot: getBoolean(raw.routing?.singleProjectRoot),
     iiif: {
+      enabled: getBoolean(raw.iiif?.enabled, true),
       inputRoot: resolveFrom(
-        appDir,
-        getString(raw.iiif?.input, path.join("static", "images")),
+        rootDir,
+        getString(raw.iiif?.input, DEFAULT_IIIF_INPUT),
       ),
       outputRoot: resolveFrom(
-        appDir,
-        getString(raw.iiif?.output, path.join("static", "iiif")),
+        rootDir,
+        getString(raw.iiif?.output, DEFAULT_IIIF_OUTPUT),
       ),
       idBase: getOptionalString(raw.iiif?.id),
+      sizes: getBoolean(raw.iiif?.sizes, true),
+      tiles: getBoolean(raw.iiif?.tiles, true),
+      tileSize: getOptionalString(raw.iiif?.tileSize),
+      webp:
+        raw.iiif?.webp === undefined ? undefined : getBoolean(raw.iiif.webp),
     },
     raw,
   };
 };
 
-export const getAppEnvironment = (config: SlidesConfig) => ({
-  ...process.env,
-  PUBLIC_BASE_PATH: config.publicBasePath,
-  PUBLIC_URL: config.publicUrl,
-  PUBLIC_PROTOMAPS_KEY: config.protomapsKey,
-  PUBLIC_SLIDES_SINGLE_PROJECT_ROOT: config.singleProjectRoot ? "true" : "false",
-  SLIDES_CONFIG_PATH: config.configPath ?? "",
-  SLIDES_CONTENT_PACKAGE: config.contentPackageName,
-  SLIDES_CONTENT_PACKAGE_ENTRY: config.contentPackageEntry,
-  SLIDES_CONTENT_PACKAGE_ROOT: config.sourceContentDir,
-});
+export const getAppEnvironment = (config: SlidesConfig) => {
+  const env: NodeJS.ProcessEnv = {
+    ...process.env,
+    PUBLIC_BASE_PATH: config.publicBasePath,
+    PUBLIC_URL: config.publicUrl,
+    PUBLIC_PROTOMAPS_KEY: config.protomapsKey,
+    PUBLIC_SLIDES_SINGLE_PROJECT_ROOT: config.singleProjectRoot
+      ? "true"
+      : "false",
+    SLIDES_CONFIG_PATH: config.configPath ?? "",
+    SLIDES_CONTENT_PACKAGE: config.contentPackageName,
+    SLIDES_CONTENT_PACKAGE_ENTRY: config.contentPackageEntry,
+    SLIDES_CONTENT_PACKAGE_ROOT: config.sourceContentDir,
+    SLIDES_IIIF_ENABLED: config.iiif.enabled ? "true" : "false",
+    PUBLIC_SLIDES_IIIF_ENABLED: config.iiif.enabled ? "true" : "false",
+    SLIDES_IIIF_CACHE_ROOT: path.join(config.appDir, ".svelte-kit", "iiif"),
+    SLIDES_IIIF_INPUT_ROOT: config.iiif.inputRoot,
+    SLIDES_IIIF_OUTPUT_ROOT: config.iiif.outputRoot,
+  };
+
+  if (config.iiif.idBase) env.SLIDES_IIIF_ID_BASE = config.iiif.idBase;
+  env.SLIDES_IIIF_SIZES = config.iiif.sizes ? "true" : "false";
+  env.SLIDES_IIIF_TILES = config.iiif.tiles ? "true" : "false";
+  if (config.iiif.tileSize) env.SLIDES_IIIF_TILE_SIZE = config.iiif.tileSize;
+  if (config.iiif.webp !== undefined) {
+    env.SLIDES_IIIF_WEBP = config.iiif.webp ? "true" : "false";
+  }
+
+  return env;
+};

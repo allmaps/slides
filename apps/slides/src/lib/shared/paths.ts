@@ -1,5 +1,6 @@
 import baseUrl from "$lib/shared/base-url";
-import { assetUrls } from "@allmaps/slides-content";
+import { env } from "$env/dynamic/public";
+import { dataAssetUrls, imageAssetUrls } from "@allmaps/slides-content";
 
 const EXTERNAL_URL_PATTERN = /^[a-z][a-z\d+.-]*:/i;
 const PROJECT_ASSET_FOLDERS = new Set([
@@ -8,6 +9,33 @@ const PROJECT_ASSET_FOLDERS = new Set([
   "images",
   "sprites",
 ]);
+const FALSE_VALUES = new Set(["0", "false", "no", "off"]);
+
+type IiifImageModule = {
+  relativePath?: string;
+  width?: number;
+  height?: number;
+  sizes?: Array<{
+    width: number;
+    height: number;
+    size: string;
+  }>;
+  formats?: string[];
+};
+
+type ImageModule = IiifImageModule | string;
+
+export type ContentIiifImage = {
+  servicePath: string;
+  width?: number;
+  height?: number;
+  sizes: Array<{
+    width: number;
+    height: number;
+    size: string;
+  }>;
+  formats: string[];
+};
 
 export const isExternalUrl = (value: string | null | undefined) =>
   typeof value === "string" &&
@@ -48,6 +76,35 @@ const normalizeProjectAssetPath = (path: string) => {
   return cleanPath;
 };
 
+const getContentAssetKey = (projectFolder: string, assetPath: string) =>
+  projectFolder ? `./${projectFolder}/${assetPath}` : `./${assetPath}`;
+
+const resolveContentAssetUrl = (
+  urls: Record<string, string>,
+  projectFolder: string,
+  assetPath: string,
+) => {
+  const assetKey = getContentAssetKey(projectFolder, assetPath);
+
+  return urls[assetKey] ?? urls[`./${assetPath}`];
+};
+
+const resolveContentImage = (
+  projectFolder: string,
+  assetPath: string,
+): ImageModule | undefined => {
+  const assetKey = getContentAssetKey(projectFolder, assetPath);
+
+  return imageAssetUrls[assetKey] ?? imageAssetUrls[`./${assetPath}`];
+};
+
+const isIiifEnabled = () =>
+  !FALSE_VALUES.has(
+    env.PUBLIC_SLIDES_IIIF_ENABLED?.trim().toLowerCase() ?? "",
+  );
+
+const removeExtension = (path: string) => path.replace(/\.[^/.]+$/, "");
+
 export const getContentAssetUrl = (
   projectFolder: string,
   path: string | null | undefined,
@@ -57,9 +114,45 @@ export const getContentAssetUrl = (
   if (isExternalUrl(cleanPath)) return cleanPath;
 
   const assetPath = normalizeProjectAssetPath(cleanPath);
-  const assetKey = projectFolder
-    ? `./${projectFolder}/${assetPath}`
-    : `./${assetPath}`;
+  const image = resolveContentImage(projectFolder, assetPath);
 
-  return assetUrls[assetKey] ?? assetUrls[`./${assetPath}`];
+  return (
+    resolveContentAssetUrl(dataAssetUrls, projectFolder, assetPath) ??
+    (typeof image === "string" ? image : undefined)
+  );
+};
+
+export const getContentIiifImage = (
+  projectFolder: string,
+  path: string | null | undefined,
+): ContentIiifImage | undefined => {
+  const cleanPath = path?.trim();
+  if (!cleanPath || !isIiifEnabled()) return undefined;
+  if (isExternalUrl(cleanPath) || cleanPath.startsWith("data:")) {
+    return undefined;
+  }
+
+  const assetPath = normalizeProjectAssetPath(cleanPath);
+  const image = resolveContentImage(projectFolder, assetPath);
+
+  if (!image || typeof image === "string") return undefined;
+
+  const relativePath =
+    image.relativePath ?? assetPath.replace(/^assets\/images\//, "");
+  const servicePath = removeExtension(relativePath);
+  const fallbackSize =
+    image.width && image.height
+      ? [{ width: image.width, height: image.height, size: "max" }]
+      : [];
+  const sizes = image.sizes?.length ? image.sizes : fallbackSize;
+
+  if (!sizes.length) return undefined;
+
+  return {
+    servicePath,
+    width: image.width,
+    height: image.height,
+    sizes,
+    formats: image.formats?.length ? image.formats : ["jpg"],
+  };
 };
