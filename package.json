@@ -4,13 +4,13 @@
   "version": "0.0.1",
   "type": "module",
   "scripts": {
-    "dev": "slides dev --config content/gravity-at-sea/slides.config.yml",
-    "build": "slides build --config content/gravity-at-sea/slides.config.yml",
-    "preview": "slides preview --config content/gravity-at-sea/slides.config.yml",
-    "check": "slides check --config content/gravity-at-sea/slides.config.yml",
-    "validate": "slides validate --config content/gravity-at-sea/slides.config.yml",
-    "sync": "slides validate --config content/gravity-at-sea/slides.config.yml",
-    "iiif": "slides iiif --config content/gravity-at-sea/slides.config.yml"
+    "dev": "slides dev @allmaps/gravity-at-sea",
+    "build": "slides build @allmaps/gravity-at-sea",
+    "preview": "slides preview @allmaps/gravity-at-sea",
+    "check": "slides check @allmaps/gravity-at-sea",
+    "validate": "slides validate @allmaps/gravity-at-sea",
+    "sync": "slides validate @allmaps/gravity-at-sea",
+    "iiif": "slides iiif @allmaps/gravity-at-sea"
   },
   "devDependencies": {
     "@allmaps/slides-cli": "workspace:*"

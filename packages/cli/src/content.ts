@@ -3,10 +3,7 @@ import path from "node:path";
 
 import { parse } from "yaml";
 
-import {
-  CONTENT_PACKAGE_NAME,
-  type SlidesConfig,
-} from "./config.ts";
+import { type SlidesConfig } from "./config.ts";
 
 type ProjectManifest = {
   id?: string;
@@ -69,13 +66,13 @@ const parseProjectManifest = async (
 const getProjectManifestPath = (projectDir: string) =>
   path.join(projectDir, manifestFilename);
 
-const validateContentPackage = async (contentDir: string) => {
-  const packagePath = path.join(contentDir, packageFilename);
+const validateContentPackage = async (config: SlidesConfig) => {
+  const packagePath = path.join(config.sourceContentDir, packageFilename);
   const packageStat = await getPathStat(packagePath);
 
   if (!packageStat?.isFile()) {
     throw new Error(
-      `${packagePath} is required so the app can import ${CONTENT_PACKAGE_NAME}`,
+      `${packagePath} is required so the app can import ${config.contentPackageName}`,
     );
   }
 
@@ -83,52 +80,56 @@ const validateContentPackage = async (contentDir: string) => {
     await readFile(packagePath, "utf8"),
   ) as ContentPackage;
 
-  if (packageJson.name !== CONTENT_PACKAGE_NAME) {
+  if (packageJson.name !== config.contentPackageName) {
     throw new Error(
-      `${packagePath} must define "name": "${CONTENT_PACKAGE_NAME}"`,
+      `${packagePath} must define "name": "${config.contentPackageName}"`,
     );
   }
 };
 
 const findProjects = async (contentDir: string): Promise<ContentProject[]> => {
   const projects: ContentProject[] = [];
-  const rootManifestPath = getProjectManifestPath(contentDir);
-  const entries = await readdir(contentDir, { withFileTypes: true });
 
-  try {
-    const manifest = await parseProjectManifest(rootManifestPath);
-
-    projects.push({
-      folder: "",
-      slug: manifest.slug ?? manifest.id ?? path.basename(contentDir),
-      manifestPath: rootManifestPath,
-    });
-  } catch (error) {
-    if (!(error instanceof Error && "code" in error && error.code === "ENOENT")) {
-      throw error;
-    }
-  }
-
-  for (const entry of entries) {
-    if (!entry.isDirectory()) continue;
-
-    const projectDir = path.join(contentDir, entry.name);
+  const addProject = async (projectDir: string, folder: string) => {
     const manifestPath = getProjectManifestPath(projectDir);
 
     try {
       const manifest = await parseProjectManifest(manifestPath);
 
       projects.push({
-        folder: entry.name,
-        slug: manifest.slug ?? manifest.id ?? entry.name,
+        folder,
+        slug:
+          manifest.slug ?? manifest.id ?? (folder || path.basename(projectDir)),
         manifestPath,
       });
+
+      return true;
     } catch (error) {
       if (error instanceof Error && "code" in error && error.code === "ENOENT") {
-        continue;
+        return false;
       }
 
       throw error;
+    }
+  };
+
+  await addProject(contentDir, "");
+
+  for (const entry of await readdir(contentDir, { withFileTypes: true })) {
+    if (!entry.isDirectory()) continue;
+
+    const projectDir = path.join(contentDir, entry.name);
+    const projectFound = await addProject(projectDir, entry.name);
+
+    if (projectFound || entry.name !== "content") continue;
+
+    for (const nestedEntry of await getDirectoryEntries(projectDir)) {
+      if (!nestedEntry.isDirectory()) continue;
+
+      await addProject(
+        path.join(projectDir, nestedEntry.name),
+        nestedEntry.name,
+      );
     }
   }
 
@@ -138,7 +139,7 @@ const findProjects = async (contentDir: string): Promise<ContentProject[]> => {
 export const validateContent = async (
   config: SlidesConfig,
 ): Promise<ContentResult> => {
-  await validateContentPackage(config.sourceContentDir);
+  await validateContentPackage(config);
 
   const projects = await findProjects(config.sourceContentDir);
 
@@ -163,8 +164,10 @@ export const formatContentResult = (
     result.projects.length === 1
       ? result.projects[0].slug
       : `${result.projects.length} projects`;
+  const contentLabel =
+    path.relative(process.cwd(), config.sourceContentDir) || ".";
 
-  return `Loaded ${projectLabel} from ${path.relative(process.cwd(), config.sourceContentDir)} as ${CONTENT_PACKAGE_NAME}.`;
+  return `Loaded ${projectLabel} from ${contentLabel} as ${config.contentPackageName}.`;
 };
 
 export const watchContent = (

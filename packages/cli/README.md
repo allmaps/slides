@@ -7,21 +7,26 @@ environment variables expected by SvelteKit, and then runs the app package.
 ## Commands
 
 ```sh
-slides dev --config content/gravity-at-sea/slides.config.yml
-slides build --config content/gravity-at-sea/slides.config.yml
-slides preview --config content/gravity-at-sea/slides.config.yml
-slides check --config content/gravity-at-sea/slides.config.yml
-slides validate --config content/gravity-at-sea/slides.config.yml
+slides dev @allmaps/gravity-at-sea
+slides build @allmaps/gravity-at-sea
+slides preview @allmaps/gravity-at-sea
+slides check @allmaps/gravity-at-sea
+slides validate @allmaps/gravity-at-sea
 ```
 
-`slides dev` resolves `@allmaps/slides-content` from the SvelteKit app package,
-watches that resolved package root, and reports validation errors. The app
-imports markdown, config, and assets from the same workspace package.
+`slides dev` resolves the named content package, reads `slides.config.yml` from
+that package root, watches that resolved package root, and reports validation
+errors. The app imports markdown, config, and assets through the stable
+`@allmaps/slides-content` import, which the CLI aliases to the selected package
+when it runs SvelteKit.
 
-That content package must contain a `package.json` named
-`@allmaps/slides-content`. Its exported entry point should provide the content
-globs consumed by the app; the Gravity package uses
+Each content package must contain a named `package.json` and an exported entry
+point that provides the content globs consumed by the app; the Gravity package uses
 `content/gravity-at-sea/index.ts`.
+
+`--config <path>` can still override the config file. Without `--config`, the
+CLI looks for `slides.config.yml`, `slides.config.yaml`, or `slides.config.json`
+in the selected package root.
 
 ## Config
 
@@ -61,7 +66,7 @@ and a root IIIF collection from a configured image directory.
 Run it with:
 
 ```sh
-slides iiif
+slides iiif @allmaps/gravity-at-sea
 ```
 
 or through the workspace script:
@@ -108,7 +113,7 @@ slides iiif --no-webp
 Use a deployment URL for all IIIF IDs:
 
 ```sh
-slides iiif --config content/gravity-at-sea/slides.config.yml --force
+slides iiif @allmaps/gravity-at-sea --force
 ```
 
 Write to a temporary output folder:

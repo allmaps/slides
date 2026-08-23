@@ -1,4 +1,4 @@
-import { access, readFile } from "node:fs/promises";
+import { access, readdir, readFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -31,11 +31,29 @@ type PackageJson = {
   name?: string;
 };
 
+type PnpmWorkspace = {
+  packages?: string[];
+};
+
+type ContentPackage = {
+  name: string;
+  root: string;
+  entry: string;
+};
+
+export type LoadSlidesConfigOptions = {
+  configPath?: string;
+  contentPackageName?: string;
+  cwd?: string;
+};
+
 export type SlidesConfig = {
   configPath: string | undefined;
   rootDir: string;
   workspaceRoot: string;
   appDir: string;
+  contentPackageEntry: string;
+  contentPackageName: string;
   sourceContentDir: string;
   publicBasePath: string;
   publicUrl: string;
@@ -54,9 +72,9 @@ const CONFIG_FILENAMES = [
   "slides.config.yaml",
   "slides.config.json",
 ];
+const WORKSPACE_FILENAME = "pnpm-workspace.yaml";
 const TRUE_VALUES = new Set(["1", "true", "yes", "on"]);
 const FALSE_VALUES = new Set(["0", "false", "no", "off"]);
-export const CONTENT_PACKAGE_NAME = "@allmaps/slides-content";
 
 const packageRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -76,6 +94,9 @@ const fileExists = async (filePath: string) => {
     throw error;
   }
 };
+
+const readPackageJson = async (packagePath: string) =>
+  JSON.parse(await readFile(packagePath, "utf8")) as PackageJson;
 
 const resolveFrom = (root: string, value: string) =>
   path.isAbsolute(value) ? value : path.resolve(root, value);
@@ -143,6 +164,36 @@ const findDefaultConfig = async (cwd: string) => {
   }
 };
 
+const findPackageConfig = async (packageRoot: string) => {
+  for (const filename of CONFIG_FILENAMES) {
+    const candidate = path.join(packageRoot, filename);
+    if (await fileExists(candidate)) return candidate;
+  }
+
+  return undefined;
+};
+
+const findNearestPackageRoot = async (startDir: string) => {
+  let currentDir = startDir;
+
+  while (true) {
+    const packagePath = path.join(currentDir, "package.json");
+
+    if (await fileExists(packagePath)) {
+      const packageJson = await readPackageJson(packagePath);
+
+      return {
+        root: currentDir,
+        name: packageJson.name,
+      };
+    }
+
+    const parentDir = path.dirname(currentDir);
+    if (parentDir === currentDir) return undefined;
+    currentDir = parentDir;
+  }
+};
+
 const findPackageRoot = async (entryPath: string, packageName: string) => {
   let currentDir = path.dirname(entryPath);
 
@@ -150,9 +201,7 @@ const findPackageRoot = async (entryPath: string, packageName: string) => {
     const packagePath = path.join(currentDir, "package.json");
 
     if (await fileExists(packagePath)) {
-      const packageJson = JSON.parse(
-        await readFile(packagePath, "utf8"),
-      ) as PackageJson;
+      const packageJson = await readPackageJson(packagePath);
 
       if (packageJson.name === packageName) {
         return currentDir;
@@ -170,39 +219,164 @@ const findPackageRoot = async (entryPath: string, packageName: string) => {
   }
 };
 
-const resolveContentPackageRoot = async (appDir: string) => {
-  const appPackagePath = path.join(appDir, "package.json");
-  const requireFromApp = createRequire(appPackagePath);
-  let contentEntryPath: string;
+const resolvePackageEntryFrom = (root: string, packageName: string) => {
+  const requireFromRoot = createRequire(path.join(root, "package.json"));
 
-  try {
-    contentEntryPath = requireFromApp.resolve(CONTENT_PACKAGE_NAME);
-  } catch (error) {
-    const detail = error instanceof Error ? `\n${error.message}` : "";
+  return requireFromRoot.resolve(packageName);
+};
 
+const findWorkspaceRoot = async (cwd: string) => {
+  let currentDir = cwd;
+
+  while (true) {
+    const workspacePath = path.join(currentDir, WORKSPACE_FILENAME);
+    if (await fileExists(workspacePath)) return currentDir;
+
+    const parentDir = path.dirname(currentDir);
+    if (parentDir === currentDir) return undefined;
+    currentDir = parentDir;
+  }
+};
+
+const findWorkspacePackageRoot = async (
+  packageName: string,
+  cwd: string,
+): Promise<string | undefined> => {
+  const workspaceRoot = await findWorkspaceRoot(cwd);
+  if (!workspaceRoot) return undefined;
+
+  const workspacePath = path.join(workspaceRoot, WORKSPACE_FILENAME);
+  const workspace = (parse(await readFile(workspacePath, "utf8")) ??
+    {}) as PnpmWorkspace;
+
+  for (const pattern of workspace.packages ?? []) {
+    if (pattern.startsWith("!")) continue;
+
+    const roots = pattern.endsWith("/*")
+      ? await readdir(path.join(workspaceRoot, pattern.slice(0, -2)), {
+          withFileTypes: true,
+        })
+          .then((entries) =>
+            entries
+              .filter((entry) => entry.isDirectory())
+              .map((entry) =>
+                path.join(workspaceRoot, pattern.slice(0, -2), entry.name),
+              ),
+          )
+          .catch((error) => {
+            if (
+              error instanceof Error &&
+              "code" in error &&
+              error.code === "ENOENT"
+            ) {
+              return [];
+            }
+
+            throw error;
+          })
+      : [path.join(workspaceRoot, pattern)];
+
+    for (const candidateRoot of roots) {
+      const packagePath = path.join(candidateRoot, "package.json");
+      if (!(await fileExists(packagePath))) continue;
+
+      const packageJson = await readPackageJson(packagePath);
+      if (packageJson.name === packageName) return candidateRoot;
+    }
+  }
+
+  return undefined;
+};
+
+const resolveContentPackage = async (
+  packageName: string,
+  cwd: string,
+): Promise<ContentPackage> => {
+  const requireRoots = [cwd, workspaceRoot, packageRoot];
+  const errors: string[] = [];
+
+  for (const root of requireRoots) {
+    try {
+      const entry = resolvePackageEntryFrom(root, packageName);
+      const packageRoot = await findPackageRoot(entry, packageName);
+
+      return {
+        name: packageName,
+        root: packageRoot,
+        entry,
+      };
+    } catch (error) {
+      if (error instanceof Error) errors.push(error.message);
+    }
+  }
+
+  const workspacePackageRoot = await findWorkspacePackageRoot(packageName, cwd);
+
+  if (workspacePackageRoot) {
+    return {
+      name: packageName,
+      root: workspacePackageRoot,
+      entry: resolvePackageEntryFrom(workspacePackageRoot, packageName),
+    };
+  }
+
+  throw new Error(
+    `Could not resolve content package ${packageName}. ` +
+      `Install it as a dependency, run the command from that package, or add it to the pnpm workspace.` +
+      (errors.length ? `\n${errors.at(-1)}` : ""),
+  );
+};
+
+const resolveContentPackageFromConfig = async (
+  configPath: string,
+): Promise<ContentPackage> => {
+  const packageRoot = await findNearestPackageRoot(path.dirname(configPath));
+
+  if (!packageRoot?.name) {
     throw new Error(
-      `Could not resolve ${CONTENT_PACKAGE_NAME} from ${appPackagePath}. ` +
-        `Install dependencies after linking the content package into the Slides workspace.${detail}`,
+      `Could not find a named package.json for config file ${configPath}`,
     );
   }
 
-  return findPackageRoot(contentEntryPath, CONTENT_PACKAGE_NAME);
+  return {
+    name: packageRoot.name,
+    root: packageRoot.root,
+    entry: resolvePackageEntryFrom(packageRoot.root, packageRoot.name),
+  };
 };
 
 export const loadSlidesConfig = async (
-  configPath: string | undefined,
-  cwd = process.cwd(),
+  {
+    configPath,
+    contentPackageName,
+    cwd = process.cwd(),
+  }: LoadSlidesConfigOptions = {},
 ): Promise<SlidesConfig> => {
+  const contentPackage = contentPackageName
+    ? await resolveContentPackage(contentPackageName, cwd)
+    : undefined;
   const resolvedConfigPath = configPath
     ? resolveFrom(cwd, configPath)
-    : await findDefaultConfig(cwd);
+    : contentPackage
+      ? await findPackageConfig(contentPackage.root)
+      : await findDefaultConfig(cwd);
+
+  if (!resolvedConfigPath) {
+    throw new Error(
+      contentPackage
+        ? `Could not find ${CONFIG_FILENAMES.join(", ")} in ${contentPackage.root}`
+        : `No content package or Slides config file found. Run slides <command> <content-package>.`,
+    );
+  }
+
+  const resolvedContentPackage =
+    contentPackage ?? (await resolveContentPackageFromConfig(resolvedConfigPath));
   const rootDir = resolvedConfigPath ? path.dirname(resolvedConfigPath) : cwd;
   const raw = resolvedConfigPath ? await parseConfigFile(resolvedConfigPath) : {};
   const appDir = resolveFrom(
     rootDir,
     getString(raw.app?.directory, path.join(workspaceRoot, "apps", "slides")),
   );
-  const sourceContentDir = await resolveContentPackageRoot(appDir);
   const publicBasePath = getString(
     raw.site?.basePath,
     process.env.PUBLIC_BASE_PATH ?? "",
@@ -221,7 +395,9 @@ export const loadSlidesConfig = async (
     rootDir,
     workspaceRoot,
     appDir,
-    sourceContentDir,
+    contentPackageEntry: resolvedContentPackage.entry,
+    contentPackageName: resolvedContentPackage.name,
+    sourceContentDir: resolvedContentPackage.root,
     publicBasePath,
     publicUrl,
     protomapsKey,
@@ -248,4 +424,7 @@ export const getAppEnvironment = (config: SlidesConfig) => ({
   PUBLIC_PROTOMAPS_KEY: config.protomapsKey,
   PUBLIC_SLIDES_SINGLE_PROJECT_ROOT: config.singleProjectRoot ? "true" : "false",
   SLIDES_CONFIG_PATH: config.configPath ?? "",
+  SLIDES_CONTENT_PACKAGE: config.contentPackageName,
+  SLIDES_CONTENT_PACKAGE_ENTRY: config.contentPackageEntry,
+  SLIDES_CONTENT_PACKAGE_ROOT: config.sourceContentDir,
 });
