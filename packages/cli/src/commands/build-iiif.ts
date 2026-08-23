@@ -32,6 +32,7 @@ type CliDefaults = {
 };
 
 export type BuildIiifCommandOptions = {
+  contentPackageName?: string;
   configPath?: string;
   force?: boolean;
   id?: string;
@@ -938,8 +939,8 @@ function groupImagesByFolder(images: ProcessedImage[]) {
 export async function runBuildIiifCommand(
   commandOptions: BuildIiifCommandOptions = {},
 ) {
-  const { configPath } = commandOptions;
-  const config = await loadSlidesConfig(configPath);
+  const { configPath, contentPackageName } = commandOptions;
+  const config = await loadSlidesConfig({ contentPackageName, configPath });
   process.env.PUBLIC_URL = config.publicUrl;
 
   const publicUrl = getPublicUrl();

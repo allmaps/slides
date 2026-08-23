@@ -17,11 +17,13 @@ const addAppCommand = (name, description) => {
     .description(description)
     .allowUnknownOption(true)
     .allowExcessArguments(true)
+    .argument("[content-package]", "Slides content package")
     .argument("[args...]", "Arguments passed to the SvelteKit command");
 
-  addConfigOption(command).action((args, options) =>
+  addConfigOption(command).action((contentPackage, args, options) =>
     runAppCommand(name, {
       args,
+      contentPackageName: contentPackage,
       configPath: options.config,
     }),
   );
@@ -42,13 +44,20 @@ addConfigOption(
   program
     .command("validate")
     .alias("sync")
-    .description("Validate the Slides content package"),
-).action((options) => runSyncCommand({ configPath: options.config }));
+    .description("Validate the Slides content package")
+    .argument("[content-package]", "Slides content package"),
+).action((contentPackage, options) =>
+  runSyncCommand({
+    contentPackageName: contentPackage,
+    configPath: options.config,
+  }),
+);
 
 addConfigOption(
   program
     .command("iiif")
     .description("Create static IIIF derivatives")
+    .argument("[content-package]", "Slides content package")
     .option("-f, --force", "Recreate existing image derivatives")
     .option("--id <uri>", "Public IIIF base URI")
     .option("--input <path>", "Source image folder")
@@ -59,8 +68,9 @@ addConfigOption(
         .default(true),
     )
     .option("--no-webp", "Generate JPEG derivatives only"),
-).action((options) =>
+).action((contentPackage, options) =>
   runBuildIiifCommand({
+    contentPackageName: contentPackage,
     configPath: options.config,
     force: options.force,
     id: options.id,

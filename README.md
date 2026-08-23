@@ -13,13 +13,15 @@ Application to create map stories using MapLibre, Protomaps and Allmaps.
 This repository is a pnpm workspace:
 
 - `apps/slides` contains the SvelteKit application.
-- `content/gravity-at-sea` is the `@allmaps/slides-content` workspace package.
+- `content/gravity-at-sea` is the `@allmaps/gravity-at-sea` workspace package.
   It exports the Gravity at Sea markdown, config, and assets.
 - `packages/cli` validates content and starts/builds the app.
+- `packages/slides-content` is the stable app import target. The CLI aliases it
+  to the selected content package when it starts the app.
 
 The content package's `slides.config.yml` tells the CLI which public settings to
-pass to SvelteKit. The content itself is resolved through the
-`@allmaps/slides-content` workspace package, the same package imported by the app.
+pass to SvelteKit. The content itself is selected by package name, for example
+`@allmaps/gravity-at-sea`.
 
 Install dependencies with `pnpm install`, start a development server:
 
@@ -31,9 +33,10 @@ pnpm run dev -- --open
 ```
 
 During development, the app imports content directly from
-`@allmaps/slides-content`. The CLI resolves and watches that same package and
-reports validation errors, but it no longer copies markdown or assets into the
-app.
+`@allmaps/slides-content`, a stable package name. The CLI resolves the selected
+content package, aliases `@allmaps/slides-content` to that package's entry
+point, watches the selected package root, and reports validation errors. It no
+longer copies markdown or assets into the app.
 
 The content package has a small entry point:
 
@@ -78,7 +81,7 @@ You can preview the production build with `pnpm run preview`.
 Use another config file by calling the CLI directly:
 
 ```sh
-pnpm exec slides build --config content/gravity-at-sea/slides.production.yml
+pnpm exec slides build @allmaps/gravity-at-sea --config content/gravity-at-sea/slides.production.yml
 ```
 
 ## Routing

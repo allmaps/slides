@@ -13,6 +13,7 @@ type AppCommand = "dev" | "build" | "preview" | "check";
 
 type RunAppCommandOptions = {
   args?: string[];
+  contentPackageName?: string;
   configPath?: string;
 };
 
@@ -20,13 +21,13 @@ const APP_COMMANDS = new Set(["dev", "build", "preview", "check"]);
 
 export const runAppCommand = async (
   appCommand: string,
-  { args = [], configPath }: RunAppCommandOptions = {},
+  { args = [], contentPackageName, configPath }: RunAppCommandOptions = {},
 ) => {
   if (!APP_COMMANDS.has(appCommand)) {
     throw new Error(`Unknown app command: ${appCommand}`);
   }
 
-  const config = await loadSlidesConfig(configPath);
+  const config = await loadSlidesConfig({ contentPackageName, configPath });
   const initialContent = await validateContent(config);
 
   console.log(formatContentResult(config, initialContent));
