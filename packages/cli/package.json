@@ -16,9 +16,8 @@
     "iiif": "node bin/slides.js iiif"
   },
   "dependencies": {
-    "@iiif/builder": "^2.0.1",
+    "@allmaps/sveltekit-iiif": "workspace:*",
     "commander": "^14.0.2",
-    "sharp": "^0.34.5",
     "yaml": "^2.9.0"
   },
   "devDependencies": {

@@ -30,11 +30,13 @@
   "dependencies": {
     "@allmaps/maplibre": "1.0.0-beta.43",
     "@allmaps/slides-content": "workspace:../../packages/slides-content",
+    "@allmaps/sveltekit-iiif": "workspace:../../packages/sveltekit-iiif",
     "@protomaps/basemaps": "^5.7.2",
     "@sveltejs/adapter-static": "^3.0.10",
     "@turf/turf": "^7.3.5",
     "maplibre-gl": "^5.19.0",
     "pmtiles": "^4.4.1",
+    "sharp": "^0.34.5",
     "yaml": "^2.9.0"
   }
 }

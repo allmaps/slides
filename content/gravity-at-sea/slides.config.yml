@@ -9,3 +9,7 @@ protomaps:
   key: cada70bc6a47dab4
 
 interface: {}
+
+iiif:
+  tileSize: 1024
+  webp: false

@@ -62,6 +62,10 @@ addConfigOption(
     .option("--id <uri>", "Public IIIF base URI")
     .option("--input <path>", "Source image folder")
     .option("--output <path>", "IIIF output folder")
+    .option("--sizes", "Generate fixed-size full-image derivatives")
+    .option("--no-sizes", "Skip fixed-size full-image derivatives")
+    .option("--tiles", "Generate tile pyramid derivatives")
+    .option("--no-tiles", "Skip tile pyramid derivatives")
     .option("--tile-size <pixels>", "Tile size passed to sharp")
     .addOption(
       new Option("--webp", "Generate WebP derivatives alongside JPEG")
@@ -76,6 +80,8 @@ addConfigOption(
     id: options.id,
     input: options.input,
     output: options.output,
+    sizes: options.sizes,
+    tiles: options.tiles,
     tileSize: options.tileSize,
     webp: options.webp,
   }),
