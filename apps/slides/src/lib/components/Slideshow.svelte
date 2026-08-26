@@ -191,7 +191,7 @@
       </button>
     </header>
 
-    <div class="min-h-0 flex-1 overflow-hidden">
+    <div class="min-h-0 flex-1 overflow-clip">
       <div
         class="flex h-full w-[200%] {isSubslideshowActive
           ? '-translate-x-1/2'
