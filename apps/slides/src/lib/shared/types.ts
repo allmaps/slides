@@ -45,9 +45,9 @@ export type MapChapterProps = {
   fit?: "cover" | "contain" | "equal" | undefined;
   hideBasemap?: boolean;
   contain?: boolean;
-  warpedMaps?: WarpedMapProps[] | WarpedMapProps;
-  layers?: MapLayerProps[] | MapLayerProps;
-  subslideshows?: SubslideshowReference[] | SubslideshowReference;
+  warpedMaps?: WarpedMapProps[];
+  layers?: MapLayerProps[];
+  subslideshows?: SubslideshowReference[];
 };
 
 export type MapChapter = MapChapterProps & {
@@ -61,6 +61,7 @@ export type ProjectSourceDefinition = {
   type: string;
   path?: string;
   url?: string;
+  [key: string]: unknown;
 };
 
 export type ProjectSlideshowDefinition = {
@@ -77,7 +78,7 @@ export type ProjectManifest = {
   description?: string;
   main: string;
   slideshows: ProjectSlideshowDefinition[];
-  sources?: Record<string, ProjectSourceDefinition>;
+  sources: Record<string, ProjectSourceDefinition>;
 };
 
 export type Project = Omit<ProjectManifest, "slideshows" | "sources"> & {

@@ -9,7 +9,6 @@
     Slideshow,
     SubslideshowReference,
   } from "$lib/shared/types";
-  import { getValueAsArray } from "$lib/shared/utils";
 
   type Props = {
     project: Project;
@@ -66,7 +65,7 @@
 
   const getChapterSubslideshows = (chapter: MapChapter) =>
     chapter.subslideshows
-      ? getValueAsArray(chapter.subslideshows)
+      ? chapter.subslideshows
           .map((reference) => {
             const id = getSubslideshowId(reference);
             const subslideshow = project.slideshows.find(
@@ -248,7 +247,10 @@
 <div
   class="relative h-full min-h-0 text-black dark:text-white {className}"
 >
-  <div bind:this={scrollContainer} class="h-full min-h-0 overflow-auto px-5">
+  <div
+    bind:this={scrollContainer}
+    class="h-full min-h-0 overflow-x-hidden overflow-y-auto px-5"
+  >
     {#each chapters as chapter, index}
       {@const Component = chapter.Component}
       {@const isActive = currentSlug === chapter.slug}
@@ -288,7 +290,7 @@
 
   {#if tocOpen}
     <div
-      class="absolute inset-0 z-20 overflow-auto bg-white/95 px-5 py-4 shadow-2xl backdrop-blur dark:bg-black/95"
+      class="absolute inset-0 z-20 overflow-x-hidden overflow-y-auto bg-white/95 px-5 py-4 shadow-2xl backdrop-blur dark:bg-black/95"
     >
       <h2 class="mb-4 text-base font-semibold">Contents</h2>
 

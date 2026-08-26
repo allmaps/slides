@@ -15,7 +15,6 @@
   } from "@allmaps/maplibre";
   import { createFauxGeoreferencedMap } from "$lib/shared/utils";
   import { getLayers, getStyleWithoutLayers } from "$lib/shared/basemap";
-  import { getValueAsArray } from "$lib/shared/utils";
   import {
     DEFAULT_PADDING,
     DEFAULT_LIGHT_FLAVOR,
@@ -64,14 +63,8 @@
   let currentLocation = $derived(
     currentChapter.location ? currentChapter.location : {},
   );
-  let currentWarpedMaps = $derived(
-    currentChapter.warpedMaps
-      ? getValueAsArray(currentChapter.warpedMaps)
-      : undefined,
-  );
-  let currentLayers = $derived(
-    currentChapter.layers ? getValueAsArray(currentChapter.layers) : undefined,
-  );
+  let currentWarpedMaps = $derived(currentChapter.warpedMaps);
+  let currentLayers = $derived(currentChapter.layers);
   let currentImageSlide = $derived(
     currentWarpedMaps?.some((warpedMaps) => warpedMaps.type === "Image") ||
       false,
@@ -363,7 +356,9 @@
     if (debug) {
       console.log("Loading layers...", layers);
     }
-    getValueAsArray(layers)
+    const layerList = Array.isArray(layers) ? layers : [layers];
+
+    layerList
       .map((layer) => ({
         ...layer,
         id: `user-${layer.id}`,
