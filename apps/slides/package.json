@@ -31,6 +31,7 @@
     "@allmaps/maplibre": "1.0.0-beta.43",
     "@allmaps/slides-content": "workspace:../../packages/slides-content",
     "@allmaps/sveltekit-iiif": "workspace:../../packages/sveltekit-iiif",
+    "@lucide/svelte": "^1.34.0",
     "@protomaps/basemaps": "^5.7.2",
     "@sveltejs/adapter-static": "^3.0.10",
     "@turf/turf": "^7.3.5",

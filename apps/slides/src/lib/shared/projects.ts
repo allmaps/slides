@@ -207,7 +207,7 @@ export const getProjects = () => projects;
 export const getProject = (projectSlug: string) =>
   projects.find((project) => project.slug === projectSlug);
 
-const getMainSlideshow = (project: Project) =>
+export const getMainSlideshow = (project: Project) =>
   project.slideshows.find((candidate) => candidate.id === project.main);
 
 export const isSingleProjectRootMode = () =>
