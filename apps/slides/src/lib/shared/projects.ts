@@ -3,6 +3,11 @@ import { projectFiles, slideFiles } from "@allmaps/slides-content";
 import { parse } from "yaml";
 
 import {
+  parseProjectConfig,
+  parseSlideMetadata,
+  type ParsedSlideMetadata,
+} from "$lib/shared/content-schema";
+import {
   getContentAssetUrl,
   joinUrl,
   withBaseUrl,
@@ -15,29 +20,27 @@ import type {
   ProjectSlideshowDefinition,
   ProjectSourceDefinition,
   Slideshow,
-  WarpedMapProps,
 } from "$lib/shared/types";
-import { getValueAsArray } from "$lib/shared/utils";
 
 const parseProjectManifest = (
   raw: string,
+  path: string,
   fallbackId: string,
-): ProjectManifest => {
-  const manifest = (parse(raw) ?? {}) as Partial<ProjectManifest>;
-  const slideshows = manifest.slideshows ?? [];
-  const main =
-    manifest.main?.trim() ||
-    (slideshows.length === 1 ? slideshows[0].id : "main");
+): ProjectManifest | undefined => {
+  let config: unknown;
 
-  return {
-    id: manifest.id ?? fallbackId,
-    slug: manifest.slug ?? manifest.id ?? fallbackId,
-    title: manifest.title ?? fallbackId,
-    description: manifest.description,
-    main,
-    slideshows,
-    sources: manifest.sources ?? {},
-  };
+  try {
+    config = parse(raw) ?? {};
+  } catch (error) {
+    console.warn(
+      `Skipping this project because project.yml could not be read:\n${path}\n  - ${error instanceof Error ? error.message : String(error)}`,
+    );
+    return undefined;
+  }
+
+  const result = parseProjectConfig(config, path, fallbackId);
+
+  return result.success ? result.data : undefined;
 };
 
 const getProjectFolder = (path: string) => {
@@ -82,38 +85,18 @@ const normalizeSlideshow = (
   slug: slideshow.id === mainSlideshowId ? "" : (slideshow.slug ?? slideshow.id),
 });
 
-const hasWarpedMapUrl = (warpedMap: unknown): warpedMap is WarpedMapProps =>
-  typeof warpedMap === "object" &&
-  warpedMap !== null &&
-  typeof (warpedMap as { url?: unknown }).url === "string" &&
-  (warpedMap as { url: string }).url.trim().length > 0;
-
 const resolveWarpedMaps = (
   projectFolder: string,
-  metadata: Record<string, any>,
+  metadata: ParsedSlideMetadata,
 ) => {
   if (!metadata.warpedMaps) return metadata;
 
-  const warpedMaps = getValueAsArray(metadata.warpedMaps)
-    .filter(hasWarpedMapUrl)
-    .map((warpedMap) => {
-      const url = warpedMap.url.trim();
-
-      return {
-        ...warpedMap,
-        url: getContentAssetUrl(projectFolder, url) ?? url,
-      };
-    });
-
-  if (!warpedMaps.length) {
-    const metadataWithoutWarpedMaps = { ...metadata };
-    delete metadataWithoutWarpedMaps.warpedMaps;
-    return metadataWithoutWarpedMaps;
-  }
-
   return {
     ...metadata,
-    warpedMaps,
+    warpedMaps: metadata.warpedMaps.map((warpedMap) => ({
+      ...warpedMap,
+      url: getContentAssetUrl(projectFolder, warpedMap.url) ?? warpedMap.url,
+    })),
   };
 };
 
@@ -121,24 +104,18 @@ const createSource = (
   projectFolder: string,
   source: ProjectSourceDefinition,
 ): SourceSpecification => {
+  const sourceUrl = (source.path ?? source.url) as string;
+
   if (source.type === "geojson") {
     return {
       type: "geojson",
-      data:
-        getContentAssetUrl(projectFolder, source.path ?? source.url ?? "") ??
-        source.path ??
-        source.url ??
-        "",
+      data: getContentAssetUrl(projectFolder, sourceUrl) ?? sourceUrl,
     };
   }
 
-  const sourceUrl = source.url ?? source.path;
-
   return {
     ...source,
-    url: sourceUrl
-      ? (getContentAssetUrl(projectFolder, sourceUrl) ?? sourceUrl)
-      : undefined,
+    url: getContentAssetUrl(projectFolder, sourceUrl) ?? sourceUrl,
   } as SourceSpecification;
 };
 
@@ -149,38 +126,41 @@ const buildProjects = () => {
     a.localeCompare(b),
   )) {
     const { projectFolder, slideshowPath, filename } = getSlideParts(path);
+    const result = parseSlideMetadata(mod.metadata, path);
+
+    if (!result.success) continue;
+
     const key = getProjectSlideshowKey(projectFolder, slideshowPath);
     const slides = slidesByProjectAndSlideshow.get(key) ?? [];
 
     slides.push({
       slug: getSlideSlug(filename),
       Component: mod.default,
-      ...mod.metadata,
-    } as MapChapter);
+      ...resolveWarpedMaps(projectFolder, result.data),
+    });
 
     slidesByProjectAndSlideshow.set(key, slides);
   }
 
   return Object.entries(projectFiles)
-    .map(([path, raw]) => {
+    .flatMap(([path, raw]) => {
       const folder = getProjectFolder(path);
-      const manifest = parseProjectManifest(raw, folder);
+      const manifest = parseProjectManifest(raw, path, folder);
+
+      if (!manifest) return [];
+
       const sources = Object.fromEntries(
-        Object.entries(manifest.sources ?? {}).map(([sourceId, source]) => [
+        Object.entries(manifest.sources).map(([sourceId, source]) => [
           sourceId,
           createSource(folder, source),
         ]),
       );
       const slideshows: Slideshow[] = manifest.slideshows.map((rawSlideshow) => {
         const slideshow = normalizeSlideshow(rawSlideshow, manifest.main);
-        const chapters = (
+        const chapters =
           slidesByProjectAndSlideshow.get(
             getProjectSlideshowKey(folder, slideshow.path),
-          ) ?? []
-        ).map((chapter) => ({
-          ...chapter,
-          ...resolveWarpedMaps(folder, chapter),
-        }));
+          ) ?? [];
 
         return {
           ...slideshow,
