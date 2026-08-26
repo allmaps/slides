@@ -32,6 +32,7 @@
   let mainIndex: number = $state(0);
   let subslideshowIndex: number = $state(0);
   let tocOpen: boolean = $state(false);
+  let scrollToTopSignal: number = $state(0);
 
   const layers = $derived(Object.entries(sources).flatMap(([sourceId, source]) =>
     source.type === "geojson" ? getGeoJsonLayers(sourceId, "visible") : [],
@@ -69,6 +70,11 @@
 
   const toggleToc = () => {
     tocOpen = !tocOpen;
+  };
+
+  const scrollActivePanelToTop = () => {
+    closeToc();
+    scrollToTopSignal += 1;
   };
 
   $effect(() => {
@@ -124,7 +130,7 @@
     class="row-start-2 flex min-h-0 flex-col overflow-hidden bg-white/80 dark:bg-black/80 md:row-start-1"
   >
     <header
-      class="relative z-30 flex h-12 shrink-0 items-center gap-3 border-b border-black/10 bg-white/90 px-5 text-sm text-black backdrop-blur dark:border-white/15 dark:bg-black/90 dark:text-white"
+      class="relative z-30 flex h-12 shrink-0 items-center gap-2 border-b border-black/10 bg-white/90 px-5 text-sm text-black backdrop-blur dark:border-white/15 dark:bg-black/90 dark:text-white"
     >
       {#if isSubslideshowActive}
         <a
@@ -139,40 +145,76 @@
       {/if}
 
       <div
-        class="flex min-w-0 flex-1 items-baseline gap-2 overflow-hidden font-medium"
+        class="relative h-5 min-w-0 flex-1 overflow-hidden font-medium"
         aria-label={headerAccessibleTitle}
       >
-        <span
-          class="shrink-0 overflow-hidden truncate whitespace-nowrap transition-all duration-500 ease-in-out {isSubslideshowActive
-            ? 'max-w-0 -translate-x-6 opacity-0'
-            : 'max-w-[45%] translate-x-0 opacity-100'}"
-          title={headerTitle}
+        <div
+          class="absolute inset-0 flex min-w-0 items-baseline overflow-hidden transition-all duration-300 ease-in-out motion-reduce:transition-none {isSubslideshowActive
+            ? 'pointer-events-none -translate-y-1 opacity-0'
+            : 'translate-y-0 opacity-100'}"
+          aria-hidden={isSubslideshowActive}
         >
-          {headerTitle}
-        </span>
-        {#if headerSubTitle}
-          <span
-            class="shrink-0 transition-opacity duration-300 {isSubslideshowActive
-              ? 'opacity-0'
-              : 'opacity-45'}"
+          <button
+            type="button"
+            class="max-w-[45%] shrink-0 cursor-pointer overflow-hidden truncate whitespace-nowrap p-0 text-left"
+            aria-label={`Scroll ${headerTitle} to top`}
+            tabindex={isSubslideshowActive ? -1 : undefined}
+            title={headerTitle}
+            onclick={scrollActivePanelToTop}
           >
-            /
-          </span>
-          <span
-            class="shrink-0 truncate transition-all duration-500 ease-in-out {isSubslideshowActive
-              ? 'max-w-[55%] -translate-x-2 opacity-100'
-              : 'max-w-[35%] translate-x-0 opacity-75'}"
-            title={headerSubTitle}
-          >
-            {headerSubTitle}
-          </span>
-        {/if}
-        {#if showHeaderChapterTitle}
-          <span class="shrink-0 opacity-45">/</span>
-          <span class="min-w-0 truncate opacity-75" title={headerChapterTitle}>
-            {headerChapterTitle}
-          </span>
-        {/if}
+            {headerTitle}
+          </button>
+
+          {#if showHeaderChapterTitle}
+            <span class="ml-2 shrink-0 opacity-45">/</span>
+            <button
+              type="button"
+              class="ml-2 min-w-0 cursor-pointer overflow-hidden truncate p-0 text-left opacity-75"
+              aria-label={`${tocOpen ? "Close" : "Open"} table of contents for ${headerChapterTitle}`}
+              aria-expanded={tocOpen}
+              tabindex={isSubslideshowActive ? -1 : undefined}
+              title={headerChapterTitle}
+              onclick={toggleToc}
+            >
+              {headerChapterTitle}
+            </button>
+          {/if}
+        </div>
+
+        <div
+          class="absolute inset-0 flex min-w-0 items-baseline overflow-hidden transition-all duration-300 ease-in-out motion-reduce:transition-none {isSubslideshowActive
+            ? 'translate-y-0 opacity-100'
+            : 'pointer-events-none translate-y-1 opacity-0'}"
+          aria-hidden={!isSubslideshowActive}
+        >
+          {#if headerSubTitle}
+            <button
+              type="button"
+              class="max-w-[55%] shrink-0 cursor-pointer overflow-hidden truncate whitespace-nowrap p-0 text-left"
+              aria-label={`Scroll ${headerSubTitle} to top`}
+              tabindex={isSubslideshowActive ? undefined : -1}
+              title={headerSubTitle}
+              onclick={scrollActivePanelToTop}
+            >
+              {headerSubTitle}
+            </button>
+          {/if}
+
+          {#if showHeaderChapterTitle}
+            <span class="ml-2 shrink-0 opacity-45">/</span>
+            <button
+              type="button"
+              class="ml-2 min-w-0 cursor-pointer overflow-hidden truncate p-0 text-left opacity-75"
+              aria-label={`${tocOpen ? "Close" : "Open"} table of contents for ${headerChapterTitle}`}
+              aria-expanded={tocOpen}
+              tabindex={isSubslideshowActive ? undefined : -1}
+              title={headerChapterTitle}
+              onclick={toggleToc}
+            >
+              {headerChapterTitle}
+            </button>
+          {/if}
+        </div>
       </div>
 
       <button
@@ -204,6 +246,7 @@
           {rootSlideshow}
           active={!isSubslideshowActive}
           tocOpen={tocOpen && !isSubslideshowActive}
+          {scrollToTopSignal}
           onTocClose={closeToc}
           onIndexChange={(index) => (mainIndex = index)}
         />
@@ -218,6 +261,7 @@
                 {rootSlideshow}
                 active={isSubslideshowActive}
                 tocOpen={tocOpen && isSubslideshowActive}
+                {scrollToTopSignal}
                 onTocClose={closeToc}
                 onIndexChange={(index) => (subslideshowIndex = index)}
               />
