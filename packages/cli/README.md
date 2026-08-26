@@ -58,6 +58,7 @@ Useful fields:
 | `iiif.input` | `assets/images` | Source image root for manual IIIF generation and imported image paths. |
 | `iiif.output` | `static/iiif` | Output folder used by the manual `slides iiif` command. |
 | `iiif.id` | `PUBLIC_URL/iiif` | Public IIIF base URI used in generated metadata. |
+| `iiif.collectionLabel` | project title, then `Image Collection` | Label used for the root IIIF collection. |
 | `iiif.sizes` | `true` | Generate fixed-size full-image derivatives and advertise them in `info.json`. |
 | `iiif.tiles` | `true` | Generate tile pyramid derivatives and advertise them in `info.json`. |
 | `iiif.tileSize` | `1024` | Tile width and height. |
@@ -103,6 +104,7 @@ rather than directly to `iiif.output`.
 | --- | --- | --- |
 | `--force`, `-f` | off | Recreate existing image derivatives instead of skipping current ones. |
 | `--id <uri>` | `PUBLIC_URL/iiif` | Public IIIF base URI used in `info.json`, manifests, and collection IDs. |
+| `--collection-label <label>` | `iiif.collectionLabel` | Label used for the root IIIF collection. |
 | `--input <path>` | `iiif.input` or `assets/images` | Source image folder to scan recursively. |
 | `--output <path>` | `iiif.output` or `static/iiif` | Output folder for IIIF derivatives and JSON files. |
 | `--sizes` / `--no-sizes` | `iiif.sizes` | Generate or skip fixed-size full-image derivatives. |
