@@ -3,7 +3,7 @@
 
   let { href, children, ...restProps }: HTMLAnchorAttributes = $props();
 
-  const isExternal = href && !href.startsWith("/");
+  const isExternal = href && !href.startsWith("/") && !href.startsWith("#");
   const target = isExternal ? "_blank" : undefined;
 </script>
 

@@ -2,6 +2,7 @@ import adapter from "@sveltejs/adapter-static";
 import { mdsvex } from "mdsvex";
 import { join } from "path";
 import remarkFootnotes from "remark-footnotes";
+import removeFootnoteLinks from "./src/lib/shared/remove-footnote-links.js";
 
 const getBasePath = (value) => {
   if (!value) return "";
@@ -69,6 +70,7 @@ const config = {
   preprocess: mdsvex({
     extensions: [".svx", ".md"],
     remarkPlugins: [remarkFootnotes],
+    rehypePlugins: [removeFootnoteLinks],
     layout: {
       _: join(import.meta.dirname, "./src/lib/components/Section.svelte"),
     },
