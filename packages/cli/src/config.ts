@@ -25,6 +25,7 @@ type RawSlidesConfig = {
     input?: string;
     output?: string;
     id?: string;
+    collectionLabel?: string;
     sizes?: boolean | string | number;
     tiles?: boolean | string | number;
     tileSize?: string | number;
@@ -69,6 +70,7 @@ export type SlidesConfig = {
     inputRoot: string;
     outputRoot: string;
     idBase: string | undefined;
+    collectionLabel: string | undefined;
     sizes: boolean;
     tiles: boolean;
     tileSize: string | undefined;
@@ -83,6 +85,7 @@ const CONFIG_FILENAMES = [
   "slides.config.json",
 ];
 const WORKSPACE_FILENAME = "pnpm-workspace.yaml";
+const PROJECT_MANIFEST_FILENAME = "project.yml";
 const TRUE_VALUES = new Set(["1", "true", "yes", "on"]);
 const FALSE_VALUES = new Set(["0", "false", "no", "off"]);
 const DEFAULT_IIIF_INPUT = path.join("assets", "images");
@@ -118,6 +121,11 @@ const getString = (value: unknown, fallback = "") =>
 
 const getOptionalString = (value: unknown) =>
   value === undefined || value === null ? undefined : String(value);
+
+const getOptionalNonEmptyString = (value: unknown) => {
+  const stringValue = getOptionalString(value)?.trim();
+  return stringValue || undefined;
+};
 
 const getBoolean = (value: unknown, fallback = false) => {
   if (value === undefined || value === null) return fallback;
@@ -159,6 +167,17 @@ const parseConfigFile = async (configPath: string): Promise<RawSlidesConfig> => 
   }
 
   return (expandEnvValue(parse(contents) ?? {}) ?? {}) as RawSlidesConfig;
+};
+
+const readMainProjectTitle = async (contentRoot: string) => {
+  const manifestPath = path.join(contentRoot, PROJECT_MANIFEST_FILENAME);
+  if (!(await fileExists(manifestPath))) return undefined;
+
+  const manifest = (parse(await readFile(manifestPath, "utf8")) ?? {}) as {
+    title?: unknown;
+  };
+
+  return getOptionalNonEmptyString(manifest.title);
 };
 
 const findDefaultConfig = async (cwd: string) => {
@@ -383,6 +402,9 @@ export const loadSlidesConfig = async (
 
   const resolvedContentPackage =
     contentPackage ?? (await resolveContentPackageFromConfig(resolvedConfigPath));
+  const mainProjectTitle = await readMainProjectTitle(
+    resolvedContentPackage.root,
+  );
   const rootDir = resolvedConfigPath ? path.dirname(resolvedConfigPath) : cwd;
   const raw = resolvedConfigPath ? await parseConfigFile(resolvedConfigPath) : {};
   const appDir = resolveFrom(
@@ -425,6 +447,9 @@ export const loadSlidesConfig = async (
         getString(raw.iiif?.output, DEFAULT_IIIF_OUTPUT),
       ),
       idBase: getOptionalString(raw.iiif?.id),
+      collectionLabel:
+        getOptionalNonEmptyString(raw.iiif?.collectionLabel) ??
+        mainProjectTitle,
       sizes: getBoolean(raw.iiif?.sizes, true),
       tiles: getBoolean(raw.iiif?.tiles, true),
       tileSize: getOptionalString(raw.iiif?.tileSize),
@@ -456,6 +481,9 @@ export const getAppEnvironment = (config: SlidesConfig) => {
   };
 
   if (config.iiif.idBase) env.SLIDES_IIIF_ID_BASE = config.iiif.idBase;
+  if (config.iiif.collectionLabel) {
+    env.SLIDES_IIIF_COLLECTION_LABEL = config.iiif.collectionLabel;
+  }
   env.SLIDES_IIIF_SIZES = config.iiif.sizes ? "true" : "false";
   env.SLIDES_IIIF_TILES = config.iiif.tiles ? "true" : "false";
   if (config.iiif.tileSize) env.SLIDES_IIIF_TILE_SIZE = config.iiif.tileSize;

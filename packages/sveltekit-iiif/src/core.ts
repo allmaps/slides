@@ -14,6 +14,7 @@ import sharp from "sharp";
 export type ResolvedIiifOptions = {
   force: boolean;
   idBase: string;
+  collectionLabel: string;
   publicUrl: string;
   inputRoot: string;
   outputRoot: string;
@@ -27,11 +28,13 @@ export type IiifDefaults = {
   inputRoot: string;
   outputRoot: string;
   idBase?: string;
+  collectionLabel?: string;
 };
 
 export type BuildIiifOptions = {
   force?: boolean;
   id?: string;
+  collectionLabel?: string;
   input?: string;
   output?: string;
   sizes?: boolean;
@@ -133,6 +136,7 @@ export const DEFAULT_OUTPUT_ROOT = "static/iiif";
 export const DEFAULT_TILE_SIZE = 1024;
 export const DEFAULT_ENABLE_SIZES = true;
 export const DEFAULT_ENABLE_TILES = true;
+export const DEFAULT_COLLECTION_LABEL = "Image Collection";
 const FIRST_FIXED_SIZE = 512;
 const JPEG_QUALITY = 90;
 const WEBP_QUALITY = 90;
@@ -224,6 +228,10 @@ export function parseIiifOptions(
         defaults.idBase ??
         joinPublicId(normalizedPublicUrl, "iiif"),
     ),
+    collectionLabel:
+      commandOptions.collectionLabel ??
+      defaults.collectionLabel ??
+      DEFAULT_COLLECTION_LABEL,
     publicUrl: normalizedPublicUrl,
     inputRoot: path.resolve(commandOptions.input ?? defaults.inputRoot),
     outputRoot: path.resolve(commandOptions.output ?? defaults.outputRoot),
@@ -977,7 +985,7 @@ function createCollection(
   const collection = builder.createCollection(
     collectionId,
     (collectionBuilder) => {
-      collectionBuilder.addLabel("Gravity Expeditions Image Collection", "en");
+      collectionBuilder.addLabel(options.collectionLabel, "en");
 
       const firstThumbnail = manifests[0]?.thumbnail;
       if (firstThumbnail) {

@@ -60,6 +60,7 @@ addConfigOption(
     .argument("[content-package]", "Slides content package")
     .option("-f, --force", "Recreate existing image derivatives")
     .option("--id <uri>", "Public IIIF base URI")
+    .option("--collection-label <label>", "IIIF collection label")
     .option("--input <path>", "Source image folder")
     .option("--output <path>", "IIIF output folder")
     .option("--sizes", "Generate fixed-size full-image derivatives")
@@ -78,6 +79,7 @@ addConfigOption(
     configPath: options.config,
     force: options.force,
     id: options.id,
+    collectionLabel: options.collectionLabel,
     input: options.input,
     output: options.output,
     sizes: options.sizes,

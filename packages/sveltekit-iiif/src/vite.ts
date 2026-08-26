@@ -121,6 +121,7 @@ function getPluginOptions(
     idBase:
       optionalEnv(process.env.SLIDES_IIIF_ID_BASE) ??
       joinPublicId(publicUrl, "iiif"),
+    collectionLabel: optionalEnv(process.env.SLIDES_IIIF_COLLECTION_LABEL),
   };
 
   return parseIiifOptions(
@@ -128,6 +129,9 @@ function getPluginOptions(
     {
       ...options,
       id: options.id ?? optionalEnv(process.env.SLIDES_IIIF_ID_BASE),
+      collectionLabel:
+        options.collectionLabel ??
+        optionalEnv(process.env.SLIDES_IIIF_COLLECTION_LABEL),
       input: inputRoot ? resolveFrom(config.root, inputRoot) : undefined,
       output: resolveFrom(config.root, options.output ?? outputRoot),
       sizes:
