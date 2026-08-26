@@ -96,6 +96,8 @@ importers:
 
   content/gravity-at-sea: {}
 
+  content/kattenburg-atlas: {}
+
   packages/cli:
     dependencies:
       '@allmaps/sveltekit-iiif':
