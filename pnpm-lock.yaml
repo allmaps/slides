@@ -23,6 +23,9 @@ importers:
       '@allmaps/sveltekit-iiif':
         specifier: workspace:../../packages/sveltekit-iiif
         version: link:../../packages/sveltekit-iiif
+      '@lucide/svelte':
+        specifier: ^1.34.0
+        version: 1.34.0(svelte@5.53.3)
       '@protomaps/basemaps':
         specifier: ^5.7.2
         version: 5.7.2
@@ -511,6 +514,11 @@ packages:
 
   '@kninnug/constrainautor@4.1.0':
     resolution: {integrity: sha512-YEkGtzMewRxPRZuK1QmFDmELwaSL4LSLmc0WXTmpT8AqdcR/Ueu77fiJZ2lwOwXUX8aBJpHuy/e/06/Ve2dPNQ==}
+
+  '@lucide/svelte@1.34.0':
+    resolution: {integrity: sha512-sHFL8KVSaPXv0dsmdUTq4q/tj8clT2XYejnoSg0mHObpXWn/9SfET4f14v/7VOba1IsbPIW9+sWaq+Qq1wTdNA==}
+    peerDependencies:
+      svelte: ^5
 
   '@mapbox/geojson-rewind@0.5.2':
     resolution: {integrity: sha512-tJaT+RbYGJYStt7wI3cq4Nl4SXxG8W7JDG5DMJu97V25RnbNg3QtQtf+KD+VLjNpWKYsRvXDNmNrBgEETr1ifA==}
@@ -2104,6 +2112,10 @@ snapshots:
   '@kninnug/constrainautor@4.1.0':
     dependencies:
       robust-predicates: 3.0.3
+
+  '@lucide/svelte@1.34.0(svelte@5.53.3)':
+    dependencies:
+      svelte: 5.53.3
 
   '@mapbox/geojson-rewind@0.5.2':
     dependencies:
