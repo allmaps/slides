@@ -1,0 +1,3 @@
+[submodule "content/kattenburg-atlas"]
+	path = content/kattenburg-atlas
+	url = https://github.com/amsterdamtimemachine/kattenburg-atlas.git
