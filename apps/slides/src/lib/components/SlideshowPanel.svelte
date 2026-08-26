@@ -16,6 +16,7 @@
     rootSlideshow?: Slideshow;
     active?: boolean;
     tocOpen?: boolean;
+    scrollToTopSignal?: number;
     onTocClose?: () => void;
     onIndexChange?: (index: number) => void;
     class?: string;
@@ -27,6 +28,7 @@
     rootSlideshow,
     active = true,
     tocOpen = false,
+    scrollToTopSignal = 0,
     onTocClose,
     onIndexChange,
     class: className = "",
@@ -190,6 +192,14 @@
     }
 
     wasTocOpen = tocOpen;
+  });
+
+  $effect(() => {
+    scrollToTopSignal;
+
+    if (!scrollToTopSignal || !active || !scrollContainer) return;
+
+    scrollContainer.scrollTo({ top: 0, behavior: "smooth" });
   });
 
   $effect(() => {
