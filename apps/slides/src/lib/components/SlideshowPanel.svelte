@@ -163,7 +163,13 @@
     behavior: ScrollBehavior = "smooth",
   ) => {
     const elem = getSectionBySlug(slug);
-    elem?.scrollIntoView({ behavior, block: "start" });
+
+    if (!elem || !scrollContainer) return;
+
+    const elemRect = elem.getBoundingClientRect();
+    const scrollContainerRect = scrollContainer.getBoundingClientRect();
+    const top = elemRect.top - scrollContainerRect.top + scrollContainer.scrollTop;
+    scrollContainer.scrollTo({ top, behavior });
   };
 
   const replaceHash = (hash: string) => {
@@ -341,7 +347,6 @@
                   class="min-w-0 flex-1 py-2 text-sm font-medium hover:underline"
                   aria-current={currentTocChapter ? "true" : undefined}
                   href={getChapterHref(tocSlideshow, entry.chapter)}
-                  onclick={closeToc}
                 >
                   <span class="block truncate">{entry.chapter.title}</span>
                 </a>
@@ -352,24 +357,25 @@
               <div class="ml-8 border-l border-black/10 pl-3 dark:border-white/15">
                 {#each entry.subslideshows as subslideshow}
                   {#if subslideshow.slideshow}
-                    {#if entry.subslideshows.length > 1}
-                      <a
-                        class="mt-2 block text-xs font-semibold uppercase opacity-70 hover:underline"
-                        href={subslideshow.href}
-                        onclick={closeToc}
-                      >
-                        {subslideshow.title}
-                      </a>
-                    {/if}
+                    {@const subslideshowData = subslideshow.slideshow}
+                    <div
+                      class="mt-3 text-xs font-semibold uppercase tracking-wide opacity-70 first:mt-1"
+                    >
+                      {subslideshow.title}
+                    </div>
 
                     <ol class="py-1">
-                      {#each subslideshow.slideshow.chapters as subchapter, subchapterIndex}
+                      {#each subslideshowData.chapters as subchapter, subchapterIndex}
+                        {@const subchapterHref = getChapterHref(
+                          subslideshowData,
+                          subchapter,
+                        )}
                         {@const currentSubchapter = isCurrentSubchapter(
-                          subslideshow.slideshow,
+                          subslideshowData,
                           subchapter,
                         )}
                         <li>
-                          {#if subslideshow.slideshow.id === slideshow.id}
+                          {#if subslideshowData.id === slideshow.id}
                             <button
                               type="button"
                               class="flex w-full items-start gap-2 px-2 py-2 text-left text-sm hover:bg-black/5 dark:hover:bg-white/10 {currentSubchapter
@@ -389,8 +395,7 @@
                                 ? 'bg-black text-white dark:bg-white dark:text-black'
                                 : ''}"
                               aria-current={currentSubchapter ? "true" : undefined}
-                              href={getChapterHref(subslideshow.slideshow, subchapter)}
-                              onclick={closeToc}
+                              href={subchapterHref}
                             >
                               <span class="w-6 shrink-0 text-xs opacity-60">
                                 {subchapterIndex + 1}
