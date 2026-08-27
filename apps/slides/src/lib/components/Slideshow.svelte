@@ -36,6 +36,7 @@
   let subslideshowIndex: number = $state(0);
   let tocOpen: boolean = $state(false);
   let scrollToTopSignal: number = $state(0);
+  let mapResetSignal: number = $state(0);
   let panelElement: HTMLDivElement | undefined = $state();
   let mapLayoutRevision: number = $state(0);
   let mapPadding: PaddingOptions = $state({
@@ -86,6 +87,13 @@
   const scrollActivePanelToTop = () => {
     closeToc();
     scrollToTopSignal += 1;
+  };
+
+  const jumpToMainStart = () => {
+    closeToc();
+    mainIndex = 0;
+    scrollToTopSignal += 1;
+    mapResetSignal += 1;
   };
 
   const samePadding = (a: PaddingOptions, b: PaddingOptions) =>
@@ -236,6 +244,7 @@
           anticipate
           duration={DEFAULT_DURATION}
           layoutRevision={mapLayoutRevision}
+          resetSignal={mapResetSignal}
           padding={mapPadding}
         />
       {/key}
@@ -243,6 +252,26 @@
   </div>
 
   <div class="pointer-events-none absolute inset-0 z-10">
+    {#if isSubslideshowActive}
+      <a
+        class="pointer-events-auto absolute top-3 left-3 max-w-[calc(100vw-12rem)] rounded-lg border border-white/15 bg-black/15 px-4 py-3 text-left text-base font-semibold text-white shadow-2xl backdrop-blur-md sm:top-4 sm:left-4 sm:text-lg md:top-5 md:left-5 md:max-w-[28rem]"
+        href={mainHref}
+        title={rootSlideshow.title}
+        onclick={jumpToMainStart}
+      >
+        <span class="block truncate">{rootSlideshow.title}</span>
+      </a>
+    {:else}
+      <button
+        type="button"
+        class="pointer-events-auto absolute top-3 left-3 max-w-[calc(100vw-12rem)] cursor-pointer rounded-lg border border-white/15 bg-black/15 px-4 py-3 text-left text-base font-semibold text-white shadow-2xl backdrop-blur-md sm:top-4 sm:left-4 sm:text-lg md:top-5 md:left-5 md:max-w-[28rem]"
+        title={rootSlideshow.title}
+        onclick={jumpToMainStart}
+      >
+        <span class="block truncate">{rootSlideshow.title}</span>
+      </button>
+    {/if}
+
     <div
       bind:this={panelElement}
       class="pointer-events-auto absolute right-3 bottom-3 flex h-[calc((100dvh-1.5rem)/2)] max-h-full min-h-0 w-[calc(100vw-1.5rem)] flex-col overflow-hidden rounded-lg border border-black/10 bg-white/85 text-black shadow-2xl backdrop-blur-md transition-none ease-in-out dark:border-white/15 dark:bg-black/85 dark:text-white sm:right-4 sm:bottom-4 sm:h-[calc((100dvh-2rem)/2)] sm:w-[calc(100vw-2rem)] md:right-5 md:bottom-5 md:h-[calc(100dvh-2.5rem)] md:w-[480px] md:transition-[right,bottom,width,height] md:duration-500 motion-reduce:transition-none xl:w-[600px]"
