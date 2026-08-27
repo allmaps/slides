@@ -1,6 +1,12 @@
 <script lang="ts">
   import { tick } from "svelte";
-  import { ArrowRight, ChevronDown, ChevronRight } from "@lucide/svelte";
+  import {
+    ArrowRight,
+    ChevronDown,
+    ChevronRight,
+    ListChevronsDownUp,
+    ListChevronsUpDown,
+  } from "@lucide/svelte";
 
   import { getSlideshowRouteHref } from "$lib/shared/projects";
   import type {
@@ -43,6 +49,7 @@
   let loaded: boolean = $state(false);
   let scrollContainer: HTMLDivElement | undefined = $state();
   let expandedTocEntryIds: string[] = $state([]);
+  let expandedTocSubslideshowIds: string[] = $state([]);
   let wasTocOpen: boolean = $state(false);
 
   const currentChapter = $derived(chapters[index]);
@@ -89,10 +96,9 @@
     `${getSubslideshowHref(slideshow)}#${encodeURIComponent(chapter.slug)}`;
 
   const tocEntries = $derived(
-    tocChapters.map((chapter, index) => ({
+    tocChapters.map((chapter) => ({
       id: `${tocSlideshow.id}:${chapter.slug}`,
       chapter,
-      index,
       subslideshows: getChapterSubslideshows(chapter).map((subslideshow) => ({
         ...subslideshow,
         slideshow: project.slideshows.find(
@@ -101,13 +107,79 @@
       })),
     })),
   );
+  const hasTocChevronColumn = $derived(
+    tocEntries.some((entry) => entry.subslideshows.length > 0),
+  );
+  const expandableTocEntryIds = $derived(
+    tocEntries
+      .filter((entry) => entry.subslideshows.length > 0)
+      .map((entry) => entry.id),
+  );
 
-  const getDefaultExpandedTocEntryIds = () =>
+  const getActiveTocEntry = () => {
+    if (slideshow.id === tocSlideshow.id) {
+      return tocEntries.find(
+        (entry) =>
+          entry.chapter.slug === currentSlug &&
+          entry.subslideshows.length > 0,
+      );
+    }
+
+    const matchingEntries = tocEntries.filter((entry) =>
+      entry.subslideshows.some(
+        (subslideshow) => subslideshow.id === slideshow.id,
+      ),
+    );
+
+    return (
+      matchingEntries.find((entry) => entry.subslideshows.length === 1) ??
+      matchingEntries[0]
+    );
+  };
+
+  const getDefaultExpandedTocEntryIds = () => {
+    const activeEntry = getActiveTocEntry();
+
+    return activeEntry ? [activeEntry.id] : [];
+  };
+
+  const getTocSubslideshowEntryId = (
+    tocEntryId: string,
+    subslideshowId: string,
+  ) => `${tocEntryId}\0${subslideshowId}`;
+  const expandableTocSubslideshowEntryIds = $derived(
+    tocEntries.flatMap((entry) =>
+      entry.subslideshows.length > 1
+        ? entry.subslideshows.map((subslideshow) =>
+            getTocSubslideshowEntryId(entry.id, subslideshow.id),
+          )
+        : [],
+    ),
+  );
+  const allTocEntriesExpanded = $derived(
+    expandableTocEntryIds.length > 0 &&
+      expandableTocEntryIds.every((entryId) =>
+        expandedTocEntryIds.includes(entryId),
+      ) &&
+      expandableTocSubslideshowEntryIds.every((entryId) =>
+        expandedTocSubslideshowIds.includes(entryId),
+      ),
+  );
+
+  const getDefaultExpandedTocSubslideshowIds = () =>
     slideshow.id === tocSlideshow.id
       ? []
-      : tocEntries
-          .filter((entry) => entry.subslideshows.length > 0)
-          .map((entry) => entry.id);
+      : (() => {
+          const activeEntry = getActiveTocEntry();
+
+          if (!activeEntry || activeEntry.subslideshows.length <= 1) return [];
+
+          return activeEntry.subslideshows
+            .filter((subslideshow) => subslideshow.id === slideshow.id)
+            .map((subslideshow) =>
+              getTocSubslideshowEntryId(activeEntry.id, subslideshow.id),
+            );
+        })();
 
   const closeToc = () => {
     onTocClose?.();
@@ -117,15 +189,55 @@
     expandedTocEntryIds.includes(entryId);
 
   const toggleTocEntry = (entryId: string) => {
-    expandedTocEntryIds = isTocEntryExpanded(entryId)
-      ? expandedTocEntryIds.filter((id) => id !== entryId)
-      : [...expandedTocEntryIds, entryId];
+    if (isTocEntryExpanded(entryId)) {
+      expandedTocEntryIds = expandedTocEntryIds.filter((id) => id !== entryId);
+      expandedTocSubslideshowIds = expandedTocSubslideshowIds.filter(
+        (id) => !id.startsWith(`${entryId}\0`),
+      );
+    } else {
+      expandedTocEntryIds = [...expandedTocEntryIds, entryId];
+    }
+  };
+
+  const isTocSubslideshowExpanded = (entryId: string) =>
+    expandedTocSubslideshowIds.includes(entryId);
+
+  const toggleTocSubslideshowEntry = (entryId: string) => {
+    expandedTocSubslideshowIds = isTocSubslideshowExpanded(entryId)
+      ? expandedTocSubslideshowIds.filter((id) => id !== entryId)
+      : [...expandedTocSubslideshowIds, entryId];
+  };
+
+  const toggleAllTocEntries = () => {
+    if (allTocEntriesExpanded) {
+      expandedTocEntryIds = [];
+      expandedTocSubslideshowIds = [];
+    } else {
+      expandedTocEntryIds = expandableTocEntryIds;
+      expandedTocSubslideshowIds = expandableTocSubslideshowEntryIds;
+    }
   };
 
   const selectLocalChapter = async (slug: string) => {
     closeToc();
     await tick();
     scrollIntoView(slug);
+  };
+
+  const selectSubslideshowHeading = async (
+    event: MouseEvent,
+    subslideshow: Slideshow,
+  ) => {
+    if (subslideshow.id !== slideshow.id) return;
+
+    event.preventDefault();
+
+    const firstSubchapter = subslideshow.chapters[0];
+    if (firstSubchapter) {
+      await selectLocalChapter(firstSubchapter.slug);
+    } else {
+      closeToc();
+    }
   };
 
   const isCurrentTocChapter = (chapter: MapChapter) =>
@@ -189,6 +301,7 @@
   $effect(() => {
     if (tocOpen && !wasTocOpen) {
       expandedTocEntryIds = getDefaultExpandedTocEntryIds();
+      expandedTocSubslideshowIds = getDefaultExpandedTocSubslideshowIds();
     }
 
     wasTocOpen = tocOpen;
@@ -308,7 +421,25 @@
     <div
       class="absolute inset-0 z-20 overflow-x-hidden overflow-y-auto bg-white/95 px-5 py-4 shadow-2xl backdrop-blur dark:bg-black/95"
     >
-      <h2 class="mb-4 text-base font-semibold">Contents</h2>
+      <div class="mb-4 flex items-center justify-between gap-3">
+        <h2 class="text-base font-semibold">Contents</h2>
+
+        {#if hasTocChevronColumn}
+          <button
+            type="button"
+            class="inline-flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center hover:bg-black/5 dark:hover:bg-white/10"
+            aria-label={allTocEntriesExpanded ? "Collapse all" : "Expand all"}
+            title={allTocEntriesExpanded ? "Collapse all" : "Expand all"}
+            onclick={toggleAllTocEntries}
+          >
+            {#if allTocEntriesExpanded}
+              <ListChevronsDownUp size={16} aria-hidden="true" />
+            {:else}
+              <ListChevronsUpDown size={16} aria-hidden="true" />
+            {/if}
+          </button>
+        {/if}
+      </div>
 
       <ol class="space-y-1">
         {#each tocEntries as entry}
@@ -324,7 +455,7 @@
               {#if hasSubslideshows}
                 <button
                   type="button"
-                  class="inline-flex h-8 w-8 shrink-0 items-center justify-center hover:bg-black/5 dark:hover:bg-white/10"
+                  class="inline-flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center hover:bg-black/5 dark:hover:bg-white/10"
                   aria-label={expanded
                     ? `Collapse ${entry.chapter.title}`
                     : `Expand ${entry.chapter.title}`}
@@ -337,16 +468,22 @@
                     <ChevronRight size={16} aria-hidden="true" />
                   {/if}
                 </button>
-              {:else}
-                <span class="inline-flex h-8 w-8 shrink-0 items-center justify-center text-xs opacity-60">
-                  {entry.index + 1}
-                </span>
+              {:else if hasTocChevronColumn}
+                <span
+                  class="inline-flex h-8 w-8 shrink-0"
+                  aria-hidden="true"
+                ></span>
               {/if}
 
               {#if slideshow.id === tocSlideshow.id}
                 <button
                   type="button"
-                  class="min-w-0 flex-1 py-2 text-left text-sm font-medium hover:underline"
+                  class="min-w-0 flex-1 cursor-pointer py-2 text-left text-sm font-medium {!hasSubslideshows &&
+                  !hasTocChevronColumn
+                    ? 'px-2'
+                    : ''} {currentTocChapter
+                    ? ''
+                    : 'hover:underline'}"
                   aria-current={currentTocChapter ? "true" : undefined}
                   onclick={() => selectLocalChapter(entry.chapter.slug)}
                 >
@@ -354,7 +491,12 @@
                 </button>
               {:else}
                 <a
-                  class="min-w-0 flex-1 py-2 text-sm font-medium hover:underline"
+                  class="min-w-0 flex-1 cursor-pointer py-2 text-sm font-medium {!hasSubslideshows &&
+                  !hasTocChevronColumn
+                    ? 'px-2'
+                    : ''} {currentTocChapter
+                    ? ''
+                    : 'hover:underline'}"
                   aria-current={currentTocChapter ? "true" : undefined}
                   href={getChapterHref(tocSlideshow, entry.chapter)}
                 >
@@ -365,17 +507,13 @@
 
             {#if hasSubslideshows && expanded}
               <div class="ml-8 border-l border-black/10 pl-3 dark:border-white/15">
-                {#each entry.subslideshows as subslideshow}
+                {#if entry.subslideshows.length === 1}
+                  {@const subslideshow = entry.subslideshows[0]}
                   {#if subslideshow.slideshow}
                     {@const subslideshowData = subslideshow.slideshow}
-                    <div
-                      class="mt-3 text-xs font-semibold uppercase tracking-wide opacity-70 first:mt-1"
-                    >
-                      {subslideshow.title}
-                    </div>
 
                     <ol class="py-1">
-                      {#each subslideshowData.chapters as subchapter, subchapterIndex}
+                      {#each subslideshowData.chapters as subchapter}
                         {@const subchapterHref = getChapterHref(
                           subslideshowData,
                           subchapter,
@@ -388,28 +526,22 @@
                           {#if subslideshowData.id === slideshow.id}
                             <button
                               type="button"
-                              class="flex w-full items-start gap-2 px-2 py-2 text-left text-sm hover:bg-black/5 dark:hover:bg-white/10 {currentSubchapter
+                              class="block w-full cursor-pointer px-3 py-2 text-left text-sm {currentSubchapter
                                 ? 'bg-black text-white dark:bg-white dark:text-black'
-                                : ''}"
+                                : 'hover:bg-black/5 dark:hover:bg-white/10'}"
                               aria-current={currentSubchapter ? "true" : undefined}
                               onclick={() => selectLocalChapter(subchapter.slug)}
                             >
-                              <span class="w-6 shrink-0 text-xs opacity-60">
-                                {subchapterIndex + 1}
-                              </span>
                               <span>{subchapter.title}</span>
                             </button>
                           {:else}
                             <a
-                              class="flex items-start gap-2 px-2 py-2 text-sm hover:bg-black/5 dark:hover:bg-white/10 {currentSubchapter
+                              class="block cursor-pointer px-3 py-2 text-sm {currentSubchapter
                                 ? 'bg-black text-white dark:bg-white dark:text-black'
-                                : ''}"
+                                : 'hover:bg-black/5 dark:hover:bg-white/10'}"
                               aria-current={currentSubchapter ? "true" : undefined}
                               href={subchapterHref}
                             >
-                              <span class="w-6 shrink-0 text-xs opacity-60">
-                                {subchapterIndex + 1}
-                              </span>
                               <span>{subchapter.title}</span>
                             </a>
                           {/if}
@@ -417,7 +549,99 @@
                       {/each}
                     </ol>
                   {/if}
-                {/each}
+                {:else}
+                  <ol class="py-1">
+                    {#each entry.subslideshows as subslideshow}
+                      {#if subslideshow.slideshow}
+                        {@const subslideshowData = subslideshow.slideshow}
+                        {@const subslideshowEntryId = getTocSubslideshowEntryId(
+                          entry.id,
+                          subslideshow.id,
+                        )}
+                        {@const subslideshowExpanded =
+                          isTocSubslideshowExpanded(subslideshowEntryId)}
+                        <li>
+                          <div class="flex items-center gap-2">
+                            <button
+                              type="button"
+                              class="inline-flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center hover:bg-black/5 dark:hover:bg-white/10"
+                              aria-label={subslideshowExpanded
+                                ? `Collapse ${subslideshow.title}`
+                                : `Expand ${subslideshow.title}`}
+                              aria-expanded={subslideshowExpanded}
+                              onclick={() =>
+                                toggleTocSubslideshowEntry(subslideshowEntryId)}
+                            >
+                              {#if subslideshowExpanded}
+                                <ChevronDown size={16} aria-hidden="true" />
+                              {:else}
+                                <ChevronRight size={16} aria-hidden="true" />
+                              {/if}
+                            </button>
+
+                            <a
+                              class="min-w-0 flex-1 cursor-pointer py-2 text-sm font-medium hover:underline"
+                              href={subslideshow.href}
+                              onclick={(event) =>
+                                selectSubslideshowHeading(
+                                  event,
+                                  subslideshowData,
+                                )}
+                            >
+                              <span class="block truncate">
+                                {subslideshow.title}
+                              </span>
+                            </a>
+                          </div>
+
+                          {#if subslideshowExpanded}
+                            <ol class="ml-8 border-l border-black/10 py-1 pl-3 dark:border-white/15">
+                              {#each subslideshowData.chapters as subchapter}
+                                {@const subchapterHref = getChapterHref(
+                                  subslideshowData,
+                                  subchapter,
+                                )}
+                                {@const currentSubchapter = isCurrentSubchapter(
+                                  subslideshowData,
+                                  subchapter,
+                                )}
+                                <li>
+                                  {#if subslideshowData.id === slideshow.id}
+                                    <button
+                                      type="button"
+                                      class="block w-full cursor-pointer px-3 py-2 text-left text-sm {currentSubchapter
+                                        ? 'bg-black text-white dark:bg-white dark:text-black'
+                                        : 'hover:bg-black/5 dark:hover:bg-white/10'}"
+                                      aria-current={currentSubchapter
+                                        ? "true"
+                                        : undefined}
+                                      onclick={() =>
+                                        selectLocalChapter(subchapter.slug)}
+                                    >
+                                      <span>{subchapter.title}</span>
+                                    </button>
+                                  {:else}
+                                    <a
+                                      class="block cursor-pointer px-3 py-2 text-sm {currentSubchapter
+                                        ? 'bg-black text-white dark:bg-white dark:text-black'
+                                        : 'hover:bg-black/5 dark:hover:bg-white/10'}"
+                                      aria-current={currentSubchapter
+                                        ? "true"
+                                        : undefined}
+                                      href={subchapterHref}
+                                    >
+                                      <span>{subchapter.title}</span>
+                                    </a>
+                                  {/if}
+                                </li>
+                              {/each}
+                            </ol>
+                          {/if}
+                        </li>
+                      {/if}
+                    {/each}
+                  </ol>
+                {/if}
               </div>
             {/if}
           </li>

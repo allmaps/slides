@@ -39,7 +39,7 @@
   ));
 
   const firstChapter = $derived(chapters[0]);
-  const slideshowKey = $derived(`${project.slug}:${activeSlideshow.id}`);
+  const mapKey = $derived(`${project.slug}:${isDarkMode}`);
   const activeIndex = $derived(
     isSubslideshowActive ? subslideshowIndex : mainIndex,
   );
@@ -112,7 +112,7 @@
 >
   <div class="min-h-0 md:row-span-full">
     {#if isDarkMode !== undefined}
-      {#key `${slideshowKey}:${isDarkMode}`}
+      {#key mapKey}
         <Map
           {chapters}
           index={activeIndex}
