@@ -29,6 +29,8 @@
 
   import type { WarpedMapProps, MapChapterProps } from "$lib/shared/types";
 
+  type SpriteProps = NonNullable<MapChapterProps["sprite"]>;
+
   type Props = {
     chapters: MapChapterProps[];
     index: number;
@@ -83,11 +85,16 @@
   let map: maplibregl.Map;
   let container: HTMLElement;
   let mapLoaded = $state(false);
+  let resourcesRevision = $state(0);
   let mapIdsByAnnotationUrl: Map<string, string[]> = new Map();
+  let annotationLoadPromisesByUrl: Map<string, Promise<void>> = new Map();
+  let spriteLoadPromisesByKey: Map<string, Promise<void>> = new Map();
+  let spriteKeysByMapId: Map<string, Set<string>> = new Map();
   let visibleMaps: string[] = new Array();
   let imagesAdded: Set<string> = new Set();
   let highlightedMaps: string[] = [];
   let pmtilesProtocolLoaded = false;
+  let destroyed = false;
 
   // For debugging
   const debug = false;
@@ -108,65 +115,195 @@
   };
   const warpedMapLayer = new WarpedMapLayer(warpedMapLayerOptions);
 
-  async function loadAnnotations(chapters: MapChapterProps[]) {
-    if (debug) {
-      console.log("Loading warped maps...", chapters);
-    }
-    // Add maps
-    const uniqueAnnotations = chapters
-      .flatMap((i) => (i.warpedMaps ? i.warpedMaps : []))
-      // Filter for unique URLs
-      .reduce((acc: WarpedMapProps[], current) => {
-        const annotationExists = acc.some(
-          (annotation) => annotation.url === current.url,
-        );
-        if (!annotationExists) {
-          acc.push(current);
+  const getUniqueAnnotations = (annotations: WarpedMapProps[]) =>
+    annotations.reduce((acc: WarpedMapProps[], current) => {
+      const annotationExists = acc.some(
+        (annotation) => annotation.url === current.url,
+      );
+      if (!annotationExists) {
+        acc.push(current);
+      }
+      return acc;
+    }, []);
+
+  const getAnnotationsFromChapters = (chapters: MapChapterProps[]) =>
+    getUniqueAnnotations(
+      chapters.flatMap((chapter) => chapter.warpedMaps ?? []),
+    );
+
+  const areAnnotationsLoaded = (annotations: WarpedMapProps[]) =>
+    annotations.every(({ url }) => mapIdsByAnnotationUrl.has(url));
+
+  const getMapIdsForAnnotations = (annotations: WarpedMapProps[]) =>
+    annotations.flatMap(({ url }) => mapIdsByAnnotationUrl.get(url) ?? []);
+
+  const getSpriteKey = (sprite: SpriteProps) =>
+    `${sprite.json}\0${sprite.image}\0${sprite.dimensions.join("x")}`;
+
+  const hasSpriteForMapIds = (
+    sprite: SpriteProps | undefined,
+    mapIds: string[],
+  ) => {
+    if (!sprite || !mapIds.length) return true;
+
+    const spriteKey = getSpriteKey(sprite);
+
+    return mapIds.every((mapId) =>
+      spriteKeysByMapId.get(mapId)?.has(spriteKey),
+    );
+  };
+
+  const currentSlideResourcesReady = () => {
+    if (!currentWarpedMaps) return true;
+    if (!areAnnotationsLoaded(currentWarpedMaps)) return false;
+
+    return hasSpriteForMapIds(sprite, getMapIdsForAnnotations(currentWarpedMaps));
+  };
+
+  function markSpriteLoadedForMapIds(sprite: SpriteProps, mapIds: string[]) {
+    const spriteKey = getSpriteKey(sprite);
+
+    mapIds.forEach((mapId) => {
+      const spriteKeys = spriteKeysByMapId.get(mapId) ?? new Set<string>();
+      spriteKeys.add(spriteKey);
+      spriteKeysByMapId.set(mapId, spriteKeys);
+    });
+  }
+
+  async function loadAnnotation(annotation: WarpedMapProps) {
+    const { url } = annotation;
+
+    if (mapIdsByAnnotationUrl.has(url)) return;
+
+    const existingPromise = annotationLoadPromisesByUrl.get(url);
+    if (existingPromise) return existingPromise;
+
+    const promise = (async () => {
+      try {
+        if (debug) {
+          console.log("Loading warped map...", annotation);
         }
-        return acc;
-      }, []);
-    if (uniqueAnnotations.length) {
-      const promises = uniqueAnnotations.map((annotation) => {
-        const url = annotation.url;
+
         if (annotation.type === "Image") {
           // Create a 'fake' annotation for the image, in order to add it to the map
-          return createFauxGeoreferencedMap(url, {
+          const georeferencedMap = await createFauxGeoreferencedMap(url, {
             region: annotation.region,
             wiggle: annotation.wiggle,
-          })
-            .then((georeferencedMap) =>
-              warpedMapLayer.addGeoreferencedMap(georeferencedMap, {
-                visible: false,
-              }),
-            )
-            .then((id) => mapIdsByAnnotationUrl.set(url, [id]));
+          });
+
+          if (destroyed) return;
+
+          const id = warpedMapLayer.addGeoreferencedMap(georeferencedMap, {
+            visible: false,
+          });
+          mapIdsByAnnotationUrl.set(url, [id]);
         } else {
-          // Add the georeference annotation
-          return warpedMapLayer
-            .addGeoreferenceAnnotationByUrl(url, {
-              visible: false,
-            })
-            .then((ids) => {
-              const stringIds = ids.filter(
-                (i): i is string => typeof i === "string",
-              );
-              const errors = ids.filter((i) => i instanceof Error);
-              if (errors.length) {
-                console.error(
-                  "Failed to add georeferenced map for",
-                  url,
-                  errors,
-                );
-              }
-              mapIdsByAnnotationUrl.set(url, stringIds);
-            });
+          const georeferenceAnnotation = await fetch(url).then((response) =>
+            response.json(),
+          );
+
+          if (destroyed) return;
+
+          const ids = warpedMapLayer.addGeoreferenceAnnotation(georeferenceAnnotation, {
+            visible: false,
+          });
+
+          const stringIds = ids.filter(
+            (i): i is string => typeof i === "string",
+          );
+          const errors = ids.filter((i) => i instanceof Error);
+          if (errors.length) {
+            console.error("Failed to add georeferenced map for", url, errors);
+          }
+          mapIdsByAnnotationUrl.set(url, stringIds);
         }
-      });
-      return Promise.all(promises);
+      } catch (error) {
+        if (!destroyed) {
+          console.error("Failed to load georeferenced map for", url, error);
+          mapIdsByAnnotationUrl.set(url, []);
+        }
+      } finally {
+        annotationLoadPromisesByUrl.delete(url);
+        if (!destroyed) {
+          resourcesRevision += 1;
+        }
+      }
+    })();
+
+    annotationLoadPromisesByUrl.set(url, promise);
+
+    return promise;
+  }
+
+  async function loadAnnotations(annotations: WarpedMapProps[]) {
+    const uniqueAnnotations = getUniqueAnnotations(annotations).filter(
+      ({ url }) => !mapIdsByAnnotationUrl.has(url),
+    );
+
+    if (debug) {
+      console.log("Loading warped maps...", uniqueAnnotations);
     }
+
+    await Promise.all(uniqueAnnotations.map(loadAnnotation));
+  }
+
+  async function loadSpriteForMapIds(
+    sprite: SpriteProps | undefined,
+    mapIds: string[],
+  ) {
+    if (!sprite || !mapIds.length || hasSpriteForMapIds(sprite, mapIds)) return;
+
+    const spriteKey = getSpriteKey(sprite);
+    const existingPromise = spriteLoadPromisesByKey.get(spriteKey);
+    if (existingPromise) {
+      await existingPromise;
+      if (hasSpriteForMapIds(sprite, mapIds)) return;
+    }
+
+    const promise = (async () => {
+      try {
+        if (debug) {
+          console.log("Loading warped map sprites...", sprite);
+        }
+
+        const spriteJson = await fetch(`/sprites/${sprite.json}`).then((resp) =>
+          resp.json(),
+        );
+
+        if (destroyed) return;
+
+        await warpedMapLayer.addSprites(
+          spriteJson,
+          window.location.origin + `/sprites/${sprite.image}`,
+          sprite.dimensions,
+        );
+
+        if (destroyed) return;
+
+        markSpriteLoadedForMapIds(sprite, warpedMapLayer.getMapIds());
+      } catch (error) {
+        if (!destroyed) {
+          console.error("Failed to load warped map sprites for", sprite, error);
+          markSpriteLoadedForMapIds(sprite, mapIds);
+        }
+      } finally {
+        spriteLoadPromisesByKey.delete(spriteKey);
+        if (!destroyed) {
+          resourcesRevision += 1;
+        }
+      }
+    })();
+
+    spriteLoadPromisesByKey.set(spriteKey, promise);
+
+    return promise;
   }
 
   function setWarpedMaps() {
+    resourcesRevision;
+
+    if (mapLoaded && currentWarpedMaps && !currentSlideResourcesReady()) return;
+
     if (mapLoaded && currentWarpedMaps) {
       // Get all IDs
       const optionsByMapId = new Map();
@@ -282,6 +419,8 @@
   }
 
   function highlightMaps() {
+    resourcesRevision;
+
     if (mapLoaded && highlight) {
       if (debug) {
         console.log("Highlighting maps...", highlight);
@@ -448,6 +587,38 @@
       return setBasemapOpacityTransition;
     }
   });
+  $effect(() => {
+    if (!mapLoaded) return;
+
+    const currentAnnotations = currentWarpedMaps ?? [];
+    const currentSprite = sprite;
+    const currentChapters = chapters;
+    let cancelled = false;
+
+    void (async () => {
+      await loadAnnotations(currentAnnotations);
+      if (cancelled) return;
+
+      await loadSpriteForMapIds(
+        currentSprite,
+        getMapIdsForAnnotations(currentAnnotations),
+      );
+      if (cancelled) return;
+
+      const currentAnnotationUrls = new Set(
+        currentAnnotations.map(({ url }) => url),
+      );
+      const backgroundAnnotations = getAnnotationsFromChapters(
+        currentChapters,
+      ).filter(({ url }) => !currentAnnotationUrls.has(url));
+
+      void loadAnnotations(backgroundAnnotations);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  });
   $effect(setWarpedMaps);
   $effect(highlightMaps);
   $effect(setLayersOpacity);
@@ -476,8 +647,6 @@
         await loadSources(sources);
         loadLayers(layers);
       }
-
-      await loadAnnotations(chapters);
 
       if (showLabels) {
         symbolLayers.forEach((layer) => map.addLayer(layer));
@@ -516,29 +685,15 @@
         });
       }
 
-      if (sprite) {
-        // Load image sprite before rendering maps
-        map.on("maptilesloadedfromsprites", () => {
-          mapLoaded = true;
-        });
-        const spriteJson = await fetch(`/sprites/${sprite.json}`).then((resp) =>
-          resp.json(),
-        );
-        await warpedMapLayer.addSprites(
-          spriteJson,
-          window.location.origin + `/sprites/${sprite.image}`,
-          sprite.dimensions,
-        );
-      } else {
-        mapLoaded = true;
-      }
+      mapLoaded = true;
     });
 
     return () => {
+      destroyed = true;
       if (mapLoaded) {
         warpedMapLayer.clear();
-        map.remove();
       }
+      map.remove();
     };
   });
 </script>
