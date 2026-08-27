@@ -1,5 +1,6 @@
 <script lang="ts">
   import { tick } from "svelte";
+  import { fade } from "svelte/transition";
   import {
     ArrowRight,
     ChevronDown,
@@ -228,7 +229,10 @@
     event: MouseEvent,
     subslideshow: Slideshow,
   ) => {
-    if (subslideshow.id !== slideshow.id) return;
+    if (subslideshow.id !== slideshow.id) {
+      closeToc();
+      return;
+    }
 
     event.preventDefault();
 
@@ -399,6 +403,7 @@
               <a
                 class="inline-flex items-center gap-2 border border-black/20 px-3 py-2 text-sm font-medium hover:bg-black/5 dark:border-white/25 dark:hover:bg-white/10"
                 href={subslideshow.href}
+                onclick={closeToc}
               >
                 <span>{subslideshow.title}</span>
                 <ArrowRight size={16} aria-hidden="true" />
@@ -420,6 +425,7 @@
   {#if tocOpen}
     <div
       class="absolute inset-0 z-20 overflow-x-hidden overflow-y-auto bg-white/95 px-5 py-4 shadow-2xl backdrop-blur dark:bg-black/95"
+      transition:fade={{ duration: 150 }}
     >
       <div class="mb-4 flex items-center justify-between gap-3">
         <h2 class="text-base font-semibold">Contents</h2>
@@ -499,6 +505,7 @@
                     : 'hover:underline'}"
                   aria-current={currentTocChapter ? "true" : undefined}
                   href={getChapterHref(tocSlideshow, entry.chapter)}
+                  onclick={closeToc}
                 >
                   <span class="block truncate">{entry.chapter.title}</span>
                 </a>
@@ -541,6 +548,7 @@
                                 : 'hover:bg-black/5 dark:hover:bg-white/10'}"
                               aria-current={currentSubchapter ? "true" : undefined}
                               href={subchapterHref}
+                              onclick={closeToc}
                             >
                               <span>{subchapter.title}</span>
                             </a>
@@ -629,6 +637,7 @@
                                         ? "true"
                                         : undefined}
                                       href={subchapterHref}
+                                      onclick={closeToc}
                                     >
                                       <span>{subchapter.title}</span>
                                     </a>
