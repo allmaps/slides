@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
+  import { Minus, Plus } from "@lucide/svelte";
 
   import maplibregl from "maplibre-gl";
   import "maplibre-gl/dist/maplibre-gl.css";
@@ -51,6 +52,7 @@
     showLabels?: boolean;
     anticipate?: boolean;
     layoutRevision?: number;
+    resetSignal?: number;
     padding?: number | PaddingOptions;
   };
 
@@ -66,6 +68,7 @@
     showLabels,
     anticipate,
     layoutRevision = 0,
+    resetSignal = 0,
     padding,
   }: Props = $props();
 
@@ -102,6 +105,7 @@
   let map: maplibregl.Map;
   let container: HTMLElement;
   let mapLoaded = $state(false);
+  let currentBearing = $state(0);
   let resourcesRevision = $state(0);
   let mapIdsByAnnotationUrl: Map<string, string[]> = new Map();
   let annotationLoadPromisesByUrl: Map<string, Promise<void>> = new Map();
@@ -347,6 +351,7 @@
 
   function setWarpedMaps() {
     layoutRevision;
+    resetSignal;
 
     const cameraLayoutOptions = getCameraLayoutOptions(currentPadding);
 
@@ -503,8 +508,27 @@
     }
   }
 
+  const resetNorth = () => {
+    if (!mapLoaded) return;
+
+    map.resetNorth({ duration: 300 });
+  };
+
+  const zoomIn = () => {
+    if (!mapLoaded) return;
+
+    map.zoomIn({ duration: 300 });
+  };
+
+  const zoomOut = () => {
+    if (!mapLoaded) return;
+
+    map.zoomOut({ duration: 300 });
+  };
+
   function setLocation() {
     layoutRevision;
+    resetSignal;
     currentPadding;
 
     if (mapLoaded && currentLocation && !currentWarpedMaps) {
@@ -691,6 +715,11 @@
       bearingSnap: 0,
       keyboard: false,
     });
+    const updateBearing = () => {
+      currentBearing = map.getBearing();
+    };
+
+    map.on("move", updateBearing);
 
     map.on("load", async () => {
       // Add layers
@@ -741,6 +770,7 @@
       }
 
       mapLoaded = true;
+      updateBearing();
     });
 
     return () => {
@@ -755,4 +785,48 @@
 
 <svelte:window on:keydown={toggleVisibility} on:keyup={toggleVisibility} />
 
-<div class="h-full w-full min-w-0 min-h-0" bind:this={container}></div>
+<div class="relative h-full min-h-0 w-full min-w-0">
+  <div class="h-full min-h-0 w-full min-w-0" bind:this={container}></div>
+
+  <div
+    class="pointer-events-none absolute top-3 right-3 z-10 flex flex-col gap-2 sm:top-4 sm:right-4 md:top-auto md:right-auto md:bottom-5 md:left-5 md:flex-row"
+  >
+    <button
+      type="button"
+      class="pointer-events-auto inline-flex h-11 w-11 cursor-pointer items-center justify-center rounded-lg border border-white/15 bg-black/15 text-white shadow-2xl backdrop-blur-md"
+      aria-label="Zoom in"
+      title="Zoom in"
+      onclick={zoomIn}
+    >
+      <Plus size={20} aria-hidden="true" />
+    </button>
+
+    <button
+      type="button"
+      class="pointer-events-auto inline-flex h-11 w-11 cursor-pointer items-center justify-center rounded-lg border border-white/15 bg-black/15 text-white shadow-2xl backdrop-blur-md"
+      aria-label="Zoom out"
+      title="Zoom out"
+      onclick={zoomOut}
+    >
+      <Minus size={20} aria-hidden="true" />
+    </button>
+
+    <button
+      type="button"
+      class="pointer-events-auto inline-flex h-11 w-11 cursor-pointer items-center justify-center rounded-lg border border-white/15 bg-black/15 text-white shadow-2xl backdrop-blur-md"
+      aria-label="Reset north"
+      title="Reset north"
+      onclick={resetNorth}
+    >
+      <svg
+        class="h-7 w-7"
+        viewBox="0 0 24 24"
+        aria-hidden="true"
+        style={`transform: rotate(${-currentBearing}deg)`}
+      >
+        <path d="M12 2.5 8.75 12h6.5L12 2.5Z" fill="white" />
+        <path d="M12 21.5 8.75 12h6.5L12 21.5Z" fill="#d1d5db" />
+      </svg>
+    </button>
+  </div>
+</div>
