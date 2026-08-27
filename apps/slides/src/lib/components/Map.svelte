@@ -7,6 +7,8 @@
     SourceSpecification,
     LayerSpecification,
     CenterZoomBearing,
+    PaddingOptions,
+    PointLike,
   } from "maplibre-gl";
 
   import {
@@ -30,6 +32,10 @@
   import type { WarpedMapProps, MapChapterProps } from "$lib/shared/types";
 
   type SpriteProps = NonNullable<MapChapterProps["sprite"]>;
+  type CameraLayoutOptions = {
+    padding: number | PaddingOptions;
+    offset?: PointLike;
+  };
 
   type Props = {
     chapters: MapChapterProps[];
@@ -44,6 +50,8 @@
     highlight?: string;
     showLabels?: boolean;
     anticipate?: boolean;
+    layoutRevision?: number;
+    padding?: number | PaddingOptions;
   };
 
   let {
@@ -57,6 +65,8 @@
     highlight,
     showLabels,
     anticipate,
+    layoutRevision = 0,
+    padding,
   }: Props = $props();
 
   let start = true;
@@ -74,11 +84,18 @@
   let currentHideBasemap = $derived(
     currentImageSlide || currentChapter.hideBasemap,
   );
-  let currentPadding = $derived(
-    currentChapter.padding !== undefined
-      ? currentChapter.padding
-      : DEFAULT_PADDING,
-  );
+  let currentPadding = $derived.by(() => {
+    if (typeof padding === "number" || padding === undefined) {
+      return padding ?? DEFAULT_PADDING;
+    }
+
+    return {
+      top: padding.top ?? DEFAULT_PADDING,
+      right: padding.right ?? DEFAULT_PADDING,
+      bottom: padding.bottom ?? DEFAULT_PADDING,
+      left: padding.left ?? DEFAULT_PADDING,
+    };
+  });
 
   let sprite = $derived(currentChapter.sprite);
 
@@ -158,6 +175,35 @@
     if (!areAnnotationsLoaded(currentWarpedMaps)) return false;
 
     return hasSpriteForMapIds(sprite, getMapIdsForAnnotations(currentWarpedMaps));
+  };
+
+  const getCameraLayoutOptions = (
+    padding: number | PaddingOptions,
+  ): CameraLayoutOptions => {
+    if (typeof padding === "number") {
+      return { padding };
+    }
+
+    const top = padding.top ?? DEFAULT_PADDING;
+    const right = padding.right ?? DEFAULT_PADDING;
+    const bottom = padding.bottom ?? DEFAULT_PADDING;
+    const left = padding.left ?? DEFAULT_PADDING;
+    const horizontalPadding = (left + right) / 2;
+    const verticalPadding = (top + bottom) / 2;
+    const offset: [number, number] = [
+      (left - right) / 2,
+      (top - bottom) / 2,
+    ];
+
+    return {
+      padding: {
+        top: verticalPadding,
+        right: horizontalPadding,
+        bottom: verticalPadding,
+        left: horizontalPadding,
+      },
+      offset,
+    };
   };
 
   function markSpriteLoadedForMapIds(sprite: SpriteProps, mapIds: string[]) {
@@ -300,6 +346,10 @@
   }
 
   function setWarpedMaps() {
+    layoutRevision;
+
+    const cameraLayoutOptions = getCameraLayoutOptions(currentPadding);
+
     resourcesRevision;
 
     if (mapLoaded && currentWarpedMaps && !currentSlideResourcesReady()) return;
@@ -381,15 +431,12 @@
         );
         camera = warpedMapLayer.getMapsCenterZoomBearing([...sortedMapIds], {
           bearingSelection: "first",
-          padding: currentPadding,
+          ...cameraLayoutOptions,
         });
       } else {
         const bounds = warpedMapLayer.getMapsBounds(mapIdsForBounds);
         if (bounds) {
-          camera = map.cameraForBounds(bounds, {
-            padding:
-              currentPadding !== undefined ? currentPadding : DEFAULT_PADDING,
-          });
+          camera = map.cameraForBounds(bounds, cameraLayoutOptions);
         }
       }
       if (debug) {
@@ -405,12 +452,17 @@
           ...camera,
           ...currentLocation,
         };
-        if (currentImageSlide || start) {
+        const initialCameraUpdate = start;
+        if (currentImageSlide || initialCameraUpdate) {
           flyToOptions.duration = 0;
         } else if (!currentLocation.duration && duration) {
           flyToOptions.duration = duration;
         }
         map.flyTo(flyToOptions);
+
+        if (initialCameraUpdate) {
+          setBasemapOpacityTransition();
+        }
       }
     } else if (mapLoaded) {
       // Hide all maps
@@ -452,6 +504,9 @@
   }
 
   function setLocation() {
+    layoutRevision;
+    currentPadding;
+
     if (mapLoaded && currentLocation && !currentWarpedMaps) {
       if (debug) {
         console.log("Animating to new location...", currentLocation);
@@ -459,12 +514,17 @@
       const flyToOptions = {
         ...currentLocation,
       };
-      if (currentImageSlide || start) {
+      const initialCameraUpdate = start;
+      if (currentImageSlide || initialCameraUpdate) {
         flyToOptions.duration = 0;
       } else if (!currentLocation.duration && duration) {
         flyToOptions.duration = duration;
       }
       map.flyTo(flyToOptions);
+
+      if (initialCameraUpdate) {
+        setBasemapOpacityTransition();
+      }
     }
   }
 
@@ -582,11 +642,6 @@
     });
   }
 
-  $effect(() => {
-    if (mapLoaded && index !== undefined && start) {
-      return setBasemapOpacityTransition;
-    }
-  });
   $effect(() => {
     if (!mapLoaded) return;
 
