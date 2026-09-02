@@ -75,18 +75,18 @@
 
   let start = true;
 
-  let currentChapter = $derived(chapters[index]);
+  let currentChapter = $derived(chapters[index] ?? chapters[0]);
   let currentLocation = $derived(
-    currentChapter.location ? currentChapter.location : {},
+    currentChapter?.location ? currentChapter.location : {},
   );
-  let currentWarpedMaps = $derived(currentChapter.warpedMaps);
-  let currentLayers = $derived(currentChapter.layers);
+  let currentWarpedMaps = $derived(currentChapter?.warpedMaps);
+  let currentLayers = $derived(currentChapter?.layers);
   let currentImageSlide = $derived(
     currentWarpedMaps?.some((warpedMaps) => warpedMaps.type === "Image") ||
       false,
   );
   let currentHideBasemap = $derived(
-    currentImageSlide || currentChapter.hideBasemap,
+    currentImageSlide || currentChapter?.hideBasemap,
   );
   let currentPadding = $derived.by(() => {
     if (typeof padding === "number" || padding === undefined) {
@@ -101,7 +101,7 @@
     };
   });
 
-  let sprite = $derived(currentChapter.sprite);
+  let sprite = $derived(currentChapter?.sprite);
 
   let map: maplibregl.Map;
   let container: HTMLElement;
