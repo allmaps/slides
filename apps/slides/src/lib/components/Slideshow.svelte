@@ -46,14 +46,20 @@
     left: DEFAULT_PADDING,
   });
 
+  const clampIndex = (index: number, length: number) =>
+    length > 0 ? Math.min(Math.max(index, 0), length - 1) : 0;
+
   const layers = $derived(Object.entries(sources).flatMap(([sourceId, source]) =>
     source.type === "geojson" ? getGeoJsonLayers(sourceId, "visible") : [],
   ));
 
   const firstChapter = $derived(chapters[0]);
   const mapKey = $derived(`${project.slug}:${isDarkMode}`);
-  const activeIndex = $derived(
-    isSubslideshowActive ? subslideshowIndex : mainIndex,
+  const activeIndex = $derived.by(() =>
+    clampIndex(
+      isSubslideshowActive ? subslideshowIndex : mainIndex,
+      chapters.length,
+    ),
   );
   const activeChapter = $derived(chapters[activeIndex]);
   const headerTitle = $derived(rootSlideshow.title);
@@ -137,6 +143,10 @@
   $effect(() => {
     activeSlideshow.id;
     closeToc();
+
+    if (isSubslideshowActive) {
+      subslideshowIndex = 0;
+    }
   });
 
   onMount(() => {
