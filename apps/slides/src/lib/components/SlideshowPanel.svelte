@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { replaceState } from "$app/navigation";
+  import { page } from "$app/state";
   import { tick } from "svelte";
   import { fade } from "svelte/transition";
   import {
@@ -293,7 +295,7 @@
   const replaceHash = (hash: string) => {
     const encodedHash = encodeURIComponent(hash);
     const nextUrl = `${window.location.pathname}${window.location.search}#${encodedHash}`;
-    window.history.replaceState(window.history.state, "", nextUrl);
+    replaceState(nextUrl, page.state);
   };
 
   $effect(() => {
