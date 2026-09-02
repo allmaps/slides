@@ -64,6 +64,7 @@ const warpedMapSchema = z
     homepage: optionalString,
     useBearing: z.boolean().optional(),
     useBounds: z.boolean().optional(),
+    useZoom: z.boolean().optional(),
     options: z
       .custom<Partial<MapLibreWarpedMapLayerOptions>>(
         (value) =>

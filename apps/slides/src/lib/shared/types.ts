@@ -8,6 +8,7 @@ export type WarpedMapProps = {
   homepage?: string;
   useBearing?: boolean;
   useBounds?: boolean;
+  useZoom?: boolean;
   options?: Partial<MapLibreWarpedMapLayerOptions>;
   region?: [number, number, number, number];
   wiggle?: boolean;

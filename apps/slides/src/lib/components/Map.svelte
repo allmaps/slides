@@ -8,6 +8,7 @@
     SourceSpecification,
     LayerSpecification,
     CenterZoomBearing,
+    FlyToOptions,
     PaddingOptions,
     PointLike,
   } from "maplibre-gl";
@@ -119,6 +120,8 @@
 
   // For debugging
   const debug = false;
+  const MAPLIBRE_TILE_SIZE = 512;
+  const WEB_MERCATOR_WORLD_WIDTH = 40075016.68557849;
 
   // Initialize style and layers
   const flavor = isDarkMode ? DEFAULT_DARK_FLAVOR : DEFAULT_LIGHT_FLAVOR;
@@ -157,6 +160,20 @@
 
   const getMapIdsForAnnotations = (annotations: WarpedMapProps[]) =>
     annotations.flatMap(({ url }) => mapIdsByAnnotationUrl.get(url) ?? []);
+
+  const getNativeMaxZoomForAnnotations = (annotations: WarpedMapProps[]) => {
+    const nativeMaxZooms = getMapIdsForAnnotations(annotations)
+      .map((id) => warpedMapLayer.getWarpedMap(id)?.resourceToProjectedGeoScale)
+      .filter(
+        (scale): scale is number =>
+          typeof scale === "number" && Number.isFinite(scale) && scale > 0,
+      )
+      .map((scale) =>
+        Math.log2((scale * WEB_MERCATOR_WORLD_WIDTH) / MAPLIBRE_TILE_SIZE),
+      );
+
+    return nativeMaxZooms.length > 0 ? Math.max(...nativeMaxZooms) : undefined;
+  };
 
   const getSpriteKey = (sprite: SpriteProps) =>
     `${sprite.json}\0${sprite.image}\0${sprite.dimensions.join("x")}`;
@@ -209,6 +226,48 @@
       offset,
     };
   };
+
+  function getFlyToOptions(
+    camera: CenterZoomBearing | undefined,
+    cameraLayoutOptions: CameraLayoutOptions,
+    forceOffset = false,
+  ) {
+    const flyToOptions: FlyToOptions = {
+      ...(camera ?? {}),
+      ...currentLocation,
+    };
+
+    if (cameraLayoutOptions.offset && (forceOffset || currentLocation.center)) {
+      flyToOptions.offset = cameraLayoutOptions.offset;
+    }
+
+    const initialCameraUpdate = start;
+    if (currentImageSlide || initialCameraUpdate) {
+      flyToOptions.duration = 0;
+    } else if (!currentLocation.duration && duration) {
+      flyToOptions.duration = duration;
+    }
+
+    return { flyToOptions, initialCameraUpdate };
+  }
+
+  function flyToCamera(
+    camera: CenterZoomBearing | undefined,
+    cameraLayoutOptions: CameraLayoutOptions,
+    forceOffset = false,
+  ) {
+    const { flyToOptions, initialCameraUpdate } = getFlyToOptions(
+      camera,
+      cameraLayoutOptions,
+      forceOffset,
+    );
+
+    map.flyTo(flyToOptions);
+
+    if (initialCameraUpdate) {
+      setBasemapOpacityTransition();
+    }
+  }
 
   function markSpriteLoadedForMapIds(sprite: SpriteProps, mapIds: string[]) {
     const spriteKey = getSpriteKey(sprite);
@@ -424,6 +483,7 @@
       } else mapIdsForBounds = mapIds;
 
       let camera: CenterZoomBearing | undefined;
+      let forceCameraOffset = false;
 
       const firstMapWithBearingProp = currentWarpedMaps.find(
         (annotation) => annotation.useBearing == true,
@@ -438,11 +498,24 @@
           bearingSelection: "first",
           ...cameraLayoutOptions,
         });
+        forceCameraOffset = true;
       } else {
         const bounds = warpedMapLayer.getMapsBounds(mapIdsForBounds);
         if (bounds) {
           camera = map.cameraForBounds(bounds, cameraLayoutOptions);
         }
+      }
+      const mapsUsedForZoom = currentWarpedMaps.filter(
+        (annotation) => annotation.useZoom === true,
+      );
+      const nativeMaxZoom = mapsUsedForZoom.length
+        ? getNativeMaxZoomForAnnotations(mapsUsedForZoom)
+        : undefined;
+      if (camera && nativeMaxZoom !== undefined) {
+        camera = {
+          ...camera,
+          zoom: nativeMaxZoom,
+        };
       }
       if (debug) {
         // console.log('Updating bounds layer', bounds)
@@ -453,21 +526,7 @@
         // }
       }
       if (camera) {
-        const flyToOptions = {
-          ...camera,
-          ...currentLocation,
-        };
-        const initialCameraUpdate = start;
-        if (currentImageSlide || initialCameraUpdate) {
-          flyToOptions.duration = 0;
-        } else if (!currentLocation.duration && duration) {
-          flyToOptions.duration = duration;
-        }
-        map.flyTo(flyToOptions);
-
-        if (initialCameraUpdate) {
-          setBasemapOpacityTransition();
-        }
+        flyToCamera(camera, cameraLayoutOptions, forceCameraOffset);
       }
     } else if (mapLoaded) {
       // Hide all maps
@@ -529,26 +588,13 @@
   function setLocation() {
     layoutRevision;
     resetSignal;
-    currentPadding;
+    const cameraLayoutOptions = getCameraLayoutOptions(currentPadding);
 
     if (mapLoaded && currentLocation && !currentWarpedMaps) {
       if (debug) {
         console.log("Animating to new location...", currentLocation);
       }
-      const flyToOptions = {
-        ...currentLocation,
-      };
-      const initialCameraUpdate = start;
-      if (currentImageSlide || initialCameraUpdate) {
-        flyToOptions.duration = 0;
-      } else if (!currentLocation.duration && duration) {
-        flyToOptions.duration = duration;
-      }
-      map.flyTo(flyToOptions);
-
-      if (initialCameraUpdate) {
-        setBasemapOpacityTransition();
-      }
+      flyToCamera(undefined, cameraLayoutOptions);
     }
   }
 
