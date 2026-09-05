@@ -28,6 +28,11 @@ const basePath = getBasePath(
   process.env.PUBLIC_BASE_PATH ?? process.env.PUBLIC_URL,
 );
 const singleProjectRoot = isTruthy(process.env.PUBLIC_SLIDES_SINGLE_PROJECT_ROOT);
+const normalizePath = (value) => value.replace(/\/+$/g, "") || "/";
+const appRootPaths = new Set([
+  "/",
+  ...(basePath ? [normalizePath(basePath)] : []),
+]);
 
 /** @type {import('@sveltejs/kit').Config} */
 const config = {
@@ -48,6 +53,13 @@ const config = {
       base: basePath,
     },
     prerender: {
+      handleMissingId: ({ path, message }) => {
+        if (singleProjectRoot && appRootPaths.has(normalizePath(path))) {
+          return;
+        }
+
+        throw new Error(message);
+      },
       handleUnseenRoutes: ({ routes }) => {
         const ignoredRoutes = singleProjectRoot
           ? [
