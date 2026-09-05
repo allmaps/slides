@@ -100,6 +100,10 @@
     text-underline-offset: 0.16em;
   }
 
+  :global(.slide-content a[data-external="true"]) {
+    font-weight: 500;
+  }
+
   :global(.slide-content strong) {
     font-weight: 700;
   }

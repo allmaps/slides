@@ -52,6 +52,9 @@
     };
     layers?: LayerSpecification[] | LayerSpecification;
     highlight?: string;
+    hiddenWarpedMapUrls?: string[];
+    zoomToWarpedMapUrl?: string;
+    zoomToWarpedMapSignal?: number;
     showLabels?: boolean;
     anticipate?: boolean;
     layoutRevision?: number;
@@ -68,6 +71,9 @@
     layers,
     sources,
     highlight,
+    hiddenWarpedMapUrls = [],
+    zoomToWarpedMapUrl,
+    zoomToWarpedMapSignal = 0,
     showLabels,
     anticipate,
     layoutRevision = 0,
@@ -117,6 +123,7 @@
   let visibleMaps: string[] = new Array();
   let imagesAdded: Set<string> = new Set();
   let highlightedMaps: string[] = [];
+  let handledZoomToWarpedMapSignal = 0;
   let pmtilesProtocolLoaded = false;
   let destroyed = false;
 
@@ -160,8 +167,11 @@
   const areAnnotationsLoaded = (annotations: WarpedMapProps[]) =>
     annotations.every(({ url }) => mapIdsByAnnotationUrl.has(url));
 
+  const getMapIdsForAnnotationUrl = (url: string) =>
+    mapIdsByAnnotationUrl.get(url) ?? [];
+
   const getMapIdsForAnnotations = (annotations: WarpedMapProps[]) =>
-    annotations.flatMap(({ url }) => mapIdsByAnnotationUrl.get(url) ?? []);
+    annotations.flatMap(({ url }) => getMapIdsForAnnotationUrl(url));
 
   const getNativeMaxZoomForAnnotations = (annotations: WarpedMapProps[]) => {
     const nativeMaxZooms = getMapIdsForAnnotations(annotations)
@@ -248,17 +258,20 @@
     camera: CenterZoomBearing | undefined,
     cameraLayoutOptions: CameraLayoutOptions,
     forceOffset = false,
+    useCurrentLocation = true,
   ) {
     const flyToOptions: FlyToOptions = {
       ...(camera ?? {}),
-      ...currentLocation,
+      ...(useCurrentLocation ? currentLocation : {}),
     };
 
     if (
       cameraLayoutOptions.offset &&
       (forceOffset ||
-        currentLocation.center ||
-        (camera === undefined && currentLocation.bearing !== undefined))
+        (useCurrentLocation && currentLocation.center) ||
+        (camera === undefined &&
+          useCurrentLocation &&
+          currentLocation.bearing !== undefined))
     ) {
       flyToOptions.offset = cameraLayoutOptions.offset;
     }
@@ -266,7 +279,10 @@
     const initialCameraUpdate = start;
     if (currentImageSlide || initialCameraUpdate) {
       flyToOptions.duration = 0;
-    } else if (!currentLocation.duration && duration) {
+    } else if (
+      (!useCurrentLocation || !currentLocation.duration) &&
+      duration
+    ) {
       flyToOptions.duration = duration;
     }
 
@@ -277,11 +293,13 @@
     camera: CenterZoomBearing | undefined,
     cameraLayoutOptions: CameraLayoutOptions,
     forceOffset = false,
+    useCurrentLocation = true,
   ) {
     const { flyToOptions, initialCameraUpdate } = getFlyToOptions(
       camera,
       cameraLayoutOptions,
       forceOffset,
+      useCurrentLocation,
     );
 
     map.flyTo(flyToOptions);
@@ -470,7 +488,7 @@
       // Check which maps to hide and show
       // const mapsToShow = mapIds.filter((id) => !visibleMaps.includes(id))
       const mapsToHide = visibleMaps.filter((id) => !optionsByMapId.has(id));
-      const mapIds = optionsByMapId.keys().toArray();
+      const mapIds = Array.from(optionsByMapId.keys());
 
       mapsToHide.forEach((id) => {
         optionsByMapId.set(id, {
@@ -566,25 +584,91 @@
     }
   }
 
+  function setWarpedMapVisibilityOverrides() {
+    resourcesRevision;
+
+    if (!mapLoaded || !currentWarpedMaps) return;
+
+    const hiddenUrlSet = new Set(hiddenWarpedMapUrls);
+
+    currentWarpedMaps.forEach(({ url }) => {
+      const ids = getMapIdsForAnnotationUrl(url);
+      if (!ids.length) return;
+
+      warpedMapLayer.setMapsOptions(ids, {
+        visible: !hiddenUrlSet.has(url),
+      });
+    });
+  }
+
   function highlightMaps() {
     resourcesRevision;
 
-    if (mapLoaded && highlight) {
+    if (!mapLoaded) return;
+
+    if (highlight) {
       if (debug) {
         console.log("Highlighting maps...", highlight);
       }
-      const ids = mapIdsByAnnotationUrl.get(highlight);
-      if (ids) {
+      const ids = getMapIdsForAnnotationUrl(highlight);
+      const mapsToUnhighlight = highlightedMaps.filter(
+        (id) => !ids.includes(id),
+      );
+
+      if (mapsToUnhighlight.length) {
+        warpedMapLayer.setMapsOptions(mapsToUnhighlight, {
+          renderMask: false,
+        });
+      }
+      if (ids.length) {
         warpedMapLayer.setMapsOptions(ids, {
           renderMask: true,
         });
-        highlightedMaps = ids;
       }
-    } else if (mapLoaded) {
+
+      highlightedMaps = ids;
+    } else {
       warpedMapLayer.setMapsOptions(highlightedMaps, {
         renderMask: false,
       });
+      highlightedMaps = [];
     }
+  }
+
+  function zoomToWarpedMapBounds() {
+    const signal = zoomToWarpedMapSignal;
+    const url = zoomToWarpedMapUrl;
+
+    resourcesRevision;
+
+    if (
+      !mapLoaded ||
+      !url ||
+      signal === 0 ||
+      signal === handledZoomToWarpedMapSignal
+    ) {
+      return;
+    }
+
+    const ids = getMapIdsForAnnotationUrl(url);
+    if (!ids.length) return;
+
+    const cameraLayoutOptions = getCameraLayoutOptions(currentPadding);
+    let camera: CenterZoomBearing;
+
+    try {
+      camera = warpedMapLayer.getMapsCenterZoomBearing(ids, {
+        bearingSelection: "first",
+        ...cameraLayoutOptions,
+      });
+    } catch (error) {
+      console.error("Failed to zoom to warped map layer", url, error);
+      handledZoomToWarpedMapSignal = signal;
+      return;
+    }
+
+    flyToCamera(camera, cameraLayoutOptions, true, false);
+    handledZoomToWarpedMapSignal = signal;
   }
 
   function toggleVisibility(event: KeyboardEvent) {
@@ -777,7 +861,9 @@
     };
   });
   $effect(setWarpedMaps);
+  $effect(setWarpedMapVisibilityOverrides);
   $effect(highlightMaps);
+  $effect(zoomToWarpedMapBounds);
   $effect(setLayersOpacity);
   $effect(setBasemapVisiblity);
   $effect(setLocation);

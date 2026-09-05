@@ -26,17 +26,16 @@ export const projectFiles = import.meta.glob(
   },
 ) as Record<string, string>;
 
-export const dataAssetUrls = import.meta.glob(
+export const dataAssetFiles = import.meta.glob(
   [
     "./assets/**/*.{geojson,GEOJSON,json,JSON}",
     "./*/assets/**/*.{geojson,GEOJSON,json,JSON}",
   ],
   {
-    eager: true,
-    query: "?url",
+    query: "?raw",
     import: "default",
   },
-) as Record<string, string>;
+) as Record<string, () => Promise<string>>;
 
 export const imageAssetUrls = import.meta.glob(
   [

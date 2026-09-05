@@ -16,7 +16,7 @@
     project: Project;
     slideshow: Slideshow;
     active?: boolean;
-    tocOpen?: boolean;
+    overlayOpen?: boolean;
     scrollToTopSignal?: number;
     onTocClose?: () => void;
     onIndexChange?: (index: number) => void;
@@ -27,7 +27,7 @@
     project,
     slideshow,
     active = true,
-    tocOpen = false,
+    overlayOpen = false,
     scrollToTopSignal = 0,
     onTocClose,
     onIndexChange,
@@ -235,7 +235,7 @@
 >
   <div
     bind:this={scrollContainer}
-    class="h-full min-h-0 overflow-x-hidden overflow-y-auto px-5 transition-opacity duration-150 {tocOpen
+    class="h-full min-h-0 overflow-x-hidden overflow-y-auto px-5 transition-opacity duration-150 {overlayOpen
       ? 'opacity-50'
       : 'opacity-100'}"
   >

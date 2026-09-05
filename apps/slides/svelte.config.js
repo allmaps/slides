@@ -50,8 +50,17 @@ const config = {
     prerender: {
       handleUnseenRoutes: ({ routes }) => {
         const ignoredRoutes = singleProjectRoot
-          ? ["/[project]", "/[project]/[slideshow]", "/iiif/[...request]"]
-          : ["/[project]/[slideshow]", "/iiif/[...request]"];
+          ? [
+              "/[project]",
+              "/[project]/[slideshow]",
+              "/api/[...request]",
+              "/iiif/[...request]",
+            ]
+          : [
+              "/[project]/[slideshow]",
+              "/api/[...request]",
+              "/iiif/[...request]",
+            ];
         const unexpectedRoutes = routes.filter(
           (route) => !ignoredRoutes.includes(route),
         );

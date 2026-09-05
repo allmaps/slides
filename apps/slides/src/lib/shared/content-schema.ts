@@ -61,6 +61,7 @@ const warpedMapSchema = z
     url: optionalNonEmptyString,
     path: optionalNonEmptyString,
     caption: optionalString,
+    provenance: optionalString,
     homepage: optionalString,
     useBearing: z.boolean().optional(),
     useBounds: z.boolean().optional(),

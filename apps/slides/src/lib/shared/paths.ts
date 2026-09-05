@@ -1,6 +1,6 @@
 import baseUrl from "$lib/shared/base-url";
 import { env } from "$env/dynamic/public";
-import { dataAssetUrls, imageAssetUrls } from "@allmaps/slides-content";
+import { imageAssetUrls } from "@allmaps/slides-content";
 
 const EXTERNAL_URL_PATTERN = /^[a-z][a-z\d+.-]*:/i;
 const PROJECT_ASSET_FOLDERS = new Set([
@@ -9,6 +9,7 @@ const PROJECT_ASSET_FOLDERS = new Set([
   "images",
   "sprites",
 ]);
+const DATA_ASSET_EXTENSION_PATTERN = /\.(?:geojson|json)$/i;
 const FALSE_VALUES = new Set(["0", "false", "no", "off"]);
 
 type IiifImageModule = {
@@ -79,16 +80,6 @@ const normalizeProjectAssetPath = (path: string) => {
 const getContentAssetKey = (projectFolder: string, assetPath: string) =>
   projectFolder ? `./${projectFolder}/${assetPath}` : `./${assetPath}`;
 
-const resolveContentAssetUrl = (
-  urls: Record<string, string>,
-  projectFolder: string,
-  assetPath: string,
-) => {
-  const assetKey = getContentAssetKey(projectFolder, assetPath);
-
-  return urls[assetKey] ?? urls[`./${assetPath}`];
-};
-
 const resolveContentImage = (
   projectFolder: string,
   assetPath: string,
@@ -96,6 +87,36 @@ const resolveContentImage = (
   const assetKey = getContentAssetKey(projectFolder, assetPath);
 
   return imageAssetUrls[assetKey] ?? imageAssetUrls[`./${assetPath}`];
+};
+
+const isContentDataAssetPath = (path: string) =>
+  path.startsWith("assets/") && DATA_ASSET_EXTENSION_PATTERN.test(path);
+
+const getContentDataAssetRequestPath = (
+  projectFolder: string,
+  assetPath: string,
+) => {
+  const pathWithinAssets = assetPath.replace(/^assets\//, "");
+
+  return projectFolder
+    ? joinUrl(projectFolder, pathWithinAssets)
+    : pathWithinAssets;
+};
+
+export const getContentDataAssetUrl = (
+  projectFolder: string,
+  path: string | null | undefined,
+) => {
+  const cleanPath = path?.trim();
+  if (!cleanPath) return undefined;
+  if (isExternalUrl(cleanPath)) return cleanPath;
+
+  const assetPath = normalizeProjectAssetPath(cleanPath);
+  if (!isContentDataAssetPath(assetPath)) return undefined;
+
+  return withBaseUrl(
+    joinUrl("api", getContentDataAssetRequestPath(projectFolder, assetPath)),
+  );
 };
 
 const isIiifEnabled = () =>
@@ -114,12 +135,12 @@ export const getContentAssetUrl = (
   if (isExternalUrl(cleanPath)) return cleanPath;
 
   const assetPath = normalizeProjectAssetPath(cleanPath);
+  const dataAssetUrl = getContentDataAssetUrl(projectFolder, assetPath);
+  if (dataAssetUrl) return dataAssetUrl;
+
   const image = resolveContentImage(projectFolder, assetPath);
 
-  return (
-    resolveContentAssetUrl(dataAssetUrls, projectFolder, assetPath) ??
-    (typeof image === "string" ? image : undefined)
-  );
+  return typeof image === "string" ? image : undefined;
 };
 
 export const getContentIiifImage = (

@@ -296,7 +296,7 @@
           {#if slideshow.id === tocSlideshow.id}
             <button
               type="button"
-              class="toc-text-button {currentTocChapter && hasSubslideshows
+              class="toc-text-button {currentTocChapter
                 ? 'toc-text-button-active'
                 : ''}"
               aria-current={currentTocChapter ? "true" : undefined}
@@ -308,7 +308,7 @@
             </button>
           {:else}
             <a
-              class="toc-text-button {currentTocChapter && hasSubslideshows
+              class="toc-text-button {currentTocChapter
                 ? 'toc-text-button-active'
                 : ''}"
               aria-current={currentTocChapter ? "true" : undefined}
