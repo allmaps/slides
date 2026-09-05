@@ -2,7 +2,7 @@
   import { replaceState } from "$app/navigation";
   import { page } from "$app/state";
   import { tick } from "svelte";
-  import { ArrowRight } from "@lucide/svelte";
+  import { BookOpen, Presentation } from "@lucide/svelte";
 
   import { getSlideshowRouteHref } from "$lib/shared/projects";
   import type {
@@ -21,6 +21,13 @@
     onTocClose?: () => void;
     onIndexChange?: (index: number) => void;
     class?: string;
+  };
+
+  type ChapterSubslideshow = {
+    id: string;
+    href: string;
+    title: string;
+    slideCount: number;
   };
 
   let {
@@ -61,7 +68,9 @@
   const getSubslideshowHref = (slideshow: Slideshow) =>
     getSlideshowRouteHref(project, slideshow);
 
-  const getChapterSubslideshows = (chapter: MapChapter) =>
+  const getChapterSubslideshows = (
+    chapter: MapChapter,
+  ): ChapterSubslideshow[] =>
     chapter.subslideshows
       ? chapter.subslideshows
           .map((reference) => {
@@ -76,10 +85,14 @@
               id,
               href: getSubslideshowHref(subslideshow),
               title: getSubslideshowTitle(reference, subslideshow),
+              slideCount: subslideshow.chapters.length,
             };
           })
           .filter((reference) => reference !== undefined)
       : [];
+
+  const getSlideCountLabel = (count: number) =>
+    `${count} ${count === 1 ? "slide" : "slides"}`;
 
   const closeToc = () => {
     onTocClose?.();
@@ -252,18 +265,37 @@
       >
         <Component />
         {#if subslideshows.length}
-          <div class="mt-6 flex flex-wrap gap-2">
-            {#each subslideshows as subslideshow}
-              <a
-                class="inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm leading-[1.1] font-medium text-[var(--highlight-fg)] hover:bg-[var(--app-hover-bg)]"
-                href={subslideshow.href}
-                onclick={closeToc}
-              >
-                <span>{subslideshow.title}</span>
-                <ArrowRight size={16} aria-hidden="true" />
-              </a>
-            {/each}
-          </div>
+          <aside class="read-more" aria-label="Read more">
+            <div class="read-more__heading">
+              <BookOpen size={20} strokeWidth={1.8} aria-hidden="true" />
+              <h2>Read more</h2>
+            </div>
+            <div class="read-more__list" aria-label="Subslideshows">
+              {#each subslideshows as subslideshow}
+                <a
+                  class="read-more__card"
+                  href={subslideshow.href}
+                  aria-label={`${subslideshow.title}, ${getSlideCountLabel(subslideshow.slideCount)}`}
+                  onclick={closeToc}
+                >
+                  <span class="read-more__preview" aria-hidden="true">
+                    <span class="read-more__placeholder"></span>
+                    <span class="read-more__count">
+                      <Presentation
+                        size={13}
+                        strokeWidth={2}
+                        aria-hidden="true"
+                      />
+                      <span class="read-more__count-text"
+                        >{getSlideCountLabel(subslideshow.slideCount)}</span
+                      >
+                    </span>
+                  </span>
+                  <span class="read-more__title">{subslideshow.title}</span>
+                </a>
+              {/each}
+            </div>
+          </aside>
         {/if}
       </section>
     {:else}
@@ -276,3 +308,129 @@
     {/each}
   </div>
 </div>
+
+<style>
+  .read-more {
+    margin-top: 1.75rem;
+  }
+
+  .read-more__heading {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    color: var(--highlight-fg);
+  }
+
+  .read-more__heading h2 {
+    font-family: var(--font-display);
+    font-feature-settings: var(--font-display-features);
+    font-size: 1.375rem;
+    font-weight: 500;
+    line-height: 1.1;
+    letter-spacing: 0;
+    transform: translateY(0.04em);
+  }
+
+  .read-more__list {
+    display: grid;
+    grid-auto-columns: minmax(8.5rem, 9.75rem);
+    grid-auto-flow: column;
+    gap: 0.55rem;
+    margin-top: 0.65rem;
+    margin-right: -1.25rem;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    padding-right: 1.25rem;
+    padding-bottom: 0.15rem;
+    scrollbar-width: none;
+  }
+
+  .read-more__list::-webkit-scrollbar {
+    display: none;
+  }
+
+  .read-more__card {
+    display: block;
+    min-width: 0;
+    color: var(--highlight-fg);
+    text-decoration: none;
+  }
+
+  .read-more__preview {
+    position: relative;
+    display: block;
+    width: 100%;
+    overflow: hidden;
+    aspect-ratio: 1.35;
+    border-radius: 0.375rem;
+    background: var(--app-hover-bg);
+  }
+
+  .read-more__placeholder {
+    position: absolute;
+    inset: 0;
+    background:
+      linear-gradient(
+        135deg,
+        color-mix(in srgb, var(--highlight-fg) 26%, transparent),
+        transparent 52%
+      ),
+      color-mix(in srgb, var(--app-text) 8%, transparent);
+  }
+
+  .read-more__count {
+    position: absolute;
+    bottom: 0.4rem;
+    left: 0.4rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    max-width: calc(100% - 0.8rem);
+    border-radius: 0.175rem;
+    background: rgb(18 26 28 / 0.3);
+    color: #fff;
+    padding: 0.2rem 0.35rem;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    line-height: 1;
+    white-space: nowrap;
+  }
+
+  .read-more__count-text {
+    transform: translateY(0.08em);
+  }
+
+  .read-more__title {
+    display: block;
+    margin-top: 0.45rem;
+    overflow: hidden;
+    font-family: var(--font-display);
+    font-feature-settings: var(--font-display-features);
+    font-size: 1rem;
+    font-weight: 500;
+    line-height: 1.1;
+    letter-spacing: 0;
+    text-overflow: ellipsis;
+  }
+
+  .read-more__card:hover .read-more__title {
+    text-decoration: underline;
+    text-decoration-thickness: 0.06em;
+    text-underline-offset: 0.12em;
+  }
+
+  :global(.dark) .read-more__heading,
+  :global(.dark) .read-more__title {
+    color: var(--app-text);
+  }
+
+  :global(.dark) .read-more__preview {
+    background: rgb(255 255 255 / 0.1);
+  }
+
+  :global(.dark) .read-more__placeholder {
+    background:
+      linear-gradient(135deg, rgb(255 255 255 / 0.12), transparent 52%),
+      rgb(255 255 255 / 0.08);
+  }
+</style>
