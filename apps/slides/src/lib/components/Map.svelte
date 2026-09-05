@@ -8,7 +8,9 @@
     SourceSpecification,
     LayerSpecification,
     CenterZoomBearing,
+    CameraForBoundsOptions,
     FlyToOptions,
+    LngLatBoundsLike,
     PaddingOptions,
     PointLike,
   } from "maplibre-gl";
@@ -227,6 +229,21 @@
     };
   };
 
+  const getCameraForBoundsOptions = (
+    cameraLayoutOptions: CameraLayoutOptions,
+  ): CameraForBoundsOptions => ({
+    ...cameraLayoutOptions,
+    ...(currentLocation.bearing !== undefined
+      ? { bearing: currentLocation.bearing }
+      : {}),
+  });
+
+  const getBoundsCenter = (bounds: LngLatBoundsLike): [number, number] => {
+    const center = maplibregl.LngLatBounds.convert(bounds).getCenter();
+
+    return [center.lng, center.lat];
+  };
+
   function getFlyToOptions(
     camera: CenterZoomBearing | undefined,
     cameraLayoutOptions: CameraLayoutOptions,
@@ -237,7 +254,12 @@
       ...currentLocation,
     };
 
-    if (cameraLayoutOptions.offset && (forceOffset || currentLocation.center)) {
+    if (
+      cameraLayoutOptions.offset &&
+      (forceOffset ||
+        currentLocation.center ||
+        (camera === undefined && currentLocation.bearing !== undefined))
+    ) {
       flyToOptions.offset = cameraLayoutOptions.offset;
     }
 
@@ -484,11 +506,13 @@
 
       let camera: CenterZoomBearing | undefined;
       let forceCameraOffset = false;
+      const bounds = warpedMapLayer.getMapsBounds(mapIdsForBounds);
+      const locationBearing = currentLocation.bearing;
 
       const firstMapWithBearingProp = currentWarpedMaps.find(
         (annotation) => annotation.useBearing == true,
       );
-      if (firstMapWithBearingProp) {
+      if (firstMapWithBearingProp && locationBearing === undefined) {
         const warpedMapIdsUsedForBearing =
           mapIdsByAnnotationUrl.get(firstMapWithBearingProp.url) || [];
         const sortedMapIds: Set<string> = new Set(
@@ -499,10 +523,18 @@
           ...cameraLayoutOptions,
         });
         forceCameraOffset = true;
-      } else {
-        const bounds = warpedMapLayer.getMapsBounds(mapIdsForBounds);
-        if (bounds) {
-          camera = map.cameraForBounds(bounds, cameraLayoutOptions);
+      } else if (bounds) {
+        camera = map.cameraForBounds(
+          bounds,
+          getCameraForBoundsOptions(cameraLayoutOptions),
+        );
+
+        if (camera && locationBearing !== undefined && !currentLocation.center) {
+          camera = {
+            ...camera,
+            center: getBoundsCenter(bounds),
+          };
+          forceCameraOffset = true;
         }
       }
       const mapsUsedForZoom = currentWarpedMaps.filter(
