@@ -871,39 +871,39 @@
   >
     <button
       type="button"
-      class="pointer-events-auto inline-flex h-11 w-11 cursor-pointer items-center justify-center rounded-lg border border-white/15 bg-black/15 text-white shadow-2xl backdrop-blur-md"
+      class="pointer-events-auto inline-flex h-[52px] w-[52px] cursor-pointer items-center justify-center rounded-lg bg-[var(--app-map-control-bg)] text-[var(--app-map-control-text)] shadow-2xl backdrop-blur-md"
       aria-label="Zoom in"
       title="Zoom in"
       onclick={zoomIn}
     >
-      <Plus size={20} aria-hidden="true" />
+      <Plus size={24} aria-hidden="true" />
     </button>
 
     <button
       type="button"
-      class="pointer-events-auto inline-flex h-11 w-11 cursor-pointer items-center justify-center rounded-lg border border-white/15 bg-black/15 text-white shadow-2xl backdrop-blur-md"
+      class="pointer-events-auto inline-flex h-[52px] w-[52px] cursor-pointer items-center justify-center rounded-lg bg-[var(--app-map-control-bg)] text-[var(--app-map-control-text)] shadow-2xl backdrop-blur-md"
       aria-label="Zoom out"
       title="Zoom out"
       onclick={zoomOut}
     >
-      <Minus size={20} aria-hidden="true" />
+      <Minus size={24} aria-hidden="true" />
     </button>
 
     <button
       type="button"
-      class="pointer-events-auto inline-flex h-11 w-11 cursor-pointer items-center justify-center rounded-lg border border-white/15 bg-black/15 text-white shadow-2xl backdrop-blur-md"
+      class="pointer-events-auto inline-flex h-[52px] w-[52px] cursor-pointer items-center justify-center rounded-lg bg-[var(--app-map-control-bg)] text-[var(--app-map-control-text)] shadow-2xl backdrop-blur-md"
       aria-label="Reset north"
       title="Reset north"
       onclick={resetNorth}
     >
       <svg
-        class="h-7 w-7"
+        class="h-9 w-9"
         viewBox="0 0 24 24"
         aria-hidden="true"
         style={`transform: rotate(${-currentBearing}deg)`}
       >
         <path d="M12 2.5 8.75 12h6.5L12 2.5Z" fill="white" />
-        <path d="M12 21.5 8.75 12h6.5L12 21.5Z" fill="#d1d5db" />
+        <path d="M12 21.5 8.75 12h6.5L12 21.5Z" fill="var(--app-interface-grey)" />
       </svg>
     </button>
   </div>
