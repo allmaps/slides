@@ -1,10 +1,18 @@
 <script lang="ts">
   import { onMount, setContext, tick } from "svelte";
-  import { ArrowLeft, ListTree, Moon, Sun, X } from "@lucide/svelte";
+  import {
+    ArrowLeft,
+    Layers as LayersIcon,
+    ListTree,
+    Moon,
+    Sun,
+    X,
+  } from "@lucide/svelte";
   import type { PaddingOptions } from "maplibre-gl";
 
   import Map from "$lib/components/Map.svelte";
   import PanelOverlayToggle from "$lib/components/PanelOverlayToggle.svelte";
+  import SlideshowLayers from "$lib/components/SlideshowLayers.svelte";
   import SlideshowPanel from "$lib/components/SlideshowPanel.svelte";
   import SlideshowToc from "$lib/components/SlideshowToc.svelte";
   import { getGeoJsonLayers } from "$lib/shared/geojson";
@@ -29,9 +37,11 @@
   const PANEL_TRANSITION_MS = 500;
   const PANEL_HEADER_HEIGHT = "52px";
   const PANEL_OVERLAY_OVERLAP = "0.625rem";
+  const LAYER_HIGHLIGHT_ENABLED = false;
   const THEME_STORAGE_KEY = "slides-theme";
 
   type ThemePreference = "light" | "dark";
+  type PanelOverlayName = "toc" | "layers";
 
   let { project, slideshow, mainSlideshow }: Props = $props();
 
@@ -49,7 +59,11 @@
   let isDarkMode: boolean | undefined = $state(undefined);
   let mainIndex: number = $state(0);
   let subslideshowIndex: number = $state(0);
-  let tocOpen: boolean = $state(false);
+  let activePanelOverlay: PanelOverlayName | undefined = $state(undefined);
+  let highlightedWarpedMapUrl: string | undefined = $state(undefined);
+  let hiddenWarpedMapUrls: string[] = $state([]);
+  let zoomToWarpedMapUrl: string | undefined = $state(undefined);
+  let zoomToWarpedMapSignal: number = $state(0);
   let scrollToTopSignal: number = $state(0);
   let mapResetSignal: number = $state(0);
   let panelElement: HTMLDivElement | undefined = $state();
@@ -86,6 +100,9 @@
   );
   const headerChapterTitle = $derived(activeChapter?.title);
   const headerActiveTitle = $derived(headerSubTitle ?? headerTitle);
+  const tocOpen = $derived(activePanelOverlay === "toc");
+  const layersOpen = $derived(activePanelOverlay === "layers");
+  const panelOverlayOpen = $derived(activePanelOverlay !== undefined);
   const showHeaderChapterTitle = $derived(
     headerChapterTitle !== undefined && headerChapterTitle !== headerActiveTitle,
   );
@@ -102,6 +119,9 @@
   const themeToggleLabel = $derived(
     isDarkMode ? "Switch to light theme" : "Switch to dark theme",
   );
+  const layersToggleLabel = $derived(
+    layersOpen ? "Close map layers" : "Open map layers",
+  );
   const tocOverlayTop = $derived(
     `calc(${PANEL_HEADER_HEIGHT} - ${PANEL_OVERLAY_OVERLAP})`,
   );
@@ -112,11 +132,44 @@
     value === "light" || value === "dark" ? value : undefined;
 
   const closeToc = () => {
-    tocOpen = false;
+    if (tocOpen) {
+      activePanelOverlay = undefined;
+    }
+  };
+
+  const clearWarpedMapHighlight = () => {
+    highlightedWarpedMapUrl = undefined;
+  };
+
+  const resetWarpedMapVisibility = () => {
+    hiddenWarpedMapUrls = [];
+  };
+
+  const closePanelOverlays = () => {
+    if (layersOpen) {
+      clearWarpedMapHighlight();
+    }
+
+    activePanelOverlay = undefined;
   };
 
   const toggleToc = () => {
-    tocOpen = !tocOpen;
+    const wasLayersOpen = layersOpen;
+    activePanelOverlay = tocOpen ? undefined : "toc";
+
+    if (wasLayersOpen) {
+      clearWarpedMapHighlight();
+    }
+  };
+
+  const toggleLayers = () => {
+    if (layersOpen) {
+      activePanelOverlay = undefined;
+      clearWarpedMapHighlight();
+      return;
+    }
+
+    activePanelOverlay = "layers";
   };
 
   const toggleTheme = () => {
@@ -132,8 +185,15 @@
   };
 
   const scrollActivePanelToTop = () => {
-    closeToc();
+    closePanelOverlays();
     scrollToTopSignal += 1;
+  };
+
+  const resetActiveSlideView = () => {
+    closePanelOverlays();
+    clearWarpedMapHighlight();
+    resetWarpedMapVisibility();
+    mapResetSignal += 1;
   };
 
   const waitForNextFrame = () =>
@@ -142,7 +202,7 @@
     });
 
   const scrollActivePanelToChapter = async (slug: string) => {
-    closeToc();
+    closePanelOverlays();
     await tick();
     await waitForNextFrame();
     await (isSubslideshowActive ? subslideshowPanel : mainPanel)
@@ -150,10 +210,40 @@
   };
 
   const jumpToMainStart = () => {
-    closeToc();
+    closePanelOverlays();
     mainIndex = 0;
+    resetWarpedMapVisibility();
     scrollToTopSignal += 1;
     mapResetSignal += 1;
+  };
+
+  const highlightWarpedMap = (url?: string) => {
+    if (!LAYER_HIGHLIGHT_ENABLED) return;
+
+    highlightedWarpedMapUrl = url;
+  };
+
+  const toggleWarpedMapVisibility = (url: string) => {
+    const isHidden = hiddenWarpedMapUrls.includes(url);
+
+    clearWarpedMapHighlight();
+
+    hiddenWarpedMapUrls = isHidden
+      ? hiddenWarpedMapUrls.filter((hiddenUrl) => hiddenUrl !== url)
+      : [...hiddenWarpedMapUrls, url];
+
+    if (isHidden && LAYER_HIGHLIGHT_ENABLED) {
+      highlightedWarpedMapUrl = url;
+    }
+  };
+
+  const zoomToWarpedMapBounds = (url: string) => {
+    if (LAYER_HIGHLIGHT_ENABLED) {
+      highlightedWarpedMapUrl = url;
+    }
+
+    zoomToWarpedMapUrl = url;
+    zoomToWarpedMapSignal += 1;
   };
 
   const samePadding = (a: PaddingOptions, b: PaddingOptions) =>
@@ -196,7 +286,8 @@
 
   $effect(() => {
     activeSlideshow.id;
-    closeToc();
+    activePanelOverlay = undefined;
+    clearWarpedMapHighlight();
 
     if (isSubslideshowActive) {
       subslideshowIndex = 0;
@@ -317,6 +408,10 @@
           layoutRevision={mapLayoutRevision}
           resetSignal={mapResetSignal}
           padding={mapPadding}
+          highlight={highlightedWarpedMapUrl}
+          {hiddenWarpedMapUrls}
+          {zoomToWarpedMapUrl}
+          {zoomToWarpedMapSignal}
         />
       {/key}
     {/if}
@@ -356,7 +451,7 @@
             href={mainBreadcrumbHref}
             aria-label={`Back to ${rootSlideshow.title}`}
             title={`Back to ${rootSlideshow.title}`}
-            onclick={closeToc}
+            onclick={closePanelOverlays}
           >
             <ArrowLeft size={18} aria-hidden="true" />
           </a>
@@ -388,11 +483,10 @@
               <button
                 type="button"
                 class="ml-2 min-w-0 translate-y-[0.14em] cursor-pointer overflow-hidden truncate p-0 text-left opacity-75"
-                aria-label={`${tocOpen ? "Close" : "Open"} table of contents for ${headerChapterTitle}`}
-                aria-expanded={tocOpen}
+                aria-label={`Reset map view for ${headerChapterTitle}`}
                 tabindex={isSubslideshowActive ? -1 : undefined}
                 title={headerChapterTitle}
-                onclick={toggleToc}
+                onclick={resetActiveSlideView}
               >
                 {headerChapterTitle}
               </button>
@@ -423,11 +517,10 @@
               <button
                 type="button"
                 class="ml-2 min-w-0 translate-y-[0.14em] cursor-pointer overflow-hidden truncate p-0 text-left opacity-75"
-                aria-label={`${tocOpen ? "Close" : "Open"} table of contents for ${headerChapterTitle}`}
-                aria-expanded={tocOpen}
+                aria-label={`Reset map view for ${headerChapterTitle}`}
                 tabindex={isSubslideshowActive ? undefined : -1}
                 title={headerChapterTitle}
-                onclick={toggleToc}
+                onclick={resetActiveSlideView}
               >
                 {headerChapterTitle}
               </button>
@@ -461,7 +554,30 @@
             <ListTree size={18} aria-hidden="true" />
           {/if}
         </PanelOverlayToggle>
+
+        <PanelOverlayToggle
+          active={layersOpen}
+          aria-label={layersToggleLabel}
+          title={layersToggleLabel}
+          onclick={toggleLayers}
+        >
+          {#if layersOpen}
+            <X size={18} aria-hidden="true" />
+          {:else}
+            <LayersIcon size={18} aria-hidden="true" />
+          {/if}
+        </PanelOverlayToggle>
       </header>
+
+      {#if panelOverlayOpen}
+        <button
+          type="button"
+          class="absolute inset-x-0 top-[52px] bottom-0 z-20 cursor-default bg-transparent p-0 focus:outline-none"
+          aria-label="Close panel overlay"
+          tabindex="-1"
+          onclick={closePanelOverlays}
+        ></button>
+      {/if}
 
       <div class="min-h-0 flex-1 overflow-hidden">
         <div
@@ -474,7 +590,7 @@
             {project}
             slideshow={rootSlideshow}
             active={!isSubslideshowActive}
-            tocOpen={tocOpen && !isSubslideshowActive}
+            overlayOpen={panelOverlayOpen && !isSubslideshowActive}
             {scrollToTopSignal}
             onTocClose={closeToc}
             onIndexChange={(index) => (mainIndex = index)}
@@ -489,7 +605,7 @@
                   {project}
                   slideshow={subslideshow}
                   active={isSubslideshowActive}
-                  tocOpen={tocOpen && isSubslideshowActive}
+                  overlayOpen={panelOverlayOpen && isSubslideshowActive}
                   {scrollToTopSignal}
                   onTocClose={closeToc}
                   onIndexChange={(index) => (subslideshowIndex = index)}
@@ -509,6 +625,17 @@
           top={tocOverlayTop}
           onClose={closeToc}
           onSelectLocalChapter={scrollActivePanelToChapter}
+        />
+      {:else if layersOpen}
+        <SlideshowLayers
+          chapter={activeChapter}
+          {hiddenWarpedMapUrls}
+          {highlightedWarpedMapUrl}
+          highlightEnabled={LAYER_HIGHLIGHT_ENABLED}
+          top={tocOverlayTop}
+          onToggleVisibility={toggleWarpedMapVisibility}
+          onZoomToBounds={zoomToWarpedMapBounds}
+          onHighlight={highlightWarpedMap}
         />
       {/if}
     </div>

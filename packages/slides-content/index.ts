@@ -19,7 +19,7 @@ type ImageModule = IiifImageModule | string;
 
 export const projectFiles = {} as Record<string, string>;
 
-export const dataAssetUrls = {} as Record<string, string>;
+export const dataAssetFiles = {} as Record<string, () => Promise<string>>;
 
 export const imageAssetUrls = {} as Record<string, ImageModule>;
 

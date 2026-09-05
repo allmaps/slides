@@ -5,6 +5,7 @@ export type WarpedMapProps = {
   type?: "Image";
   url: string;
   caption?: string;
+  provenance?: string;
   homepage?: string;
   useBearing?: boolean;
   useBounds?: boolean;

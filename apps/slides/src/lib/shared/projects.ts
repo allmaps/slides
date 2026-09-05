@@ -7,11 +7,7 @@ import {
   parseSlideMetadata,
   type ParsedSlideMetadata,
 } from "$lib/shared/content-schema";
-import {
-  getContentAssetUrl,
-  joinUrl,
-  withBaseUrl,
-} from "$lib/shared/paths";
+import { getContentAssetUrl, joinUrl, withBaseUrl } from "$lib/shared/paths";
 import { isSingleProjectRootRequested } from "$lib/shared/routing";
 import type {
   MapChapter,
