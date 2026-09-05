@@ -1,10 +1,12 @@
 <script lang="ts">
-  import { onMount, setContext } from "svelte";
-  import { ArrowLeft, ListTree, X } from "@lucide/svelte";
+  import { onMount, setContext, tick } from "svelte";
+  import { ArrowLeft, ListTree, Moon, Sun, X } from "@lucide/svelte";
   import type { PaddingOptions } from "maplibre-gl";
 
   import Map from "$lib/components/Map.svelte";
+  import PanelOverlayToggle from "$lib/components/PanelOverlayToggle.svelte";
   import SlideshowPanel from "$lib/components/SlideshowPanel.svelte";
+  import SlideshowToc from "$lib/components/SlideshowToc.svelte";
   import { getGeoJsonLayers } from "$lib/shared/geojson";
   import { getSlideshowRouteHref } from "$lib/shared/projects";
   import { DEFAULT_DURATION, DEFAULT_PADDING } from "$lib/shared/settings";
@@ -16,7 +18,20 @@
     mainSlideshow?: Slideshow;
   };
 
+  type SlideshowPanelHandle = {
+    scrollToChapter: (
+      slug: string,
+      behavior?: ScrollBehavior,
+    ) => Promise<void>;
+    scrollToTop: (behavior?: ScrollBehavior) => void;
+  };
+
   const PANEL_TRANSITION_MS = 500;
+  const PANEL_HEADER_HEIGHT = "52px";
+  const PANEL_OVERLAY_OVERLAP = "0.625rem";
+  const THEME_STORAGE_KEY = "slides-theme";
+
+  type ThemePreference = "light" | "dark";
 
   let { project, slideshow, mainSlideshow }: Props = $props();
 
@@ -38,6 +53,8 @@
   let scrollToTopSignal: number = $state(0);
   let mapResetSignal: number = $state(0);
   let panelElement: HTMLDivElement | undefined = $state();
+  let mainPanel: SlideshowPanelHandle | undefined = $state();
+  let subslideshowPanel: SlideshowPanelHandle | undefined = $state();
   let mapLayoutRevision: number = $state(0);
   let mapPadding: PaddingOptions = $state({
     top: DEFAULT_PADDING,
@@ -45,6 +62,7 @@
     bottom: DEFAULT_PADDING,
     left: DEFAULT_PADDING,
   });
+  let themePreference: ThemePreference | undefined = $state(undefined);
 
   const clampIndex = (index: number, length: number) =>
     length > 0 ? Math.min(Math.max(index, 0), length - 1) : 0;
@@ -81,6 +99,17 @@
     const slug = rootSlideshow.chapters[mainIndex]?.slug;
     return slug ? `${mainHref}#${encodeURIComponent(slug)}` : mainHref;
   });
+  const themeToggleLabel = $derived(
+    isDarkMode ? "Switch to light theme" : "Switch to dark theme",
+  );
+  const tocOverlayTop = $derived(
+    `calc(${PANEL_HEADER_HEIGHT} - ${PANEL_OVERLAY_OVERLAP})`,
+  );
+
+  const parseThemePreference = (
+    value: string | null,
+  ): ThemePreference | undefined =>
+    value === "light" || value === "dark" ? value : undefined;
 
   const closeToc = () => {
     tocOpen = false;
@@ -90,9 +119,34 @@
     tocOpen = !tocOpen;
   };
 
+  const toggleTheme = () => {
+    const nextIsDarkMode = !(isDarkMode ?? false);
+    themePreference = nextIsDarkMode ? "dark" : "light";
+    isDarkMode = nextIsDarkMode;
+
+    try {
+      window.localStorage.setItem(THEME_STORAGE_KEY, themePreference);
+    } catch {
+      // Persisting theme preference is a convenience, not required.
+    }
+  };
+
   const scrollActivePanelToTop = () => {
     closeToc();
     scrollToTopSignal += 1;
+  };
+
+  const waitForNextFrame = () =>
+    new Promise<void>((resolve) => {
+      requestAnimationFrame(() => resolve());
+    });
+
+  const scrollActivePanelToChapter = async (slug: string) => {
+    closeToc();
+    await tick();
+    await waitForNextFrame();
+    await (isSubslideshowActive ? subslideshowPanel : mainPanel)
+      ?.scrollToChapter(slug);
   };
 
   const jumpToMainStart = () => {
@@ -156,7 +210,9 @@
     let mapLayoutTimeout: number | undefined;
 
     const handleMediaChange = (event: MediaQueryListEvent) => {
-      isDarkMode = event.matches;
+      if (!themePreference) {
+        isDarkMode = event.matches;
+      }
     };
     const queueImmediateMapLayoutUpdate = () => {
       if (layoutFrame !== undefined) return;
@@ -199,11 +255,14 @@
     };
 
     try {
+      themePreference = parseThemePreference(
+        window.localStorage.getItem(THEME_STORAGE_KEY),
+      );
       media = window.matchMedia("(prefers-color-scheme: dark)");
-      isDarkMode = media.matches;
+      isDarkMode = themePreference ? themePreference === "dark" : media.matches;
       media.addEventListener("change", handleMediaChange);
     } catch {
-      isDarkMode = false;
+      isDarkMode = themePreference === "dark";
     }
 
     if (panelElement) {
@@ -240,7 +299,9 @@
 </svelte:head>
 
 <div
-  class="relative h-app-screen w-screen overflow-hidden bg-white dark:bg-black"
+  class="relative h-app-screen w-screen overflow-hidden bg-white dark:bg-black {isDarkMode
+    ? 'dark'
+    : ''}"
 >
   <div class="absolute inset-0 z-0 min-h-0">
     {#if isDarkMode !== undefined}
@@ -264,34 +325,34 @@
   <div class="pointer-events-none absolute inset-0 z-10">
     {#if isSubslideshowActive}
       <a
-        class="pointer-events-auto absolute top-3 left-3 max-w-[calc(100vw-12rem)] rounded-lg border border-white/15 bg-black/15 px-4 py-3 text-left text-base font-semibold text-white shadow-2xl backdrop-blur-md sm:top-4 sm:left-4 sm:text-lg md:top-5 md:left-5 md:max-w-[28rem]"
+        class="pointer-events-auto absolute top-3 left-3 flex min-h-[52px] max-w-[calc(100vw-12rem)] items-center rounded-lg bg-[var(--app-map-control-bg)] px-4 py-2 text-left text-[28px] leading-[1.1] font-normal text-[var(--app-map-control-text)] shadow-2xl backdrop-blur-md sm:top-4 sm:left-4 md:top-5 md:left-5 md:max-w-[28rem]"
         href={mainHref}
         title={rootSlideshow.title}
         onclick={jumpToMainStart}
       >
-        <span class="block truncate">{rootSlideshow.title}</span>
+        <span class="block translate-y-[0.06em] truncate">{rootSlideshow.title}</span>
       </a>
     {:else}
       <button
         type="button"
-        class="pointer-events-auto absolute top-3 left-3 max-w-[calc(100vw-12rem)] cursor-pointer rounded-lg border border-white/15 bg-black/15 px-4 py-3 text-left text-base font-semibold text-white shadow-2xl backdrop-blur-md sm:top-4 sm:left-4 sm:text-lg md:top-5 md:left-5 md:max-w-[28rem]"
+        class="pointer-events-auto absolute top-3 left-3 flex min-h-[52px] max-w-[calc(100vw-12rem)] cursor-pointer items-center rounded-lg bg-[var(--app-map-control-bg)] px-4 py-2 text-left text-[28px] leading-[1.1] font-normal text-[var(--app-map-control-text)] shadow-2xl backdrop-blur-md sm:top-4 sm:left-4 md:top-5 md:left-5 md:max-w-[28rem]"
         title={rootSlideshow.title}
         onclick={jumpToMainStart}
       >
-        <span class="block truncate">{rootSlideshow.title}</span>
+        <span class="block translate-y-[0.06em] truncate">{rootSlideshow.title}</span>
       </button>
     {/if}
 
     <div
       bind:this={panelElement}
-      class="pointer-events-auto absolute right-3 bottom-3 flex h-[calc((100dvh-1.5rem)/2)] max-h-full min-h-0 w-[calc(100vw-1.5rem)] flex-col overflow-hidden rounded-lg border border-black/10 bg-white/85 text-black shadow-2xl backdrop-blur-md transition-none ease-in-out dark:border-white/15 dark:bg-black/85 dark:text-white sm:right-4 sm:bottom-4 sm:h-[calc((100dvh-2rem)/2)] sm:w-[calc(100vw-2rem)] md:right-5 md:bottom-5 md:h-[calc(100dvh-2.5rem)] md:w-[480px] md:transition-[right,bottom,width,height] md:duration-500 motion-reduce:transition-none xl:w-[600px]"
+      class="pointer-events-auto absolute right-3 bottom-3 flex h-[calc((100dvh-1.5rem)/2)] max-h-full min-h-0 w-[calc(100vw-1.5rem)] flex-col overflow-hidden rounded-lg bg-[var(--app-panel-bg)] text-[var(--app-text)] shadow-2xl backdrop-blur-md transition-none ease-in-out sm:right-4 sm:bottom-4 sm:h-[calc((100dvh-2rem)/2)] sm:w-[calc(100vw-2rem)] md:right-5 md:bottom-5 md:h-[calc(100dvh-2.5rem)] md:w-[480px] md:transition-[right,bottom,width,height] md:duration-500 motion-reduce:transition-none xl:w-[600px]"
     >
       <header
-        class="relative z-30 flex h-12 shrink-0 items-center gap-2 border-b border-black/10 bg-white/90 px-5 text-sm text-black backdrop-blur dark:border-white/15 dark:bg-black/90 dark:text-white"
+        class="relative z-30 flex h-[52px] shrink-0 items-center gap-2 bg-[var(--app-panel-header-bg)] px-5 text-[16px] leading-[1.1] font-medium text-[var(--app-breadcrumb)] backdrop-blur"
       >
         {#if isSubslideshowActive}
           <a
-            class="inline-flex h-8 w-8 shrink-0 items-center justify-center border border-black/15 hover:bg-black/5 dark:border-white/20 dark:hover:bg-white/10"
+            class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-[var(--app-icon)] hover:bg-[var(--app-hover-bg)]"
             href={mainBreadcrumbHref}
             aria-label={`Back to ${rootSlideshow.title}`}
             title={`Back to ${rootSlideshow.title}`}
@@ -313,7 +374,7 @@
           >
             <button
               type="button"
-              class="max-w-[45%] shrink-0 cursor-pointer overflow-hidden truncate whitespace-nowrap p-0 text-left"
+              class="max-w-[45%] shrink-0 translate-y-[0.14em] cursor-pointer overflow-hidden truncate whitespace-nowrap p-0 text-left"
               aria-label={`Scroll ${headerTitle} to top`}
               tabindex={isSubslideshowActive ? -1 : undefined}
               title={headerTitle}
@@ -323,10 +384,10 @@
             </button>
 
             {#if showHeaderChapterTitle}
-              <span class="ml-2 shrink-0 opacity-45">/</span>
+              <span class="ml-2 shrink-0 translate-y-[0.14em] text-[var(--app-icon)]">/</span>
               <button
                 type="button"
-                class="ml-2 min-w-0 cursor-pointer overflow-hidden truncate p-0 text-left opacity-75"
+                class="ml-2 min-w-0 translate-y-[0.14em] cursor-pointer overflow-hidden truncate p-0 text-left opacity-75"
                 aria-label={`${tocOpen ? "Close" : "Open"} table of contents for ${headerChapterTitle}`}
                 aria-expanded={tocOpen}
                 tabindex={isSubslideshowActive ? -1 : undefined}
@@ -347,7 +408,7 @@
             {#if headerSubTitle}
               <button
                 type="button"
-                class="max-w-[55%] shrink-0 cursor-pointer overflow-hidden truncate whitespace-nowrap p-0 text-left"
+                class="max-w-[55%] shrink-0 translate-y-[0.14em] cursor-pointer overflow-hidden truncate whitespace-nowrap p-0 text-left"
                 aria-label={`Scroll ${headerSubTitle} to top`}
                 tabindex={isSubslideshowActive ? undefined : -1}
                 title={headerSubTitle}
@@ -358,10 +419,10 @@
             {/if}
 
             {#if showHeaderChapterTitle}
-              <span class="ml-2 shrink-0 opacity-45">/</span>
+              <span class="ml-2 shrink-0 translate-y-[0.14em] text-[var(--app-icon)]">/</span>
               <button
                 type="button"
-                class="ml-2 min-w-0 cursor-pointer overflow-hidden truncate p-0 text-left opacity-75"
+                class="ml-2 min-w-0 translate-y-[0.14em] cursor-pointer overflow-hidden truncate p-0 text-left opacity-75"
                 aria-label={`${tocOpen ? "Close" : "Open"} table of contents for ${headerChapterTitle}`}
                 aria-expanded={tocOpen}
                 tabindex={isSubslideshowActive ? undefined : -1}
@@ -376,9 +437,21 @@
 
         <button
           type="button"
-          class="inline-flex h-8 w-8 shrink-0 items-center justify-center border border-black/15 hover:bg-black/5 dark:border-white/20 dark:hover:bg-white/10"
+          class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-[var(--app-icon)] hover:bg-[var(--app-hover-bg)]"
+          aria-label={themeToggleLabel}
+          title={themeToggleLabel}
+          onclick={toggleTheme}
+        >
+          {#if isDarkMode}
+            <Sun size={18} aria-hidden="true" />
+          {:else}
+            <Moon size={18} aria-hidden="true" />
+          {/if}
+        </button>
+
+        <PanelOverlayToggle
+          active={tocOpen}
           aria-label={tocOpen ? "Close table of contents" : "Open table of contents"}
-          aria-expanded={tocOpen}
           title={tocOpen ? "Close table of contents" : "Open table of contents"}
           onclick={toggleToc}
         >
@@ -387,20 +460,19 @@
           {:else}
             <ListTree size={18} aria-hidden="true" />
           {/if}
-        </button>
+        </PanelOverlayToggle>
       </header>
 
-      <div class="min-h-0 flex-1 overflow-clip">
+      <div class="min-h-0 flex-1 overflow-hidden">
         <div
-          class="flex h-full w-[200%] {isSubslideshowActive
-            ? '-translate-x-1/2'
-            : 'translate-x-0'} transition-transform duration-500 ease-in-out motion-reduce:transition-none"
+          class="flex h-full w-[200%] transition-transform duration-500 ease-in-out motion-reduce:transition-none"
+          style={`transform: translateX(${isSubslideshowActive ? "-50%" : "0"});`}
         >
           <SlideshowPanel
+            bind:this={mainPanel}
             class="h-full w-1/2 shrink-0"
             {project}
             slideshow={rootSlideshow}
-            {rootSlideshow}
             active={!isSubslideshowActive}
             tocOpen={tocOpen && !isSubslideshowActive}
             {scrollToTopSignal}
@@ -412,10 +484,10 @@
             {#if subslideshow}
               {#key subslideshow.id}
                 <SlideshowPanel
+                  bind:this={subslideshowPanel}
                   class="h-full"
                   {project}
                   slideshow={subslideshow}
-                  {rootSlideshow}
                   active={isSubslideshowActive}
                   tocOpen={tocOpen && isSubslideshowActive}
                   {scrollToTopSignal}
@@ -427,6 +499,18 @@
           </div>
         </div>
       </div>
+
+      {#if tocOpen}
+        <SlideshowToc
+          {project}
+          slideshow={activeSlideshow}
+          {rootSlideshow}
+          currentSlug={activeChapter?.slug}
+          top={tocOverlayTop}
+          onClose={closeToc}
+          onSelectLocalChapter={scrollActivePanelToChapter}
+        />
+      {/if}
     </div>
   </div>
 </div>
