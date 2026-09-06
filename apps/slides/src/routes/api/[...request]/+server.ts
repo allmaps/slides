@@ -1,5 +1,5 @@
 import { error } from "@sveltejs/kit";
-import { dataAssetFiles } from "@allmaps/slides-content";
+import { dataAssetFiles } from "$lib/shared/content-package";
 import type { RequestHandler } from "./$types";
 
 const DATA_ASSET_EXTENSION_PATTERN = /\.(?:geojson|json)$/i;

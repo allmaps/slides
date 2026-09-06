@@ -16,6 +16,11 @@ type RawSlidesConfig = {
   routing?: {
     singleProjectRoot?: boolean | string | number;
   };
+  map?: {
+    protomaps?: {
+      key?: string;
+    };
+  };
   protomaps?: {
     key?: string;
   };
@@ -420,7 +425,7 @@ export const loadSlidesConfig = async (
     process.env.PUBLIC_URL ?? publicBasePath,
   );
   const protomapsKey = getString(
-    raw.protomaps?.key,
+    raw.protomaps?.key ?? raw.map?.protomaps?.key,
     process.env.PUBLIC_PROTOMAPS_KEY ?? "",
   );
 

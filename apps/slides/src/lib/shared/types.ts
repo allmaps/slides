@@ -1,5 +1,53 @@
 import type { MapLibreWarpedMapLayerOptions } from "@allmaps/maplibre";
-import type { SourceSpecification } from "maplibre-gl";
+import type { Flavor } from "@protomaps/basemaps";
+import type { SourceSpecification, StyleSpecification } from "maplibre-gl";
+
+export type ThemeMode = "light" | "dark";
+
+export type BasemapStyleReference = string | StyleSpecification;
+
+export type BasemapLabelPosition = "aboveWarpedMaps" | "belowWarpedMaps";
+
+export type BasemapLabelsConfig = {
+  visible?: boolean;
+  position?: BasemapLabelPosition;
+};
+
+export type ProtomapsThemeValues<T> = Partial<Record<ThemeMode, T>>;
+
+export type DeepPartial<T> = {
+  [Key in keyof T]?: T[Key] extends object ? DeepPartial<T[Key]> : T[Key];
+};
+
+export type ProtomapsFlavorOverrides = DeepPartial<Flavor>;
+
+export type ProtomapsStyleConfig = {
+  key?: string;
+  locale?: string;
+  lang?: string;
+  glyphs?: string;
+  sprite?: string | ProtomapsThemeValues<string>;
+  sprites?: ProtomapsThemeValues<string>;
+  flavor?: string | ProtomapsFlavorOverrides;
+  flavors?: ProtomapsThemeValues<string | ProtomapsFlavorOverrides>;
+  overrides?:
+    | ProtomapsFlavorOverrides
+    | ProtomapsThemeValues<ProtomapsFlavorOverrides>;
+};
+
+export type MapConfig = {
+  theme?: ThemeMode;
+  styles?: Partial<Record<ThemeMode, BasemapStyleReference>>;
+  labels?: BasemapLabelsConfig;
+  hiddenLayers?: string[];
+  foreground?: Partial<Record<ThemeMode, string>>;
+  protomaps?: ProtomapsStyleConfig;
+};
+
+export type SlidesConfig = {
+  map?: MapConfig;
+  protomaps?: ProtomapsStyleConfig;
+};
 
 export type WarpedMapProps = {
   type?: "Image";
@@ -30,6 +78,7 @@ export type SubslideshowReference =
     };
 
 export type MapChapterProps = {
+  map?: MapConfig;
   location?: {
     zoom?: number;
     center?: [number, number];
@@ -78,6 +127,7 @@ export type ProjectManifest = {
   slug: string;
   title: string;
   description?: string;
+  map?: MapConfig;
   main: string;
   slideshows: ProjectSlideshowDefinition[];
   sources: Record<string, ProjectSourceDefinition>;

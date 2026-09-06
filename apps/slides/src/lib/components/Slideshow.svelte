@@ -85,7 +85,6 @@
   ));
 
   const firstChapter = $derived(chapters[0]);
-  const mapKey = $derived(`${project.slug}:${isDarkMode}`);
   const activeIndex = $derived.by(() =>
     clampIndex(
       isSubslideshowActive ? subslideshowIndex : mainIndex,
@@ -395,24 +394,24 @@
 >
   <div class="absolute inset-0 z-0 min-h-0">
     {#if isDarkMode !== undefined}
-      {#key mapKey}
-        <Map
-          {chapters}
-          index={activeIndex}
-          {isDarkMode}
-          {sources}
-          {layers}
-          anticipate
-          duration={DEFAULT_DURATION}
-          layoutRevision={mapLayoutRevision}
-          resetSignal={mapResetSignal}
-          padding={mapPadding}
-          highlight={highlightedWarpedMapUrl}
-          {hiddenWarpedMapUrls}
-          {zoomToWarpedMapUrl}
-          {zoomToWarpedMapSignal}
-        />
-      {/key}
+      <Map
+        {chapters}
+        index={activeIndex}
+        {isDarkMode}
+        {sources}
+        {layers}
+        projectFolder={project.folder}
+        projectMapConfig={project.map}
+        anticipate
+        duration={DEFAULT_DURATION}
+        layoutRevision={mapLayoutRevision}
+        resetSignal={mapResetSignal}
+        padding={mapPadding}
+        highlight={highlightedWarpedMapUrl}
+        {hiddenWarpedMapUrls}
+        {zoomToWarpedMapUrl}
+        {zoomToWarpedMapSignal}
+      />
     {/if}
   </div>
 

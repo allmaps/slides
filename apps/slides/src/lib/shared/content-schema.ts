@@ -1,7 +1,8 @@
 import { z } from "zod";
 
 import type { MapLibreWarpedMapLayerOptions } from "@allmaps/maplibre";
-import type { ProjectManifest } from "$lib/shared/types";
+import type { ProjectManifest, SlidesConfig } from "$lib/shared/types";
+import type { StyleSpecification } from "maplibre-gl";
 
 const nullableToUndefined = (value: unknown) =>
   value === null ? undefined : value;
@@ -39,6 +40,55 @@ const fourNumberTupleSchema = z.tuple([
   z.number(),
   z.number(),
 ]);
+const themeModeSchema = z.enum(["light", "dark"]);
+const unknownRecordSchema = z.record(z.string(), z.unknown());
+const themeStringRecordSchema = z.partialRecord(themeModeSchema, nonEmptyString);
+const mapStyleReferenceSchema = z.union([
+  nonEmptyString,
+  z.custom<StyleSpecification>(
+    (value) =>
+      typeof value === "object" &&
+      value !== null &&
+      !Array.isArray(value) &&
+      "version" in value &&
+      "layers" in value,
+    "must be a MapLibre style object",
+  ),
+]);
+const mapStylesSchema = z.partialRecord(themeModeSchema, mapStyleReferenceSchema);
+const labelPositionSchema = z.preprocess((value) => {
+  if (value === "front") return "aboveWarpedMaps";
+  if (value === "back") return "belowWarpedMaps";
+  return value;
+}, z.enum(["aboveWarpedMaps", "belowWarpedMaps"]).optional());
+const labelsConfigSchema = z.object({
+  visible: z.boolean().optional(),
+  position: labelPositionSchema,
+});
+const protomapsFlavorValueSchema = z.union([nonEmptyString, unknownRecordSchema]);
+const protomapsConfigSchema = z
+  .object({
+    key: optionalString,
+    locale: optionalString,
+    lang: optionalString,
+    glyphs: optionalString,
+    sprite: z.union([nonEmptyString, themeStringRecordSchema]).optional(),
+    sprites: themeStringRecordSchema.optional(),
+    flavor: protomapsFlavorValueSchema.optional(),
+    flavors: z.partialRecord(themeModeSchema, protomapsFlavorValueSchema).optional(),
+    overrides: unknownRecordSchema.optional(),
+  })
+  .passthrough();
+export const mapConfigSchema = z
+  .object({
+    theme: themeModeSchema.optional(),
+    styles: mapStylesSchema.optional(),
+    labels: labelsConfigSchema.optional(),
+    hiddenLayers: optionalArray(nonEmptyString),
+    foreground: themeStringRecordSchema.optional(),
+    protomaps: protomapsConfigSchema.optional(),
+  })
+  .passthrough();
 
 const mapLayerSchema = z.object({
   layer: nonEmptyString,
@@ -92,6 +142,7 @@ export const slideMetadataSchema = z
   .object({
     title: nonEmptyString,
     description: optionalString,
+    map: mapConfigSchema.optional(),
     location: optionalValue(
       z.object({
         zoom: z.number().optional(),
@@ -145,6 +196,7 @@ export const projectManifestSchema = z.object({
   slug: optionalNonEmptyString,
   title: optionalString,
   description: optionalString,
+  map: mapConfigSchema.optional(),
   main: optionalNonEmptyString,
   slideshows: z.array(projectSlideshowDefinitionSchema).optional().default([]),
   sources: z
@@ -154,6 +206,15 @@ export const projectManifestSchema = z.object({
 });
 
 export type ParsedProjectManifest = z.output<typeof projectManifestSchema>;
+
+export const slidesConfigSchema = z
+  .object({
+    map: mapConfigSchema.optional(),
+    protomaps: protomapsConfigSchema.optional(),
+  })
+  .passthrough();
+
+export type ParsedSlidesConfig = z.output<typeof slidesConfigSchema>;
 
 type ContentSchemaResult<T> =
   | {
@@ -189,9 +250,21 @@ const warnContentError = (
 };
 
 export const parseSlideMetadata = (
-  metadata: Record<string, unknown>,
+  metadata: unknown,
   path: string,
 ): ContentSchemaResult<ParsedSlideMetadata> => {
+  if (
+    typeof metadata !== "object" ||
+    metadata === null ||
+    Array.isArray(metadata)
+  ) {
+    console.warn(
+      `Skipping this slide because its frontmatter metadata was not available:\n${path}\n  - Check the YAML frontmatter syntax, especially duplicate keys or indentation errors.`,
+    );
+
+    return { success: false };
+  }
+
   const result = slideMetadataSchema.safeParse(metadata);
 
   if (!result.success) {
@@ -237,9 +310,29 @@ export const parseProjectConfig = (
       slug: manifest.slug ?? id,
       title: manifest.title ?? id,
       description: manifest.description,
+      map: manifest.map,
       main,
       slideshows: manifest.slideshows,
       sources: manifest.sources,
     },
   };
+};
+
+export const parseSlidesConfig = (
+  rawConfig: unknown,
+  path: string,
+): ContentSchemaResult<SlidesConfig> => {
+  const result = slidesConfigSchema.safeParse(rawConfig);
+
+  if (!result.success) {
+    warnContentError(
+      "Ignoring app-level Slides config values because slides.config could not be parsed:",
+      path,
+      result.error.issues,
+    );
+
+    return { success: false };
+  }
+
+  return result;
 };

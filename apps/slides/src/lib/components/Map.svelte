@@ -23,20 +23,33 @@
     type MapLibreWarpedMapLayerOptions,
   } from "@allmaps/maplibre";
   import { createFauxGeoreferencedMap } from "$lib/shared/utils";
-  import { getLayers, getStyleWithoutLayers } from "$lib/shared/basemap";
+  import { slidesConfig } from "$lib/shared/app-config";
+  import {
+    FOREGROUND_LAYER_ID,
+    createEmptyMapStyle,
+    getBasemapStyleKey,
+    getEffectiveBasemapLayerState,
+    getEffectiveBasemapStyleConfig,
+    getEffectiveBasemapTheme,
+    resolveBasemapStyle,
+    type EffectiveBasemapLayerState,
+    type ResolvedBasemapStyle,
+  } from "$lib/shared/basemap";
   import {
     DEFAULT_PADDING,
-    DEFAULT_LIGHT_FLAVOR,
     DEFAULT_WARPED_MAP_OPTIONS,
-    DEFAULT_LOCALE,
     DEFAULT_DURATION,
     DEFAULT_COLORS,
-    DEFAULT_DARK_FLAVOR,
     DEFAULT_OVERVIEW_TILES_RESOLUTION,
     LAYER_TYPES,
   } from "$lib/shared/settings";
 
-  import type { WarpedMapProps, MapChapterProps } from "$lib/shared/types";
+  import type {
+    MapConfig,
+    MapChapterProps,
+    ThemeMode,
+    WarpedMapProps,
+  } from "$lib/shared/types";
 
   type SpriteProps = NonNullable<MapChapterProps["sprite"]>;
   type CameraLayoutOptions = {
@@ -54,6 +67,8 @@
       [key: string]: SourceSpecification;
     };
     layers?: LayerSpecification[] | LayerSpecification;
+    projectFolder?: string;
+    projectMapConfig?: MapConfig;
     highlight?: string;
     hiddenWarpedMapUrls?: string[];
     zoomToWarpedMapUrl?: string;
@@ -74,6 +89,8 @@
     locale,
     layers,
     sources,
+    projectFolder,
+    projectMapConfig,
     highlight,
     hiddenWarpedMapUrls = [],
     zoomToWarpedMapUrl,
@@ -115,6 +132,49 @@
   });
 
   let sprite = $derived(currentChapter?.sprite);
+  const theme = $derived((isDarkMode ? "dark" : "light") as ThemeMode);
+  const currentChapterMapConfig = $derived(currentChapter?.map);
+  const basemapTheme = $derived(
+    getEffectiveBasemapTheme(
+      theme,
+      slidesConfig.map,
+      projectMapConfig,
+      currentChapterMapConfig,
+    ),
+  );
+  const showLabelsMapConfig = $derived(
+    showLabels === undefined
+      ? undefined
+      : ({
+          labels: {
+            visible: showLabels,
+          },
+        } satisfies MapConfig),
+  );
+  const basemapStyleConfig = $derived(
+    getEffectiveBasemapStyleConfig({
+      theme: basemapTheme,
+      locale,
+      appMap: slidesConfig.map,
+      appProtomaps: slidesConfig.protomaps,
+      projectMap: projectMapConfig,
+      chapterMap: currentChapterMapConfig,
+    }),
+  );
+  const basemapStyleKey = $derived(
+    getBasemapStyleKey({
+      theme: basemapTheme,
+      config: basemapStyleConfig,
+    }),
+  );
+  const basemapLayerState = $derived(
+    getEffectiveBasemapLayerState(
+      slidesConfig.map,
+      projectMapConfig,
+      currentChapterMapConfig,
+      showLabelsMapConfig,
+    ),
+  );
 
   let map: maplibregl.Map;
   let container: HTMLElement;
@@ -132,6 +192,12 @@
   let imagesAdded: Set<string> = new Set();
   let highlightedMaps: string[] = [];
   let handledZoomToWarpedMapSignal = 0;
+  let loadedBasemapStyle: ResolvedBasemapStyle | undefined;
+  let loadedBasemapStyleKey: string | undefined;
+  let basemapLoadSequence = 0;
+  let basemapStyleSwapInProgress = false;
+  let initialForegroundOpacityApplied = false;
+  let foregroundOpacity = 1;
   let pmtilesProtocolLoaded = false;
   let destroyed = false;
 
@@ -139,15 +205,8 @@
   const WEB_MERCATOR_WORLD_WIDTH = 40075016.68557849;
   const DEBUG_BOUNDS_SOURCE_ID = "slides-debug-bounds";
   const DEBUG_BOUNDS_LAYER_ID = "slides-debug-bounds-layer";
+  const BASEMAP_STYLE_FADE_DURATION = 450;
 
-  // Initialize style and layers
-  const flavor = isDarkMode ? DEFAULT_DARK_FLAVOR : DEFAULT_LIGHT_FLAVOR;
-  const styleWithoutLayers = getStyleWithoutLayers(flavor);
-  const styleLayers = getLayers(flavor);
-  const symbolLayers = getLayers(flavor, undefined, {
-    lang: locale ? locale : DEFAULT_LOCALE,
-    labelsOnly: true,
-  });
   const warpedMapLayerOptions: Partial<MapLibreWarpedMapLayerOptions> = {
     visible: false,
     anticipateVisibility: anticipate ? true : false,
@@ -247,6 +306,324 @@
     source?.setData(
       bounds ? getBoundsFeatureCollection(bounds) : getEmptyFeatureCollection(),
     );
+  };
+
+  const cloneLayer = (layer: LayerSpecification): LayerSpecification =>
+    JSON.parse(JSON.stringify(layer)) as LayerSpecification;
+
+  const normalizeColor = (color: string | undefined) =>
+    color?.replace(/\s+/g, "").toLowerCase();
+
+  const shouldFadeBasemapStyleSwap = (
+    previousStyle: ResolvedBasemapStyle | undefined,
+    nextStyle: ResolvedBasemapStyle,
+  ) =>
+    !!previousStyle &&
+    !currentHideBasemap &&
+    normalizeColor(previousStyle.foregroundColor) !==
+      normalizeColor(nextStyle.foregroundColor);
+
+  const wait = (milliseconds: number) =>
+    new Promise((resolve) => window.setTimeout(resolve, milliseconds));
+
+  const waitForNextPaint = () =>
+    new Promise((resolve) => window.requestAnimationFrame(() => resolve(true)));
+
+  const setForegroundColor = (foregroundColor: string) => {
+    if (!map.getLayer(FOREGROUND_LAYER_ID)) return;
+
+    map.setPaintProperty(
+      FOREGROUND_LAYER_ID,
+      "background-color-transition",
+      { duration: 0 },
+    );
+    map.setPaintProperty(
+      FOREGROUND_LAYER_ID,
+      "background-color",
+      foregroundColor,
+    );
+  };
+
+  const setForegroundOpacityTransitionDuration = (
+    transitionDuration: number,
+  ) => {
+    if (!map.getLayer(FOREGROUND_LAYER_ID)) return;
+
+    map.setPaintProperty(
+      FOREGROUND_LAYER_ID,
+      "background-opacity-transition",
+      { duration: transitionDuration },
+    );
+  };
+
+  const setForegroundOpacity = (
+    opacity: number,
+    transitionDuration?: number,
+  ) => {
+    if (!map.getLayer(FOREGROUND_LAYER_ID)) return;
+    if (foregroundOpacity === opacity) return;
+
+    if (transitionDuration !== undefined) {
+      setForegroundOpacityTransitionDuration(transitionDuration);
+    }
+
+    map.setPaintProperty(FOREGROUND_LAYER_ID, "background-opacity", opacity);
+    foregroundOpacity = opacity;
+  };
+
+  const getLayerOriginalId = (
+    basemapStyle: ResolvedBasemapStyle,
+    layerId: string,
+  ) => basemapStyle.originalLayerIdById.get(layerId) ?? layerId;
+
+  const isLayerHiddenByConfig = (
+    basemapStyle: ResolvedBasemapStyle,
+    layerId: string,
+    layerState: EffectiveBasemapLayerState,
+  ) => {
+    const originalLayerId = getLayerOriginalId(basemapStyle, layerId);
+
+    return (
+      layerState.hiddenLayers.has(layerId) ||
+      layerState.hiddenLayers.has(originalLayerId)
+    );
+  };
+
+  const getBasemapLayerVisibility = (
+    basemapStyle: ResolvedBasemapStyle,
+    layerId: string,
+    isLabelLayer: boolean,
+    layerState: EffectiveBasemapLayerState,
+  ): "visible" | "none" => {
+    if (currentHideBasemap) return "none";
+    if (isLayerHiddenByConfig(basemapStyle, layerId, layerState)) return "none";
+    if (isLabelLayer && !layerState.labels.visible) return "none";
+
+    return basemapStyle.defaultVisibilityById.get(layerId) ?? "visible";
+  };
+
+  const getLayerWithVisibility = (
+    basemapStyle: ResolvedBasemapStyle,
+    layer: LayerSpecification,
+    isLabelLayer: boolean,
+    layerState: EffectiveBasemapLayerState,
+  ): LayerSpecification => {
+    const nextLayer = cloneLayer(layer);
+
+    nextLayer.layout = {
+      ...(nextLayer.layout ?? {}),
+      visibility: getBasemapLayerVisibility(
+        basemapStyle,
+        nextLayer.id,
+        isLabelLayer,
+        layerState,
+      ),
+    };
+
+    return nextLayer;
+  };
+
+  const getFirstLayerId = (predicate: (layerId: string) => boolean) =>
+    map.getLayersOrder().find(predicate);
+
+  const getFirstOverlayLayerId = () =>
+    getFirstLayerId(
+      (layerId) =>
+        layerId.startsWith("user-") || layerId === DEBUG_BOUNDS_LAYER_ID,
+    );
+
+  const moveBasemapLabels = (
+    basemapStyle: ResolvedBasemapStyle,
+    layerState: EffectiveBasemapLayerState,
+  ) => {
+    const beforeId =
+      layerState.labels.position === "aboveWarpedMaps"
+        ? getFirstOverlayLayerId()
+        : FOREGROUND_LAYER_ID;
+
+    for (const layerId of basemapStyle.labelLayerIds) {
+      if (!map.getLayer(layerId)) continue;
+      map.moveLayer(layerId, beforeId);
+    }
+  };
+
+  const setStyleAssets = (basemapStyle: ResolvedBasemapStyle) => {
+    if (basemapStyle.glyphs) {
+      map.setGlyphs(basemapStyle.glyphs);
+    }
+
+    if (typeof basemapStyle.sprite === "string") {
+      map.setSprite(basemapStyle.sprite);
+    }
+  };
+
+  const removeLoadedBasemapStyle = () => {
+    if (!loadedBasemapStyle) return;
+
+    for (const layerId of loadedBasemapStyle.layerIds.toReversed()) {
+      if (map.getLayer(layerId)) {
+        map.removeLayer(layerId);
+      }
+    }
+
+    for (const sourceId of loadedBasemapStyle.sourceIds) {
+      if (map.getSource(sourceId)) {
+        map.removeSource(sourceId);
+      }
+    }
+  };
+
+  const ensureForegroundLayer = (foregroundColor: string) => {
+    if (map.getLayer(FOREGROUND_LAYER_ID)) {
+      setForegroundColor(foregroundColor);
+      return;
+    }
+
+    map.addLayer(
+      {
+        id: FOREGROUND_LAYER_ID,
+        type: "background",
+        paint: {
+          "background-color": foregroundColor,
+          "background-opacity": 1,
+        },
+      },
+      map.getLayer(warpedMapLayer.id) ? warpedMapLayer.id : undefined,
+    );
+  };
+
+  const addBasemapStyle = async (
+    basemapStyle: ResolvedBasemapStyle,
+    layerState: EffectiveBasemapLayerState,
+  ) => {
+    await loadSources(basemapStyle.sources);
+
+    for (const layer of basemapStyle.baseLayers) {
+      map.addLayer(
+        getLayerWithVisibility(basemapStyle, layer, false, layerState),
+        FOREGROUND_LAYER_ID,
+      );
+    }
+
+    const labelsBeforeId =
+      layerState.labels.position === "aboveWarpedMaps"
+        ? getFirstOverlayLayerId()
+        : FOREGROUND_LAYER_ID;
+
+    for (const layer of basemapStyle.labelLayers) {
+      map.addLayer(
+        getLayerWithVisibility(basemapStyle, layer, true, layerState),
+        labelsBeforeId,
+      );
+    }
+  };
+
+  const applyBasemapLayerState = () => {
+    if (!mapLoaded || !loadedBasemapStyle) return;
+
+    moveBasemapLabels(loadedBasemapStyle, basemapLayerState);
+
+    for (const layerId of loadedBasemapStyle.baseLayerIds) {
+      if (!map.getLayer(layerId)) continue;
+      map.setLayoutProperty(
+        layerId,
+        "visibility",
+        getBasemapLayerVisibility(
+          loadedBasemapStyle,
+          layerId,
+          false,
+          basemapLayerState,
+        ),
+      );
+    }
+
+    for (const layerId of loadedBasemapStyle.labelLayerIds) {
+      if (!map.getLayer(layerId)) continue;
+      map.setLayoutProperty(
+        layerId,
+        "visibility",
+        getBasemapLayerVisibility(
+          loadedBasemapStyle,
+          layerId,
+          true,
+          basemapLayerState,
+        ),
+      );
+    }
+
+    if (!basemapStyleSwapInProgress) {
+      const initialOpacityUpdate = !initialForegroundOpacityApplied;
+
+      setForegroundOpacity(
+        currentHideBasemap ? 1 : 0,
+        initialOpacityUpdate ? 0 : duration || DEFAULT_DURATION,
+      );
+
+      if (initialOpacityUpdate) {
+        initialForegroundOpacityApplied = true;
+      }
+    }
+  };
+
+  const applyCurrentBasemapStyle = async () => {
+    const styleKey = basemapStyleKey;
+
+    if (styleKey === loadedBasemapStyleKey) {
+      applyBasemapLayerState();
+      return;
+    }
+
+    const loadSequence = ++basemapLoadSequence;
+    basemapStyleSwapInProgress = false;
+
+    if (debug) {
+      console.log("Loading basemap style...", basemapStyleConfig);
+    }
+
+    const nextBasemapStyle = await resolveBasemapStyle({
+      theme: basemapTheme,
+      projectFolder,
+      config: basemapStyleConfig,
+    });
+
+    if (destroyed || loadSequence !== basemapLoadSequence) return;
+
+    const fadeStyleSwap = shouldFadeBasemapStyleSwap(
+      loadedBasemapStyle,
+      nextBasemapStyle,
+    );
+
+    if (fadeStyleSwap) {
+      basemapStyleSwapInProgress = true;
+      setForegroundColor(nextBasemapStyle.foregroundColor);
+      setForegroundOpacity(1, BASEMAP_STYLE_FADE_DURATION);
+      await waitForNextPaint();
+      await wait(BASEMAP_STYLE_FADE_DURATION);
+    }
+
+    if (destroyed || loadSequence !== basemapLoadSequence) return;
+
+    removeLoadedBasemapStyle();
+    setStyleAssets(nextBasemapStyle);
+    ensureForegroundLayer(nextBasemapStyle.foregroundColor);
+    await addBasemapStyle(nextBasemapStyle, basemapLayerState);
+
+    if (destroyed || loadSequence !== basemapLoadSequence) return;
+
+    loadedBasemapStyle = nextBasemapStyle;
+    loadedBasemapStyleKey = styleKey;
+
+    if (mapLoaded) {
+      applyBasemapLayerState();
+    }
+
+    if (fadeStyleSwap) {
+      basemapStyleSwapInProgress = false;
+      setForegroundOpacity(
+        currentHideBasemap ? 1 : 0,
+        BASEMAP_STYLE_FADE_DURATION,
+      );
+    }
   };
 
   const getSpriteKey = (sprite: SpriteProps) =>
@@ -367,7 +744,7 @@
     map.flyTo(flyToOptions);
 
     if (initialCameraUpdate) {
-      setBasemapOpacityTransition();
+      start = false;
     }
   }
 
@@ -865,43 +1242,6 @@
     }
   }
 
-  function setBasemapVisiblity() {
-    if (debug) {
-      console.log("Setting current basemap visibility");
-    }
-    const alwaysShow = [warpedMapLayer?.id, "foreground"];
-    if (mapLoaded && currentHideBasemap) {
-      if (debug) {
-        console.log("Changing basemap visibility...", currentHideBasemap);
-      }
-      map.setPaintProperty("foreground", "background-opacity", 1);
-
-      for (const layer of map.getLayersOrder()) {
-        if (!alwaysShow.includes(layer) && !layer.startsWith("user")) {
-          map.setLayoutProperty(layer, "visibility", "none");
-        }
-      }
-    } else if (mapLoaded) {
-      map.setPaintProperty("foreground", "background-opacity", 0);
-
-      for (const layer of map.getLayersOrder()) {
-        if (!alwaysShow.includes(layer) && !layer.startsWith("user")) {
-          map.setLayoutProperty(layer, "visibility", "visible");
-        }
-      }
-    }
-  }
-
-  function setBasemapOpacityTransition() {
-    if (debug) {
-      console.log("Setting foreground opacity-transition");
-    }
-    start = false;
-    map.setPaintProperty("foreground", "background-opacity-transition", {
-      duration: duration || DEFAULT_DURATION,
-    });
-  }
-
   $effect(() => {
     if (!mapLoaded) return;
 
@@ -939,13 +1279,20 @@
   $effect(highlightMaps);
   $effect(zoomToWarpedMapBounds);
   $effect(setLayersOpacity);
-  $effect(setBasemapVisiblity);
+  $effect(() => {
+    if (!mapLoaded) return;
+    void applyCurrentBasemapStyle();
+  });
+  $effect(() => {
+    if (basemapStyleKey !== loadedBasemapStyleKey) return;
+    applyBasemapLayerState();
+  });
   $effect(setLocation);
 
   onMount(() => {
     map = new maplibregl.Map({
       container,
-      style: styleWithoutLayers,
+      style: createEmptyMapStyle(basemapTheme),
       maxPitch: 0,
       attributionControl: false,
       center: [0, 0],
@@ -959,29 +1306,23 @@
 
     map.on("move", updateBearing);
 
-    map.on("load", async () => {
-      // Add layers
-      styleLayers.forEach((layer) => map.addLayer(layer, "foreground"));
+    map.on("styleimagemissing", async (event) => {
+      const id = event.id;
+      if (!imagesAdded.has(id)) {
+        imagesAdded.add(id);
+        const image = await map.loadImage(id);
+        map.addImage(id, image.data);
+      }
+    });
 
+    map.on("load", async () => {
       map.addLayer(warpedMapLayer);
+      await applyCurrentBasemapStyle();
 
       if (sources && layers) {
         await loadSources(sources);
         loadLayers(layers);
       }
-
-      if (showLabels) {
-        symbolLayers.forEach((layer) => map.addLayer(layer));
-      }
-
-      map.on("styleimagemissing", async (event) => {
-        const id = event.id;
-        if (!imagesAdded.has(id)) {
-          imagesAdded.add(id);
-          const image = await map.loadImage(id);
-          map.addImage(id, image.data);
-        }
-      });
 
       if (debug) {
         // Debug layer to show bounds
