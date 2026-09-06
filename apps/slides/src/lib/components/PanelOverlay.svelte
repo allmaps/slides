@@ -67,14 +67,14 @@
 <style>
   .panel-overlay-shell {
     top: var(--panel-overlay-top);
-    max-height: calc(
-      100% - var(--panel-overlay-top) - var(--panel-overlay-bottom-margin)
-    );
+    bottom: var(--panel-overlay-bottom-margin);
+    pointer-events: none;
   }
 
   .panel-overlay {
-    max-height: inherit;
+    max-height: 100%;
     overscroll-behavior: contain;
+    pointer-events: auto;
   }
 
   .panel-overlay-tab {
@@ -93,6 +93,7 @@
     color: var(--app-overlay-icon);
     cursor: pointer;
     padding: 0;
+    pointer-events: auto;
   }
 
   .panel-overlay-tab-icon {
