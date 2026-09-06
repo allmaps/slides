@@ -23,6 +23,7 @@
     currentSlug?: string;
     top?: string;
     bottomMargin?: string;
+    tab?: "toc" | "layers";
     onClose?: () => void;
     onSelectLocalChapter?: (slug: string) => void | Promise<void>;
     class?: string;
@@ -35,6 +36,7 @@
     currentSlug,
     top,
     bottomMargin,
+    tab,
     onClose,
     onSelectLocalChapter,
     class: className = "",
@@ -247,7 +249,15 @@
   });
 </script>
 
-<PanelOverlay title="Chapters" {top} {bottomMargin} class={className}>
+<PanelOverlay
+  title="Chapters"
+  {top}
+  {bottomMargin}
+  {tab}
+  closeLabel="Close table of contents"
+  onClose={onClose}
+  class={className}
+>
   {#snippet actions()}
     {#if hasTocChevronColumn}
       <button

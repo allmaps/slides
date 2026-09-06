@@ -1,18 +1,21 @@
 <script lang="ts">
+  import { dev } from "$app/environment";
   import { onMount } from "svelte";
   import { Minus, Plus } from "@lucide/svelte";
 
   import maplibregl from "maplibre-gl";
   import "maplibre-gl/dist/maplibre-gl.css";
   import type {
-    SourceSpecification,
-    LayerSpecification,
     CenterZoomBearing,
     CameraForBoundsOptions,
+    EaseToOptions,
     FlyToOptions,
+    GeoJSONSource,
+    LayerSpecification,
     LngLatBoundsLike,
     PaddingOptions,
     PointLike,
+    SourceSpecification,
   } from "maplibre-gl";
 
   import {
@@ -60,6 +63,7 @@
     layoutRevision?: number;
     resetSignal?: number;
     padding?: number | PaddingOptions;
+    debug?: boolean;
   };
 
   let {
@@ -79,6 +83,7 @@
     layoutRevision = 0,
     resetSignal = 0,
     padding,
+    debug = dev,
   }: Props = $props();
 
   let start = true;
@@ -117,20 +122,23 @@
   let currentBearing = $state(0);
   let resourcesRevision = $state(0);
   let mapIdsByAnnotationUrl: Map<string, string[]> = new Map();
+  let annotationUrlByMapId: Map<string, string> = new Map();
   let annotationLoadPromisesByUrl: Map<string, Promise<void>> = new Map();
   let spriteLoadPromisesByKey: Map<string, Promise<void>> = new Map();
   let spriteKeysByMapId: Map<string, Set<string>> = new Map();
   let visibleMaps: string[] = new Array();
+  let currentVisibleMaps: string[] = [];
+  let latestHiddenWarpedMapUrls: string[] = [];
   let imagesAdded: Set<string> = new Set();
   let highlightedMaps: string[] = [];
   let handledZoomToWarpedMapSignal = 0;
   let pmtilesProtocolLoaded = false;
   let destroyed = false;
 
-  // For debugging
-  const debug = false;
   const MAPLIBRE_TILE_SIZE = 512;
   const WEB_MERCATOR_WORLD_WIDTH = 40075016.68557849;
+  const DEBUG_BOUNDS_SOURCE_ID = "slides-debug-bounds";
+  const DEBUG_BOUNDS_LAYER_ID = "slides-debug-bounds-layer";
 
   // Initialize style and layers
   const flavor = isDarkMode ? DEFAULT_DARK_FLAVOR : DEFAULT_LIGHT_FLAVOR;
@@ -185,6 +193,60 @@
       );
 
     return nativeMaxZooms.length > 0 ? Math.max(...nativeMaxZooms) : undefined;
+  };
+
+  const rememberMapIdsForAnnotation = (url: string, ids: string[]) => {
+    mapIdsByAnnotationUrl.set(url, ids);
+    ids.forEach((id) => {
+      annotationUrlByMapId.set(id, url);
+    });
+  };
+
+  const getEmptyFeatureCollection = () => ({
+    type: "FeatureCollection" as const,
+    features: [],
+  });
+
+  const getBoundsFeatureCollection = (bounds: LngLatBoundsLike) => {
+    const convertedBounds = maplibregl.LngLatBounds.convert(bounds);
+    const west = convertedBounds.getWest();
+    const south = convertedBounds.getSouth();
+    const east = convertedBounds.getEast();
+    const north = convertedBounds.getNorth();
+
+    return {
+      type: "FeatureCollection" as const,
+      features: [
+        {
+          type: "Feature" as const,
+          properties: {},
+          geometry: {
+            type: "Polygon" as const,
+            coordinates: [
+              [
+                [west, south],
+                [east, south],
+                [east, north],
+                [west, north],
+                [west, south],
+              ],
+            ],
+          },
+        },
+      ],
+    };
+  };
+
+  const setDebugBounds = (bounds?: LngLatBoundsLike) => {
+    if (!debug || !mapLoaded) return;
+
+    const source = map.getSource(DEBUG_BOUNDS_SOURCE_ID) as
+      | GeoJSONSource
+      | undefined;
+
+    source?.setData(
+      bounds ? getBoundsFeatureCollection(bounds) : getEmptyFeatureCollection(),
+    );
   };
 
   const getSpriteKey = (sprite: SpriteProps) =>
@@ -345,7 +407,7 @@
           const id = warpedMapLayer.addGeoreferencedMap(georeferencedMap, {
             visible: false,
           });
-          mapIdsByAnnotationUrl.set(url, [id]);
+          rememberMapIdsForAnnotation(url, [id]);
         } else {
           const georeferenceAnnotation = await fetch(url).then((response) =>
             response.json(),
@@ -364,12 +426,12 @@
           if (errors.length) {
             console.error("Failed to add georeferenced map for", url, errors);
           }
-          mapIdsByAnnotationUrl.set(url, stringIds);
+          rememberMapIdsForAnnotation(url, stringIds);
         }
       } catch (error) {
         if (!destroyed) {
           console.error("Failed to load georeferenced map for", url, error);
-          mapIdsByAnnotationUrl.set(url, []);
+          rememberMapIdsForAnnotation(url, []);
         }
       } finally {
         annotationLoadPromisesByUrl.delete(url);
@@ -459,6 +521,7 @@
     if (mapLoaded && currentWarpedMaps && !currentSlideResourcesReady()) return;
 
     if (mapLoaded && currentWarpedMaps) {
+      const hiddenUrlSet = new Set(latestHiddenWarpedMapUrls);
       // Get all IDs
       const optionsByMapId = new Map();
       const newMapIds = new Array();
@@ -473,9 +536,9 @@
             warpedMapLayer.bringMapsToFront(annotationIds);
             annotationIds.forEach((id: string) => {
               optionsByMapId.set(id, {
-                visible: true,
                 ...DEFAULT_WARPED_MAP_OPTIONS,
                 ...options,
+                visible: !hiddenUrlSet.has(url),
               });
               if (!visibleMaps.includes(id)) {
                 // No longer used!
@@ -508,8 +571,9 @@
       warpedMapLayer.setMapsOptions((mapId) => optionsByMapId.get(mapId));
 
       visibleMaps = mapIds;
+      currentVisibleMaps = mapIds;
 
-      let mapIdsForBounds = [];
+      let mapIdsForBounds: string[] = [];
       const boundsFilter = currentWarpedMaps.filter(
         (annotation) => annotation.useBounds === true,
       );
@@ -525,6 +589,7 @@
       let camera: CenterZoomBearing | undefined;
       let forceCameraOffset = false;
       const bounds = warpedMapLayer.getMapsBounds(mapIdsForBounds);
+      setDebugBounds(bounds);
       const locationBearing = currentLocation.bearing;
 
       const firstMapWithBearingProp = currentWarpedMaps.find(
@@ -567,37 +632,38 @@
           zoom: nativeMaxZoom,
         };
       }
-      if (debug) {
-        // console.log('Updating bounds layer', bounds)
-        // const boundsSource = map.getSource('bounds') as maplibregl.GeoJSONSource
-        // const features = featureCollection([bboxPolygon(bounds)])
-        // if (boundsSource) {
-        //   boundsSource.setData(features)
-        // }
-      }
       if (camera) {
         flyToCamera(camera, cameraLayoutOptions, forceCameraOffset);
       }
     } else if (mapLoaded) {
       // Hide all maps
-      warpedMapLayer.setMapsOptions(visibleMaps, { visible: false });
+      const mapsToHide = new Set(visibleMaps);
+      warpedMapLayer.setMapsOptions((mapId) =>
+        mapsToHide.has(mapId) ? { visible: false } : undefined,
+      );
+      visibleMaps = [];
+      currentVisibleMaps = [];
+      setDebugBounds();
     }
   }
 
-  function setWarpedMapVisibilityOverrides() {
-    resourcesRevision;
+  function setWarpedMapVisibilityOverrides(hiddenUrls: string[]) {
+    latestHiddenWarpedMapUrls = hiddenUrls;
 
-    if (!mapLoaded || !currentWarpedMaps) return;
+    if (!mapLoaded || !currentVisibleMaps.length) return;
 
-    const hiddenUrlSet = new Set(hiddenWarpedMapUrls);
+    const hiddenUrlSet = new Set(hiddenUrls);
+    const currentVisibleMapSet = new Set(currentVisibleMaps);
 
-    currentWarpedMaps.forEach(({ url }) => {
-      const ids = getMapIdsForAnnotationUrl(url);
-      if (!ids.length) return;
+    warpedMapLayer.setMapsOptions((mapId) => {
+      if (!currentVisibleMapSet.has(mapId)) return undefined;
 
-      warpedMapLayer.setMapsOptions(ids, {
+      const url = annotationUrlByMapId.get(mapId);
+      if (!url) return undefined;
+
+      return {
         visible: !hiddenUrlSet.has(url),
-      });
+      };
     });
   }
 
@@ -605,32 +671,29 @@
     resourcesRevision;
 
     if (!mapLoaded) return;
+    if (!highlight && highlightedMaps.length === 0) return;
 
     if (highlight) {
       if (debug) {
         console.log("Highlighting maps...", highlight);
       }
       const ids = getMapIdsForAnnotationUrl(highlight);
-      const mapsToUnhighlight = highlightedMaps.filter(
-        (id) => !ids.includes(id),
-      );
+      const nextHighlightedMapSet = new Set(ids);
+      const mapsToUpdate = new Set([...highlightedMaps, ...ids]);
 
-      if (mapsToUnhighlight.length) {
-        warpedMapLayer.setMapsOptions(mapsToUnhighlight, {
-          renderMask: false,
-        });
-      }
-      if (ids.length) {
-        warpedMapLayer.setMapsOptions(ids, {
-          renderMask: true,
-        });
-      }
+      warpedMapLayer.setMapsOptions((mapId) =>
+        mapsToUpdate.has(mapId)
+          ? { renderMask: nextHighlightedMapSet.has(mapId) }
+          : undefined,
+      );
 
       highlightedMaps = ids;
     } else {
-      warpedMapLayer.setMapsOptions(highlightedMaps, {
-        renderMask: false,
-      });
+      const mapsToUnhighlight = new Set(highlightedMaps);
+
+      warpedMapLayer.setMapsOptions((mapId) =>
+        mapsToUnhighlight.has(mapId) ? { renderMask: false } : undefined,
+      );
       highlightedMaps = [];
     }
   }
@@ -671,6 +734,17 @@
     handledZoomToWarpedMapSignal = signal;
   }
 
+  const easeToWithLayoutOffset = (options: EaseToOptions) => {
+    const cameraLayoutOptions = getCameraLayoutOptions(currentPadding);
+
+    map.easeTo({
+      ...options,
+      ...(cameraLayoutOptions.offset
+        ? { offset: cameraLayoutOptions.offset }
+        : {}),
+    });
+  };
+
   function toggleVisibility(event: KeyboardEvent) {
     if (event.repeat) return;
     if (mapLoaded && event.code === "Backquote") {
@@ -686,19 +760,19 @@
   const resetNorth = () => {
     if (!mapLoaded) return;
 
-    map.resetNorth({ duration: 300 });
+    easeToWithLayoutOffset({ bearing: 0, duration: 300 });
   };
 
   const zoomIn = () => {
     if (!mapLoaded) return;
 
-    map.zoomIn({ duration: 300 });
+    easeToWithLayoutOffset({ zoom: map.getZoom() + 1, duration: 300 });
   };
 
   const zoomOut = () => {
     if (!mapLoaded) return;
 
-    map.zoomOut({ duration: 300 });
+    easeToWithLayoutOffset({ zoom: map.getZoom() - 1, duration: 300 });
   };
 
   function setLocation() {
@@ -861,7 +935,7 @@
     };
   });
   $effect(setWarpedMaps);
-  $effect(setWarpedMapVisibilityOverrides);
+  $effect(() => setWarpedMapVisibilityOverrides(hiddenWarpedMapUrls));
   $effect(highlightMaps);
   $effect(zoomToWarpedMapBounds);
   $effect(setLayersOpacity);
@@ -911,24 +985,22 @@
 
       if (debug) {
         // Debug layer to show bounds
-        map.addSource("bounds", {
+        map.addSource(DEBUG_BOUNDS_SOURCE_ID, {
           type: "geojson",
-          data: {
-            type: "FeatureCollection",
-            features: [],
-          },
+          data: getEmptyFeatureCollection(),
         });
         map.addLayer({
-          id: `bounds-layer`,
+          id: DEBUG_BOUNDS_LAYER_ID,
           type: "line",
-          source: "bounds",
+          source: DEBUG_BOUNDS_SOURCE_ID,
           layout: {
             "line-join": "round",
             "line-cap": "round",
           },
           paint: {
             "line-color": DEFAULT_COLORS.blue.stroke,
-            "line-width": 8,
+            "line-width": 4,
+            "line-opacity": 0.85,
           },
         });
       }

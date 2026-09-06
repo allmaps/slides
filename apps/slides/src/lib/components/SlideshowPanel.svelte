@@ -1,7 +1,7 @@
 <script lang="ts">
   import { replaceState } from "$app/navigation";
   import { page } from "$app/state";
-  import { tick } from "svelte";
+  import { tick, untrack } from "svelte";
   import { BookOpen, Presentation } from "@lucide/svelte";
 
   import { getSlideshowRouteHref } from "$lib/shared/projects";
@@ -47,6 +47,7 @@
   let index: number = $state(0);
   let loaded: boolean = $state(false);
   let scrollContainer: HTMLDivElement | undefined = $state();
+  let pendingHashScroll: string | undefined = $state();
 
   const currentChapter = $derived(chapters[index]);
   const currentSlug = $derived(currentChapter?.slug);
@@ -98,20 +99,27 @@
     onTocClose?.();
   };
 
+  const getChapterIndexBySlug = (slug: string) =>
+    chapters.findIndex((chapter) => chapter.slug === slug);
+
+  const hashMatchesChapter = (hash: string) => getChapterIndexBySlug(hash) >= 0;
+
   const setIndex = (nextIndex: number) => {
     index = nextIndex;
     onIndexChange?.(nextIndex);
   };
 
-  const getCurrentHash = () => {
-    const hash = window.location.hash.slice(1);
+  const decodeHash = (hash: string) => {
+    const value = hash.startsWith("#") ? hash.slice(1) : hash;
 
     try {
-      return decodeURIComponent(hash);
+      return decodeURIComponent(value);
     } catch {
-      return hash;
+      return value;
     }
   };
+
+  const getCurrentHash = () => decodeHash(window.location.hash);
 
   const getSectionBySlug = (slug: string) =>
     Array.from(scrollContainer?.querySelectorAll<HTMLElement>("section") ?? [])
@@ -165,9 +173,28 @@
   };
 
   $effect(() => {
-    if (active && loaded && currentSlug && getCurrentHash() !== currentSlug) {
-      replaceHash(currentSlug);
-    }
+    const hash = decodeHash(page.url.hash);
+
+    if (!active || !loaded) return;
+    if (!hash || !hashMatchesChapter(hash)) return;
+    if (hash === untrack(() => currentSlug)) return;
+
+    pendingHashScroll = hash;
+    void scrollToChapter(hash, "auto").finally(() => {
+      if (pendingHashScroll === hash) {
+        pendingHashScroll = undefined;
+      }
+    });
+  });
+
+  $effect(() => {
+    if (!active || !loaded || !currentSlug) return;
+
+    const hash = getCurrentHash();
+    if (hash === currentSlug) return;
+    if (pendingHashScroll && hash === pendingHashScroll) return;
+
+    replaceHash(currentSlug);
   });
 
   $effect(() => {
@@ -193,9 +220,7 @@
       if (cancelled || !scrollContainer) return;
 
       const initialHash = getCurrentHash();
-      const initialHashIndex = chapters.findIndex(
-        (chapter) => chapter.slug === initialHash,
-      );
+      const initialHashIndex = getChapterIndexBySlug(initialHash);
 
       if (initialHash && initialHashIndex >= 0) {
         await waitForFonts();
