@@ -72,6 +72,8 @@
   }
 
   .panel-overlay {
+    position: relative;
+    z-index: 2;
     max-height: 100%;
     overscroll-behavior: contain;
     pointer-events: auto;
