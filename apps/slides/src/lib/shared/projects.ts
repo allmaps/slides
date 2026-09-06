@@ -1,7 +1,7 @@
 import type { SourceSpecification } from "maplibre-gl";
-import { projectFiles, slideFiles } from "@allmaps/slides-content";
 import { parse } from "yaml";
 
+import { projectFiles, slideFiles } from "$lib/shared/content-package";
 import {
   parseProjectConfig,
   parseSlideMetadata,

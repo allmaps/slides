@@ -17,6 +17,15 @@ type IiifImageModule = {
 
 type ImageModule = IiifImageModule | string;
 
+export const slidesConfigFiles = import.meta.glob(
+  ["./slides.config.yml", "./slides.config.yaml", "./slides.config.json"],
+  {
+    eager: true,
+    query: "?raw",
+    import: "default",
+  },
+) as Record<string, string>;
+
 export const projectFiles = import.meta.glob(
   ["./project.yml", "./*/project.yml"],
   {
@@ -36,6 +45,19 @@ export const dataAssetFiles = import.meta.glob(
     import: "default",
   },
 ) as Record<string, () => Promise<string>>;
+
+export const mapStyleFiles = import.meta.glob(
+  [
+    "./assets/map-styles/**/*.json",
+    "./assets/styles/**/*.json",
+    "./*/assets/map-styles/**/*.json",
+    "./*/assets/styles/**/*.json",
+  ],
+  {
+    eager: true,
+    import: "default",
+  },
+) as Record<string, unknown>;
 
 export const imageAssetUrls = import.meta.glob(
   [

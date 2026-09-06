@@ -1,6 +1,6 @@
 import baseUrl from "$lib/shared/base-url";
 import { env } from "$env/dynamic/public";
-import { imageAssetUrls } from "@allmaps/slides-content";
+import { imageAssetUrls } from "$lib/shared/content-package";
 
 const EXTERNAL_URL_PATTERN = /^[a-z][a-z\d+.-]*:/i;
 const PROJECT_ASSET_FOLDERS = new Set([
