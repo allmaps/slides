@@ -20,6 +20,8 @@
     highlightEnabled?: boolean;
     top?: string;
     bottomMargin?: string;
+    tab?: "toc" | "layers";
+    onClose?: () => void;
     onToggleVisibility?: (url: string) => void;
     onZoomToBounds?: (url: string) => void;
     onHighlight?: (url?: string) => void;
@@ -36,6 +38,8 @@
     highlightEnabled = false,
     top,
     bottomMargin,
+    tab,
+    onClose,
     onToggleVisibility,
     onZoomToBounds,
     onHighlight,
@@ -134,7 +138,15 @@
   };
 </script>
 
-<PanelOverlay title="Map layers" {top} {bottomMargin} class={className}>
+<PanelOverlay
+  title="Map layers"
+  {top}
+  {bottomMargin}
+  {tab}
+  closeLabel="Close map layers"
+  {onClose}
+  class={className}
+>
   <div class="mb-3 flex items-center gap-2 text-[16px] leading-[1.1] font-normal text-[var(--app-muted)]">
     <Layers size={16} aria-hidden="true" />
     <span class="translate-y-[0.07em]">{describeLayerCount()}</span>
@@ -258,7 +270,6 @@
       opacity 150ms ease;
   }
 
-  .layer-row:hover,
   .layer-row--highlighted {
     background: var(--app-overlay-selected-bg);
   }
@@ -346,10 +357,6 @@
     transition: background-color 150ms ease;
   }
 
-  .layer-icon-button:hover {
-    background: var(--app-overlay-selected-bg);
-  }
-
   .layer-icon-button:disabled {
     cursor: default;
     opacity: 0.35;
@@ -357,5 +364,15 @@
 
   .layer-icon-button:disabled:hover {
     background: transparent;
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .layer-row:hover {
+      background: var(--app-overlay-selected-bg);
+    }
+
+    .layer-icon-button:hover {
+      background: var(--app-overlay-selected-bg);
+    }
   }
 </style>

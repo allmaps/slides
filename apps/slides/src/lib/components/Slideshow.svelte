@@ -6,7 +6,6 @@
     ListTree,
     Moon,
     Sun,
-    X,
   } from "@lucide/svelte";
   import type { PaddingOptions } from "maplibre-gl";
 
@@ -530,7 +529,7 @@
 
         <button
           type="button"
-          class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-[var(--app-icon)] hover:bg-[var(--app-hover-bg)]"
+          class="inline-flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-md text-[var(--app-icon)] hover:bg-[var(--app-hover-bg)]"
           aria-label={themeToggleLabel}
           title={themeToggleLabel}
           onclick={toggleTheme}
@@ -548,11 +547,7 @@
           title={tocOpen ? "Close table of contents" : "Open table of contents"}
           onclick={toggleToc}
         >
-          {#if tocOpen}
-            <X size={18} aria-hidden="true" />
-          {:else}
-            <ListTree size={18} aria-hidden="true" />
-          {/if}
+          <ListTree size={18} aria-hidden="true" />
         </PanelOverlayToggle>
 
         <PanelOverlayToggle
@@ -561,11 +556,7 @@
           title={layersToggleLabel}
           onclick={toggleLayers}
         >
-          {#if layersOpen}
-            <X size={18} aria-hidden="true" />
-          {:else}
-            <LayersIcon size={18} aria-hidden="true" />
-          {/if}
+          <LayersIcon size={18} aria-hidden="true" />
         </PanelOverlayToggle>
       </header>
 
@@ -623,6 +614,7 @@
           {rootSlideshow}
           currentSlug={activeChapter?.slug}
           top={tocOverlayTop}
+          tab="toc"
           onClose={closeToc}
           onSelectLocalChapter={scrollActivePanelToChapter}
         />
@@ -633,6 +625,8 @@
           {highlightedWarpedMapUrl}
           highlightEnabled={LAYER_HIGHLIGHT_ENABLED}
           top={tocOverlayTop}
+          tab="layers"
+          onClose={closePanelOverlays}
           onToggleVisibility={toggleWarpedMapVisibility}
           onZoomToBounds={zoomToWarpedMapBounds}
           onHighlight={highlightWarpedMap}
