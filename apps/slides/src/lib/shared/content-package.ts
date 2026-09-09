@@ -21,7 +21,6 @@ type ImageModule = IiifImageModule | string;
 
 type SlidesContentModule = Partial<{
   slidesConfigFiles: Record<string, string>;
-  projectFiles: Record<string, string>;
   dataAssetFiles: Record<string, () => Promise<string>>;
   mapStyleFiles: Record<string, unknown>;
   imageAssetUrls: Record<string, ImageModule>;
@@ -36,7 +35,6 @@ const asRecord = <Value>(value: unknown): Record<string, Value> =>
     : {};
 
 export const slidesConfigFiles = asRecord<string>(content.slidesConfigFiles);
-export const projectFiles = asRecord<string>(content.projectFiles);
 export const dataAssetFiles = asRecord<() => Promise<string>>(
   content.dataAssetFiles,
 );

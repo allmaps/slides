@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import type { MapLibreWarpedMapLayerOptions } from "@allmaps/maplibre";
-import type { ProjectManifest, SlidesConfig } from "$lib/shared/types";
+import type { SlidesConfig } from "$lib/shared/types";
 import type { StyleSpecification } from "maplibre-gl";
 
 const nullableToUndefined = (value: unknown) =>
@@ -172,7 +172,7 @@ export const slideMetadataSchema = z
 
 export type ParsedSlideMetadata = z.output<typeof slideMetadataSchema>;
 
-const projectSourceDefinitionSchema = z
+const sourceDefinitionSchema = z
   .object({
     type: nonEmptyString,
     path: optionalNonEmptyString,
@@ -184,31 +184,24 @@ const projectSourceDefinitionSchema = z
     message: "provide a non-empty url or path",
   });
 
-const projectSlideshowDefinitionSchema = z.object({
+const slideshowDefinitionSchema = z.object({
   id: nonEmptyString,
   path: nonEmptyString,
   slug: optionalSlug,
   title: optionalString,
-});
-
-export const projectManifestSchema = z.object({
-  id: optionalNonEmptyString,
-  slug: optionalNonEmptyString,
-  title: optionalString,
-  description: optionalString,
   map: mapConfigSchema.optional(),
-  main: optionalNonEmptyString,
-  slideshows: z.array(projectSlideshowDefinitionSchema).optional().default([]),
-  sources: z
-    .record(z.string(), projectSourceDefinitionSchema)
-    .optional()
-    .default({}),
 });
-
-export type ParsedProjectManifest = z.output<typeof projectManifestSchema>;
 
 export const slidesConfigSchema = z
   .object({
+    title: optionalString,
+    description: optionalString,
+    main: optionalNonEmptyString,
+    slideshows: z.array(slideshowDefinitionSchema).optional().default([]),
+    sources: z
+      .record(z.string(), sourceDefinitionSchema)
+      .optional()
+      .default({}),
     map: mapConfigSchema.optional(),
     protomaps: protomapsConfigSchema.optional(),
   })
@@ -280,44 +273,6 @@ export const parseSlideMetadata = (
   return result;
 };
 
-export const parseProjectConfig = (
-  rawConfig: unknown,
-  path: string,
-  fallbackId: string,
-): ContentSchemaResult<ProjectManifest> => {
-  const result = projectManifestSchema.safeParse(rawConfig);
-
-  if (!result.success) {
-    warnContentError(
-      "Skipping this project because project.yml could not be parsed:",
-      path,
-      result.error.issues,
-    );
-
-    return { success: false };
-  }
-
-  const manifest = result.data;
-  const main =
-    manifest.main ??
-    (manifest.slideshows.length === 1 ? manifest.slideshows[0].id : "main");
-  const id = manifest.id ?? fallbackId;
-
-  return {
-    success: true,
-    data: {
-      id,
-      slug: manifest.slug ?? id,
-      title: manifest.title ?? id,
-      description: manifest.description,
-      map: manifest.map,
-      main,
-      slideshows: manifest.slideshows,
-      sources: manifest.sources,
-    },
-  };
-};
-
 export const parseSlidesConfig = (
   rawConfig: unknown,
   path: string,
@@ -326,7 +281,7 @@ export const parseSlidesConfig = (
 
   if (!result.success) {
     warnContentError(
-      "Ignoring app-level Slides config values because slides.config could not be parsed:",
+      "Ignoring Slides config because it could not be parsed:",
       path,
       result.error.issues,
     );
@@ -334,5 +289,20 @@ export const parseSlidesConfig = (
     return { success: false };
   }
 
-  return result;
+  const config = result.data;
+
+  return {
+    success: true,
+    data: {
+      title: config.title ?? "Slides",
+      description: config.description,
+      main:
+        config.main ??
+        (config.slideshows.length === 1 ? config.slideshows[0].id : "main"),
+      slideshows: config.slideshows,
+      sources: config.sources,
+      map: config.map,
+      protomaps: config.protomaps,
+    },
+  };
 };

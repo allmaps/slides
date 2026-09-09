@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { getContext } from "svelte";
   import type { HTMLImgAttributes } from "svelte/elements";
   import type { ContentIiifImage } from "$lib/shared/paths";
   import {
@@ -19,19 +18,17 @@
     ...restProps
   }: HTMLImgAttributes = $props();
 
-  const projectFolder = getContext<string | undefined>("projectFolder") ?? "";
-
   const resolveSrc = (src: string | undefined | null) => {
     if (!src || isExternalUrl(src) || src.startsWith("data:")) return src;
 
-    const assetUrl = getContentAssetUrl(projectFolder, src);
+    const assetUrl = getContentAssetUrl(src);
     if (assetUrl) return assetUrl;
 
     return withBaseUrl(src);
   };
 
   const resolvedSrc = $derived(resolveSrc(src));
-  const iiifImage = $derived(getContentIiifImage(projectFolder, src));
+  const iiifImage = $derived(getContentIiifImage(src));
 
   const getIiifUrl = (
     image: ContentIiifImage,

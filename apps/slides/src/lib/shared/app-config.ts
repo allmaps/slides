@@ -6,6 +6,12 @@ import { parseSlidesConfig } from "$lib/shared/content-schema";
 import type { SlidesConfig } from "$lib/shared/types";
 
 const publicEnv = env as Record<string, string | undefined>;
+const defaultSlidesConfig: SlidesConfig = {
+  title: "Slides",
+  main: "main",
+  slideshows: [],
+  sources: {},
+};
 
 const expandEnvValue = (value: unknown): unknown => {
   if (typeof value === "string") {
@@ -40,7 +46,7 @@ const readSlidesConfig = (): SlidesConfig => {
     a.localeCompare(b),
   );
 
-  if (!entry) return {};
+  if (!entry) return defaultSlidesConfig;
 
   const [path, raw] = entry;
   let rawConfig: unknown;
@@ -49,14 +55,14 @@ const readSlidesConfig = (): SlidesConfig => {
     rawConfig = parseRawConfig(path, raw);
   } catch (error) {
     console.warn(
-      `Ignoring app-level Slides config values because slides.config could not be read:\n${path}\n  - ${error instanceof Error ? error.message : String(error)}`,
+      `Ignoring Slides config because it could not be read:\n${path}\n  - ${error instanceof Error ? error.message : String(error)}`,
     );
-    return {};
+    return defaultSlidesConfig;
   }
 
   const result = parseSlidesConfig(rawConfig, path);
 
-  return result.success ? result.data : {};
+  return result.success ? result.data : defaultSlidesConfig;
 };
 
 export const slidesConfig = readSlidesConfig();

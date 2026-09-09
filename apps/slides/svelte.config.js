@@ -19,15 +19,9 @@ const getBasePath = (value) => {
   return basePath ? `/${basePath}` : "";
 };
 
-const TRUE_VALUES = new Set(["1", "true", "yes", "on"]);
-
-const isTruthy = (value) =>
-  TRUE_VALUES.has(value?.trim().toLowerCase() ?? "");
-
 const basePath = getBasePath(
   process.env.PUBLIC_BASE_PATH ?? process.env.PUBLIC_URL,
 );
-const singleProjectRoot = isTruthy(process.env.PUBLIC_SLIDES_SINGLE_PROJECT_ROOT);
 const normalizePath = (value) => value.replace(/\/+$/g, "") || "/";
 const appRootPaths = new Set([
   "/",
@@ -54,25 +48,18 @@ const config = {
     },
     prerender: {
       handleMissingId: ({ path, message }) => {
-        if (singleProjectRoot && appRootPaths.has(normalizePath(path))) {
+        if (appRootPaths.has(normalizePath(path))) {
           return;
         }
 
         throw new Error(message);
       },
       handleUnseenRoutes: ({ routes }) => {
-        const ignoredRoutes = singleProjectRoot
-          ? [
-              "/[project]",
-              "/[project]/[slideshow]",
-              "/api/[...request]",
-              "/iiif/[...request]",
-            ]
-          : [
-              "/[project]/[slideshow]",
-              "/api/[...request]",
-              "/iiif/[...request]",
-            ];
+        const ignoredRoutes = [
+          "/[slideshow]",
+          "/api/[...request]",
+          "/iiif/[...request]",
+        ];
         const unexpectedRoutes = routes.filter(
           (route) => !ignoredRoutes.includes(route),
         );

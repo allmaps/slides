@@ -229,17 +229,17 @@ export const getEffectiveBasemapStyleConfig = ({
   locale,
   appMap,
   appProtomaps,
-  projectMap,
+  slideshowMap,
   chapterMap,
 }: {
   theme: ThemeMode;
   locale?: string;
   appMap?: MapConfig;
   appProtomaps?: ProtomapsStyleConfig;
-  projectMap?: MapConfig;
+  slideshowMap?: MapConfig;
   chapterMap?: MapConfig;
 }): EffectiveBasemapStyleConfig => {
-  const mapConfigs = [appMap, projectMap, chapterMap];
+  const mapConfigs = [appMap, slideshowMap, chapterMap];
 
   return {
     style: getLastThemeValue(
@@ -256,7 +256,7 @@ export const getEffectiveBasemapStyleConfig = ({
       [
         appProtomaps,
         appMap?.protomaps,
-        projectMap?.protomaps,
+        slideshowMap?.protomaps,
         chapterMap?.protomaps,
       ],
       theme,
@@ -301,9 +301,8 @@ export const getBasemapStyleKey = ({
   config: EffectiveBasemapStyleConfig;
 }) => stableStringify({ theme, config });
 
-const getLocalStyleKeys = (projectFolder: string | undefined, path: string) => {
+const getLocalStyleKeys = (path: string) => {
   const trimmedPath = path.trim();
-  const rootScoped = trimmedPath.startsWith("/");
   const cleanPath = trimmedPath.replace(/^\.?\//, "").replace(/^\/+/, "");
   const candidatePaths = cleanPath.startsWith("assets/")
     ? [cleanPath]
@@ -313,20 +312,15 @@ const getLocalStyleKeys = (projectFolder: string | undefined, path: string) => {
         `assets/styles/${cleanPath}`,
       ];
 
-  return candidatePaths.flatMap((candidatePath) => {
-    if (rootScoped || !projectFolder) return [`./${candidatePath}`];
-
-    return [`./${projectFolder}/${candidatePath}`, `./${candidatePath}`];
-  });
+  return candidatePaths.map((candidatePath) => `./${candidatePath}`);
 };
 
 const resolveConfiguredStyle = async (
   styleReference: BasemapStyleReference,
-  projectFolder: string | undefined,
 ): Promise<StyleSpecification | undefined> => {
   if (typeof styleReference !== "string") return cloneJson(styleReference);
 
-  for (const key of getLocalStyleKeys(projectFolder, styleReference)) {
+  for (const key of getLocalStyleKeys(styleReference)) {
     const style = mapStyleFiles[key];
     if (style) return cloneJson(style) as StyleSpecification;
   }
@@ -540,15 +534,13 @@ export const createEmptyMapStyle = (
 
 export const resolveBasemapStyle = async ({
   theme,
-  projectFolder,
   config,
 }: {
   theme: ThemeMode;
-  projectFolder?: string;
   config: EffectiveBasemapStyleConfig;
 }): Promise<ResolvedBasemapStyle> => {
   const configuredStyle = config.style
-    ? await resolveConfiguredStyle(config.style, projectFolder)
+    ? await resolveConfiguredStyle(config.style)
     : undefined;
   const style = configuredStyle ?? createProtomapsStyle(theme, config.protomaps);
   const foregroundColor = getForegroundColor(

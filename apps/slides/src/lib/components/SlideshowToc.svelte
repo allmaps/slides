@@ -8,7 +8,10 @@
   } from "@lucide/svelte";
 
   import PanelOverlay from "$lib/components/PanelOverlay.svelte";
-  import { getSlideshowRouteHref } from "$lib/shared/projects";
+  import {
+    getChapterRouteHref,
+    getSlideshowRouteHref,
+  } from "$lib/shared/project";
   import type {
     MapChapter,
     Project,
@@ -60,7 +63,7 @@
       : (reference.title ?? slideshow.title);
 
   const getSubslideshowHref = (slideshow: Slideshow) =>
-    getSlideshowRouteHref(project, slideshow);
+    getSlideshowRouteHref(slideshow);
 
   const getChapterSubslideshows = (chapter: MapChapter) =>
     chapter.subslideshows
@@ -83,7 +86,7 @@
       : [];
 
   const getChapterHref = (slideshow: Slideshow, chapter: MapChapter) =>
-    `${getSubslideshowHref(slideshow)}#${encodeURIComponent(chapter.slug)}`;
+    getChapterRouteHref(slideshow, chapter);
 
   const tocEntries = $derived(
     tocChapters.map((chapter) => ({

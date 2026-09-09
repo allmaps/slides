@@ -67,8 +67,7 @@
       [key: string]: SourceSpecification;
     };
     layers?: LayerSpecification[] | LayerSpecification;
-    projectFolder?: string;
-    projectMapConfig?: MapConfig;
+    slideshowMapConfig?: MapConfig;
     highlight?: string;
     hiddenWarpedMapUrls?: string[];
     zoomToWarpedMapUrl?: string;
@@ -89,8 +88,7 @@
     locale,
     layers,
     sources,
-    projectFolder,
-    projectMapConfig,
+    slideshowMapConfig,
     highlight,
     hiddenWarpedMapUrls = [],
     zoomToWarpedMapUrl,
@@ -138,7 +136,7 @@
     getEffectiveBasemapTheme(
       theme,
       slidesConfig.map,
-      projectMapConfig,
+      slideshowMapConfig,
       currentChapterMapConfig,
     ),
   );
@@ -157,7 +155,7 @@
       locale,
       appMap: slidesConfig.map,
       appProtomaps: slidesConfig.protomaps,
-      projectMap: projectMapConfig,
+      slideshowMap: slideshowMapConfig,
       chapterMap: currentChapterMapConfig,
     }),
   );
@@ -170,7 +168,7 @@
   const basemapLayerState = $derived(
     getEffectiveBasemapLayerState(
       slidesConfig.map,
-      projectMapConfig,
+      slideshowMapConfig,
       currentChapterMapConfig,
       showLabelsMapConfig,
     ),
@@ -582,7 +580,6 @@
 
     const nextBasemapStyle = await resolveBasemapStyle({
       theme: basemapTheme,
-      projectFolder,
       config: basemapStyleConfig,
     });
 

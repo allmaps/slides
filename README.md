@@ -19,9 +19,8 @@ This repository is a pnpm workspace:
 - `packages/slides-content` is the stable app import target. The CLI aliases it
   to the selected content package when it starts the app.
 
-The content package's `slides.config.yml` tells the CLI which public settings to
-pass to SvelteKit. The content itself is selected by package name, for example
-`@allmaps/gravity-at-sea`.
+The selected content package contains one project. Its `slides.config.yml` holds
+the project metadata, slideshow definitions, sources, and application settings.
 
 Install dependencies with `pnpm install`, start a development server:
 
@@ -46,27 +45,13 @@ content/
     package.json
     index.ts
     slides.config.yml
-    project.yml
     slideshows/
     assets/
 ```
 
-`content/gravity-at-sea/index.ts` exports Vite glob imports for project config,
-markdown slides, and project assets. Asset paths in markdown/frontmatter are
-resolved relative to the current project folder.
-
-The content entry point also supports the older nested-project shape, where
-project folders live below the package root:
-
-```txt
-content-package/
-  package.json
-  index.ts
-  some-project/
-    project.yml
-    slideshows/
-    assets/
-```
+`content/gravity-at-sea/index.ts` exports Vite glob imports for the config,
+markdown slides, and assets. Asset paths in markdown/frontmatter are resolved
+relative to the content package root.
 
 ## Building
 
@@ -86,13 +71,8 @@ pnpm exec slides build @allmaps/gravity-at-sea --config content/gravity-at-sea/s
 
 ## Routing
 
-By default, the root route shows a project overview, project main slideshows are
-served at `/:project`, and subslideshows are served at `/:project/:slideshow`.
-
-For a build with exactly one project, set
-`routing.singleProjectRoot: true` in the config to publish that project at the
-root instead. In that mode, the main slideshow is served at `/` and
-subslideshows are served at `/:slideshow`.
+The main slideshow is served at `/`. Other slideshows are served at
+`/:slideshow`.
 
 ## Config
 
@@ -100,11 +80,15 @@ subslideshows are served at `/:slideshow`.
 which is useful for GitHub Pages base paths and public API keys:
 
 ```yml
+title: Gravity Expeditions at Sea
+main: main
+slideshows:
+  - id: main
+    path: slideshows/00-main
+
 site:
   basePath: ${SLIDES_BASE_PATH}
   publicUrl: ${SLIDES_PUBLIC_URL}
-routing:
-  singleProjectRoot: false
 protomaps:
   key: ${PUBLIC_PROTOMAPS_KEY}
 ```
