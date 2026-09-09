@@ -178,7 +178,7 @@
   let container: HTMLElement;
   let mapLoaded = $state(false);
   let currentBearing = $state(0);
-  let resourcesRevision = $state(0);
+  let currentSlideResourcesRevision = $state(0);
   let mapIdsByAnnotationUrl: Map<string, string[]> = new Map();
   let annotationUrlByMapId: Map<string, string> = new Map();
   let annotationLoadPromisesByUrl: Map<string, Promise<void>> = new Map();
@@ -186,6 +186,7 @@
   let spriteKeysByMapId: Map<string, Set<string>> = new Map();
   let visibleMaps: string[] = new Array();
   let currentVisibleMaps: string[] = [];
+  let appliedWarpedMapStateKey: string | undefined;
   let latestHiddenWarpedMapUrls: string[] = [];
   let imagesAdded: Set<string> = new Set();
   let highlightedMaps: string[] = [];
@@ -237,6 +238,15 @@
 
   const getMapIdsForAnnotations = (annotations: WarpedMapProps[]) =>
     annotations.flatMap(({ url }) => getMapIdsForAnnotationUrl(url));
+
+  const getWarpedMapStateKey = (annotations: WarpedMapProps[]) =>
+    JSON.stringify(
+      annotations.map(({ url, options }) => ({
+        url,
+        mapIds: getMapIdsForAnnotationUrl(url),
+        options,
+      })),
+    );
 
   const getNativeMaxZoomForAnnotations = (annotations: WarpedMapProps[]) => {
     const nativeMaxZooms = getMapIdsForAnnotations(annotations)
@@ -809,9 +819,6 @@
         }
       } finally {
         annotationLoadPromisesByUrl.delete(url);
-        if (!destroyed) {
-          resourcesRevision += 1;
-        }
       }
     })();
 
@@ -825,8 +832,12 @@
       ({ url }) => !mapIdsByAnnotationUrl.has(url),
     );
 
-    if (debug) {
-      console.log("Loading warped maps...", uniqueAnnotations);
+    if (debug && uniqueAnnotations.length) {
+      console.log("Loading warped maps...", {
+        chapterIndex: index,
+        count: uniqueAnnotations.length,
+        annotations: uniqueAnnotations,
+      });
     }
 
     await Promise.all(uniqueAnnotations.map(loadAnnotation));
@@ -873,9 +884,6 @@
         }
       } finally {
         spriteLoadPromisesByKey.delete(spriteKey);
-        if (!destroyed) {
-          resourcesRevision += 1;
-        }
       }
     })();
 
@@ -890,15 +898,17 @@
 
     const cameraLayoutOptions = getCameraLayoutOptions(currentPadding);
 
-    resourcesRevision;
+    currentSlideResourcesRevision;
 
     if (mapLoaded && currentWarpedMaps && !currentSlideResourcesReady()) return;
 
     if (mapLoaded && currentWarpedMaps) {
       const hiddenUrlSet = new Set(latestHiddenWarpedMapUrls);
+      const warpedMapStateKey = getWarpedMapStateKey(currentWarpedMaps);
+      const shouldApplyWarpedMapState =
+        warpedMapStateKey !== appliedWarpedMapStateKey;
       // Get all IDs
       const optionsByMapId = new Map();
-      const newMapIds = new Array();
       currentWarpedMaps
         .slice()
         // For correct order
@@ -907,17 +917,15 @@
           const { url, options } = annotation;
           const annotationIds = mapIdsByAnnotationUrl.get(url);
           if (annotationIds) {
-            warpedMapLayer.bringMapsToFront(annotationIds);
+            if (shouldApplyWarpedMapState) {
+              warpedMapLayer.bringMapsToFront(annotationIds);
+            }
             annotationIds.forEach((id: string) => {
               optionsByMapId.set(id, {
                 ...DEFAULT_WARPED_MAP_OPTIONS,
                 ...options,
                 visible: !hiddenUrlSet.has(url),
               });
-              if (!visibleMaps.includes(id)) {
-                // No longer used!
-                newMapIds.push(id);
-              }
             });
           }
         });
@@ -933,16 +941,19 @@
           ...DEFAULT_WARPED_MAP_OPTIONS,
         });
       });
-      if (debug) {
-        console.log("Setting current warped maps...", {
-          currentWarpedMaps,
-          optionsByMapId,
-          visibleMaps,
-        });
+      if (shouldApplyWarpedMapState) {
+        if (debug) {
+          console.log("Setting current warped maps...", {
+            chapterIndex: index,
+            mapCount: mapIds.length,
+            currentWarpedMaps,
+            optionsByMapId,
+            visibleMaps,
+          });
+        }
+        warpedMapLayer.setMapsOptions((mapId) => optionsByMapId.get(mapId));
+        appliedWarpedMapStateKey = warpedMapStateKey;
       }
-      // Animation not working correctly
-      // const animate = init ? false : slideDuration === 0 ? false : true
-      warpedMapLayer.setMapsOptions((mapId) => optionsByMapId.get(mapId));
 
       visibleMaps = mapIds;
       currentVisibleMaps = mapIds;
@@ -1007,16 +1018,26 @@
         };
       }
       if (camera) {
+        if (debug) {
+          console.log("Updating warped map camera...", {
+            chapterIndex: index,
+            camera,
+            padding: currentPadding,
+          });
+        }
         flyToCamera(camera, cameraLayoutOptions, forceCameraOffset);
       }
     } else if (mapLoaded) {
       // Hide all maps
       const mapsToHide = new Set(visibleMaps);
-      warpedMapLayer.setMapsOptions((mapId) =>
-        mapsToHide.has(mapId) ? { visible: false } : undefined,
-      );
+      if (mapsToHide.size) {
+        warpedMapLayer.setMapsOptions((mapId) =>
+          mapsToHide.has(mapId) ? { visible: false } : undefined,
+        );
+      }
       visibleMaps = [];
       currentVisibleMaps = [];
+      appliedWarpedMapStateKey = undefined;
       setDebugBounds();
     }
   }
@@ -1042,7 +1063,7 @@
   }
 
   function highlightMaps() {
-    resourcesRevision;
+    currentSlideResourcesRevision;
 
     if (!mapLoaded) return;
     if (!highlight && highlightedMaps.length === 0) return;
@@ -1076,7 +1097,7 @@
     const signal = zoomToWarpedMapSignal;
     const url = zoomToWarpedMapUrl;
 
-    resourcesRevision;
+    currentSlideResourcesRevision;
 
     if (
       !mapLoaded ||
@@ -1245,17 +1266,27 @@
     const currentAnnotations = currentWarpedMaps ?? [];
     const currentSprite = sprite;
     const currentChapters = chapters;
-    let cancelled = false;
-
-    void (async () => {
-      await loadAnnotations(currentAnnotations);
-      if (cancelled) return;
-
-      await loadSpriteForMapIds(
+    const currentResourcesReady =
+      areAnnotationsLoaded(currentAnnotations) &&
+      hasSpriteForMapIds(
         currentSprite,
         getMapIdsForAnnotations(currentAnnotations),
       );
-      if (cancelled) return;
+    let cancelled = false;
+
+    void (async () => {
+      if (!currentResourcesReady) {
+        await loadAnnotations(currentAnnotations);
+        if (cancelled) return;
+
+        await loadSpriteForMapIds(
+          currentSprite,
+          getMapIdsForAnnotations(currentAnnotations),
+        );
+        if (cancelled) return;
+
+        currentSlideResourcesRevision += 1;
+      }
 
       const currentAnnotationUrls = new Set(
         currentAnnotations.map(({ url }) => url),
