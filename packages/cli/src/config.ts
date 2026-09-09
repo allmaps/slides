@@ -5,16 +5,17 @@ import { fileURLToPath } from "node:url";
 
 import { parse } from "yaml";
 
-type RawSlidesConfig = {
+export type RawSlidesConfig = {
+  title?: string;
+  slideshows?: Array<{
+    path?: string;
+  }>;
   app?: {
     directory?: string;
   };
   site?: {
     basePath?: string;
     publicUrl?: string;
-  };
-  routing?: {
-    singleProjectRoot?: boolean | string | number;
   };
   map?: {
     protomaps?: {
@@ -69,7 +70,6 @@ export type SlidesConfig = {
   publicBasePath: string;
   publicUrl: string;
   protomapsKey: string;
-  singleProjectRoot: boolean;
   iiif: {
     enabled: boolean;
     inputRoot: string;
@@ -90,7 +90,6 @@ const CONFIG_FILENAMES = [
   "slides.config.json",
 ];
 const WORKSPACE_FILENAME = "pnpm-workspace.yaml";
-const PROJECT_MANIFEST_FILENAME = "project.yml";
 const TRUE_VALUES = new Set(["1", "true", "yes", "on"]);
 const FALSE_VALUES = new Set(["0", "false", "no", "off"]);
 const DEFAULT_IIIF_INPUT = path.join("assets", "images");
@@ -172,17 +171,6 @@ const parseConfigFile = async (configPath: string): Promise<RawSlidesConfig> => 
   }
 
   return (expandEnvValue(parse(contents) ?? {}) ?? {}) as RawSlidesConfig;
-};
-
-const readMainProjectTitle = async (contentRoot: string) => {
-  const manifestPath = path.join(contentRoot, PROJECT_MANIFEST_FILENAME);
-  if (!(await fileExists(manifestPath))) return undefined;
-
-  const manifest = (parse(await readFile(manifestPath, "utf8")) ?? {}) as {
-    title?: unknown;
-  };
-
-  return getOptionalNonEmptyString(manifest.title);
 };
 
 const findDefaultConfig = async (cwd: string) => {
@@ -407,9 +395,6 @@ export const loadSlidesConfig = async (
 
   const resolvedContentPackage =
     contentPackage ?? (await resolveContentPackageFromConfig(resolvedConfigPath));
-  const mainProjectTitle = await readMainProjectTitle(
-    resolvedContentPackage.root,
-  );
   const rootDir = resolvedConfigPath ? path.dirname(resolvedConfigPath) : cwd;
   const raw = resolvedConfigPath ? await parseConfigFile(resolvedConfigPath) : {};
   const appDir = resolveFrom(
@@ -440,7 +425,6 @@ export const loadSlidesConfig = async (
     publicBasePath,
     publicUrl,
     protomapsKey,
-    singleProjectRoot: getBoolean(raw.routing?.singleProjectRoot),
     iiif: {
       enabled: getBoolean(raw.iiif?.enabled, true),
       inputRoot: resolveFrom(
@@ -454,7 +438,7 @@ export const loadSlidesConfig = async (
       idBase: getOptionalString(raw.iiif?.id),
       collectionLabel:
         getOptionalNonEmptyString(raw.iiif?.collectionLabel) ??
-        mainProjectTitle,
+        getOptionalNonEmptyString(raw.title),
       sizes: getBoolean(raw.iiif?.sizes, true),
       tiles: getBoolean(raw.iiif?.tiles, true),
       tileSize: getOptionalString(raw.iiif?.tileSize),
@@ -471,9 +455,6 @@ export const getAppEnvironment = (config: SlidesConfig) => {
     PUBLIC_BASE_PATH: config.publicBasePath,
     PUBLIC_URL: config.publicUrl,
     PUBLIC_PROTOMAPS_KEY: config.protomapsKey,
-    PUBLIC_SLIDES_SINGLE_PROJECT_ROOT: config.singleProjectRoot
-      ? "true"
-      : "false",
     SLIDES_CONFIG_PATH: config.configPath ?? "",
     SLIDES_CONTENT_PACKAGE: config.contentPackageName,
     SLIDES_CONTENT_PACKAGE_ENTRY: config.contentPackageEntry,

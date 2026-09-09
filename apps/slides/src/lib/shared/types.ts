@@ -45,6 +45,11 @@ export type MapConfig = {
 };
 
 export type SlidesConfig = {
+  title: string;
+  description?: string;
+  main: string;
+  slideshows: SlideshowDefinition[];
+  sources: Record<string, SourceDefinition>;
   map?: MapConfig;
   protomaps?: ProtomapsStyleConfig;
 };
@@ -108,33 +113,25 @@ export type MapChapter = MapChapterProps & {
   Component: any;
 };
 
-export type ProjectSourceDefinition = {
+export type SourceDefinition = {
   type: string;
   path?: string;
   url?: string;
   [key: string]: unknown;
 };
 
-export type ProjectSlideshowDefinition = {
+export type SlideshowDefinition = {
   id: string;
   path: string;
   slug?: string;
   title?: string;
-};
-
-export type ProjectManifest = {
-  id: string;
-  slug: string;
-  title: string;
-  description?: string;
   map?: MapConfig;
-  main: string;
-  slideshows: ProjectSlideshowDefinition[];
-  sources: Record<string, ProjectSourceDefinition>;
 };
 
-export type Project = Omit<ProjectManifest, "slideshows" | "sources"> & {
-  folder: string;
+export type Project = Pick<
+  SlidesConfig,
+  "title" | "description" | "main"
+> & {
   sources: Record<string, SourceSpecification>;
   slideshows: Slideshow[];
 };
@@ -144,6 +141,7 @@ export type Slideshow = {
   path: string;
   slug: string;
   title: string;
+  map?: MapConfig;
   chapters: MapChapter[];
   sources: Record<string, SourceSpecification>;
 };

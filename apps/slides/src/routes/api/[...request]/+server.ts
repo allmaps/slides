@@ -19,7 +19,6 @@ const getDataAssetRequestPath = (assetKey: string) => {
   if (!DATA_ASSET_EXTENSION_PATTERN.test(filename)) return undefined;
 
   return joinUrl(
-    ...parts.slice(0, assetsIndex),
     ...parts.slice(assetsIndex + 1),
   );
 };

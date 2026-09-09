@@ -1,7 +1,7 @@
 # Slides CLI
 
 The CLI is the boundary between reusable app code and editable story content. It
-loads a Slides config file, validates project folders, sets the public
+loads a Slides config file, validates the content package, sets the public
 environment variables expected by SvelteKit, and then runs the app package.
 
 ## Commands
@@ -34,12 +34,15 @@ The config file can be YAML or JSON. Paths are resolved relative to the config
 file.
 
 ```yml
+title: Gravity Expeditions at Sea
+main: main
+slideshows:
+  - id: main
+    path: slideshows/00-main
+
 site:
   basePath: ${SLIDES_BASE_PATH}
   publicUrl: ${SLIDES_PUBLIC_URL}
-
-routing:
-  singleProjectRoot: false
 
 protomaps:
   key: ${PUBLIC_PROTOMAPS_KEY}
@@ -52,7 +55,6 @@ Useful fields:
 | `app.directory` | workspace `apps/slides` | SvelteKit app directory. |
 | `site.basePath` | empty | SvelteKit base path, for example `/kattenburg-atlas`. |
 | `site.publicUrl` | `site.basePath` | Absolute public URL used by commands that need IDs. |
-| `routing.singleProjectRoot` | `false` | Publish the only project at `/` instead of `/:project`. |
 | `protomaps.key` | empty | Public Protomaps key passed to the app. |
 | `iiif.enabled` | `true` | Generate and serve IIIF derivatives. |
 | `iiif.input` | `assets/images` | Source image root for manual IIIF generation and imported image paths. |

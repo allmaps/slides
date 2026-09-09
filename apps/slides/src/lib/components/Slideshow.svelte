@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount, setContext, tick } from "svelte";
+  import { onMount, tick } from "svelte";
   import {
     ArrowLeft,
     Layers as LayersIcon,
@@ -15,7 +15,10 @@
   import SlideshowPanel from "$lib/components/SlideshowPanel.svelte";
   import SlideshowToc from "$lib/components/SlideshowToc.svelte";
   import { getGeoJsonLayers } from "$lib/shared/geojson";
-  import { getSlideshowRouteHref } from "$lib/shared/projects";
+  import {
+    getChapterRouteHref,
+    getSlideshowRouteHref,
+  } from "$lib/shared/project";
   import { DEFAULT_DURATION, DEFAULT_PADDING } from "$lib/shared/settings";
   import type { Project, Slideshow } from "$lib/shared/types";
 
@@ -43,8 +46,6 @@
   type PanelOverlayName = "toc" | "layers";
 
   let { project, slideshow, mainSlideshow }: Props = $props();
-
-  setContext("projectFolder", project.folder);
 
   const activeSlideshow = $derived(slideshow);
   const rootSlideshow = $derived(mainSlideshow ?? slideshow);
@@ -109,10 +110,10 @@
       .filter((title, index, titles) => title && titles.indexOf(title) === index)
       .join(", "),
   );
-  const mainHref = $derived(getSlideshowRouteHref(project, rootSlideshow));
+  const mainHref = $derived(getSlideshowRouteHref(rootSlideshow));
   const mainBreadcrumbHref = $derived.by(() => {
-    const slug = rootSlideshow.chapters[mainIndex]?.slug;
-    return slug ? `${mainHref}#${encodeURIComponent(slug)}` : mainHref;
+    const chapter = rootSlideshow.chapters[mainIndex];
+    return chapter ? getChapterRouteHref(rootSlideshow, chapter) : mainHref;
   });
   const themeToggleLabel = $derived(
     isDarkMode ? "Switch to light theme" : "Switch to dark theme",
@@ -128,6 +129,32 @@
     value: string | null,
   ): ThemePreference | undefined =>
     value === "light" || value === "dark" ? value : undefined;
+
+  const decodeHash = (hash: string) => {
+    const value = hash.startsWith("#") ? hash.slice(1) : hash;
+
+    try {
+      return decodeURIComponent(value);
+    } catch {
+      return value;
+    }
+  };
+
+  const initializeIndexFromHash = () => {
+    const hash = decodeHash(window.location.hash);
+    if (!hash) return;
+
+    const initialIndex = activeSlideshow.chapters.findIndex(
+      (chapter) => chapter.slug === hash,
+    );
+    if (initialIndex < 0) return;
+
+    if (isSubslideshowActive) {
+      subslideshowIndex = initialIndex;
+    } else {
+      mainIndex = initialIndex;
+    }
+  };
 
   const closeToc = () => {
     if (tocOpen) {
@@ -343,6 +370,8 @@
       queueImmediateMapLayoutUpdate();
     };
 
+    initializeIndexFromHash();
+
     try {
       themePreference = parseThemePreference(
         window.localStorage.getItem(THEME_STORAGE_KEY),
@@ -400,8 +429,7 @@
         {isDarkMode}
         {sources}
         {layers}
-        projectFolder={project.folder}
-        projectMapConfig={project.map}
+        slideshowMapConfig={activeSlideshow.map}
         anticipate
         duration={DEFAULT_DURATION}
         layoutRevision={mapLayoutRevision}

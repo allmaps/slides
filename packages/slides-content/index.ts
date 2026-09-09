@@ -19,8 +19,6 @@ type ImageModule = IiifImageModule | string;
 
 export const slidesConfigFiles = {} as Record<string, string>;
 
-export const projectFiles = {} as Record<string, string>;
-
 export const dataAssetFiles = {} as Record<string, () => Promise<string>>;
 
 export const mapStyleFiles = {} as Record<string, unknown>;

@@ -26,20 +26,8 @@ export const slidesConfigFiles = import.meta.glob(
   },
 ) as Record<string, string>;
 
-export const projectFiles = import.meta.glob(
-  ["./project.yml", "./*/project.yml"],
-  {
-    eager: true,
-    query: "?raw",
-    import: "default",
-  },
-) as Record<string, string>;
-
 export const dataAssetFiles = import.meta.glob(
-  [
-    "./assets/**/*.{geojson,GEOJSON,json,JSON}",
-    "./*/assets/**/*.{geojson,GEOJSON,json,JSON}",
-  ],
+  ["./assets/**/*.{geojson,GEOJSON,json,JSON}"],
   {
     query: "?raw",
     import: "default",
@@ -47,12 +35,7 @@ export const dataAssetFiles = import.meta.glob(
 ) as Record<string, () => Promise<string>>;
 
 export const mapStyleFiles = import.meta.glob(
-  [
-    "./assets/map-styles/**/*.json",
-    "./assets/styles/**/*.json",
-    "./*/assets/map-styles/**/*.json",
-    "./*/assets/styles/**/*.json",
-  ],
+  ["./assets/map-styles/**/*.json", "./assets/styles/**/*.json"],
   {
     eager: true,
     import: "default",
@@ -64,9 +47,6 @@ export const imageAssetUrls = import.meta.glob(
     "./assets/images/**/*.{avif,AVIF,gif,GIF}",
     "./assets/images/**/*.{jpeg,JPEG,jpg,JPG,png,PNG}",
     "./assets/images/**/*.{tif,TIF,tiff,TIFF,webp,WEBP}",
-    "./*/assets/images/**/*.{avif,AVIF,gif,GIF}",
-    "./*/assets/images/**/*.{jpeg,JPEG,jpg,JPG,png,PNG}",
-    "./*/assets/images/**/*.{tif,TIF,tiff,TIFF,webp,WEBP}",
   ],
   {
     eager: true,
@@ -76,7 +56,7 @@ export const imageAssetUrls = import.meta.glob(
 ) as Record<string, ImageModule>;
 
 export const slideFiles = import.meta.glob(
-  ["./slideshows/**/*.md", "./*/slideshows/**/*.md"],
+  ["./slideshows/**/*.md"],
   {
     eager: true,
   },

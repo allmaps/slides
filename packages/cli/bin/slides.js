@@ -31,7 +31,7 @@ const addAppCommand = (name, description) => {
 
 program
   .name("slides")
-  .description("Prepare and build Allmaps Slides projects")
+  .description("Prepare and build Allmaps Slides content")
   .showHelpAfterError()
   .showSuggestionAfterError();
 

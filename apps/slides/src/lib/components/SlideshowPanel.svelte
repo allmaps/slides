@@ -4,7 +4,7 @@
   import { tick, untrack } from "svelte";
   import { BookOpen, Presentation } from "@lucide/svelte";
 
-  import { getSlideshowRouteHref } from "$lib/shared/projects";
+  import { getSlideshowRouteHref } from "$lib/shared/project";
   import type {
     MapChapter,
     Project,
@@ -29,6 +29,8 @@
     title: string;
     slideCount: number;
   };
+
+  const SLIDE_CHANGE_DELAY_MS = 120;
 
   let {
     project,
@@ -67,7 +69,7 @@
       : (reference.title ?? slideshow.title);
 
   const getSubslideshowHref = (slideshow: Slideshow) =>
-    getSlideshowRouteHref(project, slideshow);
+    getSlideshowRouteHref(slideshow);
 
   const getChapterSubslideshows = (
     chapter: MapChapter,
@@ -166,9 +168,9 @@
     scrollContainer?.scrollTo({ top: 0, behavior });
   };
 
-  const replaceHash = (hash: string) => {
-    const encodedHash = encodeURIComponent(hash);
-    const nextUrl = `${window.location.pathname}${window.location.search}#${encodedHash}`;
+  const replaceHash = (hash?: string) => {
+    const encodedHash = hash ? `#${encodeURIComponent(hash)}` : "";
+    const nextUrl = `${window.location.pathname}${window.location.search}${encodedHash}`;
     replaceState(nextUrl, page.state);
   };
 
@@ -176,7 +178,15 @@
     const hash = decodeHash(page.url.hash);
 
     if (!active || !loaded) return;
-    if (!hash || !hashMatchesChapter(hash)) return;
+    if (!hash) {
+      if (untrack(() => index) === 0) return;
+
+      const firstSlug = chapters[0]?.slug;
+      if (firstSlug) void scrollToChapter(firstSlug, "auto");
+      return;
+    }
+
+    if (!hashMatchesChapter(hash)) return;
     if (hash === untrack(() => currentSlug)) return;
 
     pendingHashScroll = hash;
@@ -191,10 +201,11 @@
     if (!active || !loaded || !currentSlug) return;
 
     const hash = getCurrentHash();
-    if (hash === currentSlug) return;
+    const nextHash = index === 0 ? "" : currentSlug;
+    if (hash === nextHash) return;
     if (pendingHashScroll && hash === pendingHashScroll) return;
 
-    replaceHash(currentSlug);
+    replaceHash(nextHash || undefined);
   });
 
   $effect(() => {
@@ -211,6 +222,7 @@
     if (!scrollContainer) return;
 
     let observer: IntersectionObserver | undefined;
+    let indexUpdateTimeout: number | undefined;
     let cancelled = false;
 
     setIndex(0);
@@ -248,7 +260,16 @@
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
             const elem = entry.target as HTMLElement;
-            setIndex(Number(elem.dataset.index));
+            const nextIndex = Number(elem.dataset.index);
+
+            if (indexUpdateTimeout !== undefined) {
+              window.clearTimeout(indexUpdateTimeout);
+            }
+
+            indexUpdateTimeout = window.setTimeout(() => {
+              indexUpdateTimeout = undefined;
+              if (!cancelled) setIndex(nextIndex);
+            }, SLIDE_CHANGE_DELAY_MS);
           }
         });
       };
@@ -264,6 +285,9 @@
     return () => {
       cancelled = true;
       observer?.disconnect();
+      if (indexUpdateTimeout !== undefined) {
+        window.clearTimeout(indexUpdateTimeout);
+      }
     };
   });
 </script>
@@ -273,7 +297,9 @@
 >
   <div
     bind:this={scrollContainer}
-    class="h-full min-h-0 overflow-x-hidden overflow-y-auto px-5 transition-opacity duration-150 {overlayOpen
+    class="h-full min-h-0 overflow-x-hidden overflow-y-auto px-5 transition-opacity duration-150 {loaded
+      ? 'visible'
+      : 'invisible'} {overlayOpen
       ? 'opacity-50'
       : 'opacity-100'}"
   >

@@ -1,34 +1,21 @@
 import { lstat, readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 
-import { parse } from "yaml";
-
 import { type SlidesConfig } from "./config.ts";
-
-type ProjectManifest = {
-  id?: string;
-  slug?: string;
-};
 
 type ContentPackage = {
   name?: string;
 };
 
-type ContentProject = {
-  folder: string;
-  slug: string;
-  manifestPath: string;
-};
-
 export type ContentResult = {
-  projects: ContentProject[];
+  slideCount: number;
+  slideshowCount: number;
 };
 
 type ContentWatcher = {
   close: () => void;
 };
 
-const manifestFilename = "project.yml";
 const packageFilename = "package.json";
 const WATCH_INTERVAL_MS = 1000;
 
@@ -56,16 +43,6 @@ const getPathStat = async (entryPath: string) => {
   }
 };
 
-const parseProjectManifest = async (
-  manifestPath: string,
-): Promise<ProjectManifest> => {
-  const contents = await readFile(manifestPath, "utf8");
-  return (parse(contents) ?? {}) as ProjectManifest;
-};
-
-const getProjectManifestPath = (projectDir: string) =>
-  path.join(projectDir, manifestFilename);
-
 const validateContentPackage = async (config: SlidesConfig) => {
   const packagePath = path.join(config.sourceContentDir, packageFilename);
   const packageStat = await getPathStat(packagePath);
@@ -87,53 +64,20 @@ const validateContentPackage = async (config: SlidesConfig) => {
   }
 };
 
-const findProjects = async (contentDir: string): Promise<ContentProject[]> => {
-  const projects: ContentProject[] = [];
+const countMarkdownFiles = async (directory: string): Promise<number> => {
+  let count = 0;
 
-  const addProject = async (projectDir: string, folder: string) => {
-    const manifestPath = getProjectManifestPath(projectDir);
+  for (const entry of await getDirectoryEntries(directory)) {
+    const entryPath = path.join(directory, entry.name);
 
-    try {
-      const manifest = await parseProjectManifest(manifestPath);
-
-      projects.push({
-        folder,
-        slug:
-          manifest.slug ?? manifest.id ?? (folder || path.basename(projectDir)),
-        manifestPath,
-      });
-
-      return true;
-    } catch (error) {
-      if (error instanceof Error && "code" in error && error.code === "ENOENT") {
-        return false;
-      }
-
-      throw error;
-    }
-  };
-
-  await addProject(contentDir, "");
-
-  for (const entry of await readdir(contentDir, { withFileTypes: true })) {
-    if (!entry.isDirectory()) continue;
-
-    const projectDir = path.join(contentDir, entry.name);
-    const projectFound = await addProject(projectDir, entry.name);
-
-    if (projectFound || entry.name !== "content") continue;
-
-    for (const nestedEntry of await getDirectoryEntries(projectDir)) {
-      if (!nestedEntry.isDirectory()) continue;
-
-      await addProject(
-        path.join(projectDir, nestedEntry.name),
-        nestedEntry.name,
-      );
+    if (entry.isDirectory()) {
+      count += await countMarkdownFiles(entryPath);
+    } else if (entry.isFile() && entry.name.toLowerCase().endsWith(".md")) {
+      count += 1;
     }
   }
 
-  return projects.sort((a, b) => a.folder.localeCompare(b.folder));
+  return count;
 };
 
 export const validateContent = async (
@@ -141,33 +85,38 @@ export const validateContent = async (
 ): Promise<ContentResult> => {
   await validateContentPackage(config);
 
-  const projects = await findProjects(config.sourceContentDir);
+  const slideshowPaths = (config.raw.slideshows ?? []).flatMap((slideshow) =>
+    typeof slideshow.path === "string" && slideshow.path.trim()
+      ? [slideshow.path]
+      : [],
+  );
 
-  if (!projects.length) {
-    throw new Error(`No projects found in ${config.sourceContentDir}`);
+  let slideCount = 0;
+
+  for (const slideshowPath of slideshowPaths) {
+    const directory = path.resolve(config.sourceContentDir, slideshowPath);
+    const stat = await getPathStat(directory);
+
+    if (!stat?.isDirectory()) {
+      throw new Error(`Slideshow directory not found: ${directory}`);
+    }
+
+    slideCount += await countMarkdownFiles(directory);
   }
 
-  if (config.singleProjectRoot && projects.length !== 1) {
-    throw new Error(
-      `singleProjectRoot requires exactly one project, found ${projects.length}`,
-    );
-  }
-
-  return { projects };
+  return { slideCount, slideshowCount: slideshowPaths.length };
 };
 
 export const formatContentResult = (
   config: SlidesConfig,
   result: ContentResult,
 ) => {
-  const projectLabel =
-    result.projects.length === 1
-      ? result.projects[0].slug
-      : `${result.projects.length} projects`;
   const contentLabel =
     path.relative(process.cwd(), config.sourceContentDir) || ".";
+  const slideLabel = `${result.slideCount} ${result.slideCount === 1 ? "slide" : "slides"}`;
+  const slideshowLabel = `${result.slideshowCount} ${result.slideshowCount === 1 ? "slideshow" : "slideshows"}`;
 
-  return `Loaded ${projectLabel} from ${contentLabel} as ${config.contentPackageName}.`;
+  return `Loaded ${slideLabel} in ${slideshowLabel} from ${contentLabel} as ${config.contentPackageName}.`;
 };
 
 export const watchContent = (
