@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { dev } from "$app/environment";
+  import { page } from "$app/state";
   import { onMount, tick } from "svelte";
   import {
     ArrowLeft,
@@ -20,12 +22,13 @@
     getSlideshowRouteHref,
   } from "$lib/shared/project";
   import { DEFAULT_DURATION, DEFAULT_PADDING } from "$lib/shared/settings";
-  import type { Project, Slideshow } from "$lib/shared/types";
+  import type { MapChapter, Project, Slideshow } from "$lib/shared/types";
 
   type Props = {
     project: Project;
     slideshow: Slideshow;
     mainSlideshow?: Slideshow;
+    debug?: boolean;
   };
 
   type SlideshowPanelHandle = {
@@ -45,7 +48,7 @@
   type ThemePreference = "light" | "dark";
   type PanelOverlayName = "toc" | "layers";
 
-  let { project, slideshow, mainSlideshow }: Props = $props();
+  let { project, slideshow, mainSlideshow, debug = dev }: Props = $props();
 
   const activeSlideshow = $derived(slideshow);
   const rootSlideshow = $derived(mainSlideshow ?? slideshow);
@@ -59,6 +62,7 @@
   let isDarkMode: boolean | undefined = $state(undefined);
   let mainIndex: number = $state(0);
   let subslideshowIndex: number = $state(0);
+  let subslideshowIndexOwner: string | undefined = $state(undefined);
   let activePanelOverlay: PanelOverlayName | undefined = $state(undefined);
   let highlightedWarpedMapUrl: string | undefined = $state(undefined);
   let hiddenWarpedMapUrls: string[] = $state([]);
@@ -88,7 +92,11 @@
   const firstChapter = $derived(chapters[0]);
   const activeIndex = $derived.by(() =>
     clampIndex(
-      isSubslideshowActive ? subslideshowIndex : mainIndex,
+      isSubslideshowActive
+        ? subslideshowIndexOwner === activeSlideshow.id
+          ? subslideshowIndex
+          : 0
+        : mainIndex,
       chapters.length,
     ),
   );
@@ -150,11 +158,15 @@
     if (initialIndex < 0) return;
 
     if (isSubslideshowActive) {
+      subslideshowIndexOwner = activeSlideshow.id;
       subslideshowIndex = initialIndex;
     } else {
       mainIndex = initialIndex;
     }
   };
+
+  const getSlideData = ({ Component: _Component, ...slideData }: MapChapter) =>
+    slideData;
 
   const closeToc = () => {
     if (tocOpen) {
@@ -315,8 +327,39 @@
     clearWarpedMapHighlight();
 
     if (isSubslideshowActive) {
+      subslideshowIndexOwner = activeSlideshow.id;
       subslideshowIndex = 0;
+    } else {
+      subslideshowIndexOwner = undefined;
     }
+  });
+
+  $effect(() => {
+    if (!debug || !activeChapter) return;
+
+    const hash = page.url.hash;
+    const slideshowState = {
+      id: activeSlideshow.id,
+      slug: activeSlideshow.slug,
+      path: activeSlideshow.path,
+      title: activeSlideshow.title,
+    };
+    const slideState = {
+      index: activeIndex,
+      slug: activeChapter.slug,
+      title: activeChapter.title,
+    };
+    const slideData = getSlideData(activeChapter);
+    const reportTimeout = window.setTimeout(() => {
+      console.log("Current slide state...", {
+        hash,
+        slideshow: slideshowState,
+        slide: slideState,
+        slideData,
+      });
+    });
+
+    return () => window.clearTimeout(reportTimeout);
   });
 
   onMount(() => {
@@ -439,6 +482,7 @@
         {hiddenWarpedMapUrls}
         {zoomToWarpedMapUrl}
         {zoomToWarpedMapSignal}
+        {debug}
       />
     {/if}
   </div>
@@ -626,7 +670,10 @@
                   overlayOpen={panelOverlayOpen && isSubslideshowActive}
                   {scrollToTopSignal}
                   onTocClose={closeToc}
-                  onIndexChange={(index) => (subslideshowIndex = index)}
+                  onIndexChange={(index) => {
+                    subslideshowIndexOwner = activeSlideshow.id;
+                    subslideshowIndex = index;
+                  }}
                 />
               {/key}
             {/if}
