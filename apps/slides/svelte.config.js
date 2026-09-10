@@ -3,6 +3,7 @@ import { mdsvex } from "mdsvex";
 import { join } from "path";
 import remarkFootnotes from "remark-footnotes";
 import removeFootnoteLinks from "./src/lib/shared/remove-footnote-links.js";
+import rehypeImages from "./src/lib/shared/rehype-images.js";
 
 const getBasePath = (value) => {
   if (!value) return "";
@@ -78,7 +79,10 @@ const config = {
   preprocess: mdsvex({
     extensions: [".svx", ".md"],
     remarkPlugins: [remarkFootnotes],
-    rehypePlugins: [removeFootnoteLinks],
+    rehypePlugins: [
+      removeFootnoteLinks,
+      rehypeImages,
+    ],
     layout: {
       _: join(import.meta.dirname, "./src/lib/components/Section.svelte"),
     },

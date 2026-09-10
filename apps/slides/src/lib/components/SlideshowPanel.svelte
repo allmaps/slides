@@ -297,6 +297,7 @@
 >
   <div
     bind:this={scrollContainer}
+    data-slideshow-scroll
     class="h-full min-h-0 overflow-x-hidden overflow-y-auto px-5 transition-opacity duration-150 {loaded
       ? 'visible'
       : 'invisible'} {overlayOpen

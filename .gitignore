@@ -14,8 +14,9 @@ apps/*/.slides
 .wrangler
 /.svelte-kit
 /build
-apps/*/.svelte-kit
+*/*/.svelte-kit
 apps/*/build
+packages/*/dist
 
 # OS
 .DS_Store

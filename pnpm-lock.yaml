@@ -20,6 +20,9 @@ importers:
       '@allmaps/slides-content':
         specifier: workspace:../../packages/slides-content
         version: link:../../packages/slides-content
+      '@allmaps/svelte-canvas-panel':
+        specifier: workspace:*
+        version: link:../../packages/svelte-canvas-panel
       '@allmaps/sveltekit-iiif':
         specifier: workspace:../../packages/sveltekit-iiif
         version: link:../../packages/sveltekit-iiif
@@ -118,6 +121,43 @@ importers:
 
   packages/slides-content: {}
 
+  packages/svelte-canvas-panel:
+    dependencies:
+      '@atlas-viewer/atlas':
+        specifier: 3.2.4
+        version: 3.2.4(@iiif/helpers@4.0.0(@iiif/parser@4.0.1))(react-reconciler@0.34.0(react@19.3.0))(react@19.3.0)
+      '@iiif/helpers':
+        specifier: 4.0.0
+        version: 4.0.0(@iiif/parser@4.0.1)
+      '@iiif/parser':
+        specifier: 4.0.1
+        version: 4.0.1
+      '@lucide/svelte':
+        specifier: ^1.34.0
+        version: 1.34.0(svelte@5.53.3)
+    devDependencies:
+      '@sveltejs/package':
+        specifier: ^2.5.0
+        version: 2.5.8(svelte@5.53.3)(typescript@5.9.3)
+      '@sveltejs/vite-plugin-svelte':
+        specifier: ^6.2.4
+        version: 6.2.4(svelte@5.53.3)(vite@7.3.1(@types/node@25.9.1)(jiti@2.6.1)(lightningcss@1.31.1)(yaml@2.9.0))
+      '@types/node':
+        specifier: ^25.9.1
+        version: 25.9.1
+      svelte:
+        specifier: ^5.51.0
+        version: 5.53.3
+      svelte-check:
+        specifier: ^4.3.6
+        version: 4.4.3(picomatch@4.0.3)(svelte@5.53.3)(typescript@5.9.3)
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+      vite:
+        specifier: ^7.3.1
+        version: 7.3.1(@types/node@25.9.1)(jiti@2.6.1)(lightningcss@1.31.1)(yaml@2.9.0)
+
   packages/sveltekit-iiif:
     dependencies:
       '@iiif/builder':
@@ -181,6 +221,27 @@ packages:
 
   '@allmaps/warpedmaplayer@1.0.0-beta.43':
     resolution: {integrity: sha512-ebdkDKl4M4JtDevNQldjpUwZL3zHjLuqN0ToKT3YakHiTXHdEC1Htpx9bdqiFOgP5I7m3qqElKvLyCo1m6Fz6Q==}
+
+  '@atlas-viewer/atlas@3.2.4':
+    resolution: {integrity: sha512-nE0+L95QoJwleSnjR5GdDIKaT5FBovMSBkCxI0eSB+4IXghu8xIwc2/XDLM7KnFfym2nxUtmqvJjUkS76cll6g==}
+    peerDependencies:
+      '@iiif/helpers': '>=1.1.0'
+      react: '>=17.0'
+      react-dom: '>=17.0'
+      react-native: '*'
+      react-reconciler: '>=0.29.0'
+    peerDependenciesMeta:
+      react-dom:
+        optional: true
+      react-native:
+        optional: true
+
+  '@atlas-viewer/dna@0.5.0':
+    resolution: {integrity: sha512-vHyMwXoCFq6ymk+wOVIkMphUo+I+wBRoA2tBf1AIUZWJMsk51cBtO2qzOaZQUh/TmrzrqEY5aEAtgBj52LVRUg==}
+
+  '@atlas-viewer/iiif-image-api@2.2.2':
+    resolution: {integrity: sha512-MicA6fkWOJSWZ4fuOmh57ETVcCdnMaNhjzNtM29Xf6deGPtk8V4Vd46SWy3dM/cdo8gdHQdsvoJNkzzKo9CsXA==}
+    engines: {node: '>=18.14.1'}
 
   '@emnapi/runtime@1.10.0':
     resolution: {integrity: sha512-ewvYlk86xUoGI0zQRNq/mC+16R1QeDlKQy21Ki3oSYXNgLb45GV1P6A0M+/s6nyCuNDqe5VpaY84BzXGwVbwFA==}
@@ -344,13 +405,24 @@ packages:
   '@iiif/builder@2.0.1':
     resolution: {integrity: sha512-9Wlxi1qn0GfvkFWxlZEuMkFGOKpZtcN/1t1zzYnOMy7OOssBNTQvao7zDZlCmtdimZ4QtQ/MMiC0z+oKI2Ax/Q==}
 
-  '@iiif/helpers@1.5.8':
-    resolution: {integrity: sha512-jNLhsmz5LsK3FhBtC6cIEoUM057zVL8zF0a8aQPFM5i6U/tf3QPFiq2mmm3Lop1ORFIZlEJXvsCwk7d3GucB2w==}
+  '@iiif/helpers@1.6.1':
+    resolution: {integrity: sha512-IqCdaUU4zITrtKlKzLfa79Sdm559fFa40CtRslPQkSMwKmurmMBmTrUACEYgXRdhUaeBaX/gb//4bxeWUzgpZQ==}
     peerDependencies:
       '@iiif/parser': ^2.2.8
 
-  '@iiif/parser@2.2.9':
-    resolution: {integrity: sha512-HJVlnsz6mj56Qda9U7vhXEMxHFuFLeIDTcXqbPEDcuX1iefrWVsuDIY+DxyQO64vBnwme5NWOZbtbO73XNYB6A==}
+  '@iiif/helpers@4.0.0':
+    resolution: {integrity: sha512-CHwzQ4EgjSpS7EBTr2llMmqQfN6VXIoKMMMaXD3DhrYYq5D8oATap9dODipanyEse6HFLWXsWsKpxqoRBsDuBw==}
+    engines: {node: '>=22'}
+    peerDependencies:
+      '@iiif/parser': ^4.0.0
+
+  '@iiif/parser@2.2.14':
+    resolution: {integrity: sha512-8gUsd30W/cVrYkhmNv4KY2uipgES6AuxHENhuEVRapl+tB4HmGVwevRn37u6Llm/bzh9Jey0VXZXB+IQqFW/xQ==}
+
+  '@iiif/parser@4.0.1':
+    resolution: {integrity: sha512-IsoztTt+KprIIJHqPUqWGmxTRvduB8/XlTARZTBi7SeVakdRAtdWEKp6XAkL843KHs85qLJ638eQta0998owjw==}
+    engines: {node: '>=22'}
+    hasBin: true
 
   '@iiif/presentation-2@1.0.4':
     resolution: {integrity: sha512-hJakpq62VBajesLJrYPtFm6hcn6c/HkKP7CmKZ5atuzu40m0nifWYsqigR1l9sZGvhhHb/DRshPmiW/0GNrJoA==}
@@ -727,6 +799,13 @@ packages:
       typescript:
         optional: true
 
+  '@sveltejs/package@2.5.8':
+    resolution: {integrity: sha512-zeBbsXYvHiBu56v4gJaGQoEHzg96w0E1j3dOMX8vo56s6vI5eQ57ZEZhudjwjnegnVitRRu5MrmhO0eNvaonIw==}
+    engines: {node: ^16.14 || >=18}
+    hasBin: true
+    peerDependencies:
+      svelte: ^3.44.0 || ^4.0.0 || ^5.0.0-next.1
+
   '@sveltejs/vite-plugin-svelte-inspector@5.0.2':
     resolution: {integrity: sha512-TZzRTcEtZffICSAoZGkPSl6Etsj2torOVrx6Uw0KpXxrec9Gg6jFWQ60Q3+LmNGfZSxHRCZL7vXVZIWmuV50Ig==}
     engines: {node: ^20.19 || ^22.12 || >=24}
@@ -831,6 +910,9 @@ packages:
     resolution: {integrity: sha512-da9mFCaHpoOgtQiWtDGIikTrSpUFBtIZCG3jy/u2BGV+l/X1/pbxzmIUxNt6JWm19N3WtGi4KlJdSH/Si83WOA==}
     peerDependencies:
       vite: ^5.2.0 || ^6 || ^7
+
+  '@terraformer/wkt@2.2.1':
+    resolution: {integrity: sha512-XDUsW/lvbMzFi7GIuRD9+UqR4QyP+5C+TugeJLMDczKIRbaHoE9J3N8zLSdyOGmnJL9B6xTS3YMMlBnMU0Ar5A==}
 
   '@turf/along@7.3.5':
     resolution: {integrity: sha512-Ee4AHV9j2Bnlm/5nm4ChY7nkwpaaMffSez9nsJ9HcMbzG+GgTkt0F5pn9d02U7YvuWqckM5lfr3kBI+w2uTz+g==}
@@ -1246,6 +1328,10 @@ packages:
     resolution: {integrity: sha512-Qgzu8kfBvo+cA4962jnP1KkS6Dop5NS6g7R5LFYJr4b8Ub94PPQXUksCw9PvXoeXPRRddRNC5C1JQUR2SMGtnA==}
     engines: {node: '>= 14.16.0'}
 
+  chokidar@5.0.0:
+    resolution: {integrity: sha512-TQMmc3w+5AxjpL8iIiwebF73dRDF4fBIieAqGn9RGCWaEVwQ6Fb2cGe31Yns0RRIzii5goJ1Y7xbMwo1TxMplw==}
+    engines: {node: '>= 20.19.0'}
+
   clsx@2.1.1:
     resolution: {integrity: sha512-eYm0QWBtUrBWZWG0d386OGAw16Z995PiOVo2B7bjWSbHedGl5e0ZWaq65kOGgUSNesEIDkB9ISbTg/JK9dhCZA==}
     engines: {node: '>=6'}
@@ -1275,6 +1361,9 @@ packages:
 
   d3-voronoi@1.1.2:
     resolution: {integrity: sha512-RhGS1u2vavcO7ay7ZNAPo4xeDh/VYeGof3x5ZLJBQgYhLegxr3s5IykvWmJ94FTU6mcbtp4sloqZ54mP6R4Utw==}
+
+  dedent-js@1.0.1:
+    resolution: {integrity: sha512-OUepMozQULMLUmhxS95Vudo0jb0UchLimi3+pQ2plj61Fcy8axbP9hbiD4Sz6DPqn6XG3kfmziVfQ1rSys5AJQ==}
 
   deepmerge@4.3.1:
     resolution: {integrity: sha512-3sUqbMEc77XqpdNO7FRyRog+eW3ph+GYCbj+rK+uYyRMuwsVy0rMiVtPn+QJlKFvWP/1PYpapqYn0Me2knFn+A==}
@@ -1469,6 +1558,9 @@ packages:
   minimist@1.2.8:
     resolution: {integrity: sha512-2yyAR8qBkN3YuheJanUpWC5U3bb5osDywNB8RzDVlDwDHbocAJveqqj1u8+SVD7jkWT4yvsHCpWqqWqAxb0zCA==}
 
+  mitt@3.0.1:
+    resolution: {integrity: sha512-vKivATfr97l2/QBCYAkXYDbrIWPM2IIKEl7YPhjCvKlG3kE2gm+uBo6nEXK3M5/Ffh/FLpKExzOQ3JJoJGFKBw==}
+
   ml-array-max@2.0.0:
     resolution: {integrity: sha512-QQZ4kENwpWmyNb98UXRDFXrmtIXuXtt1+bSbda/2KA85+F+rrJP8hZk6QOkCQXM2Th9mUDYdq/PNByPdT9ID4A==}
 
@@ -1567,9 +1659,23 @@ packages:
   rbush@4.0.1:
     resolution: {integrity: sha512-IP0UpfeWQujYC8Jg162rMNc01Rf0gWMMAb2Uxus/Q0qOFw4lCcq6ZnQEZwUoJqWyUGJ9th7JjwI4yIWo+uvoAQ==}
 
+  react-reconciler@0.34.0:
+    resolution: {integrity: sha512-eVibvB1fc9j5Qf1KRkiM3GzRPBdjg2P6G6QV2f3P6Eb3OGMxRBhdg2rrUwjbV5JrQaJj8nOa8uajmmJA5tJWjQ==}
+    engines: {node: '>=0.10.0'}
+    peerDependencies:
+      react: ^19.3.0
+
+  react@19.3.0:
+    resolution: {integrity: sha512-E8LUcbtBWt20bbl2YoHfx4ZDBdxVTfOKtCZn9cDSJ4l6/nuoApcpIBcj47t2wZoVX8g2ZHuMHbiShgCR1T5Sog==}
+    engines: {node: '>=0.10.0'}
+
   readdirp@4.1.2:
     resolution: {integrity: sha512-GDhwkLfywWL2s6vEjyhri+eXmfH6j1L7JE27WhqLeYzoh/A3DBaYGEj2H/HFZCn/kMfim73FXxEJTw06WtxQwg==}
     engines: {node: '>= 14.18.0'}
+
+  readdirp@5.1.1:
+    resolution: {integrity: sha512-Kko+Y5XQ6fM+Ce3dq3m9YGxnacYZYl9cA1wZjaF3Vbry2L3i1qVg8+CAgNPsXRArPMUMCaOR7oa9Nqntc43JKA==}
+    engines: {node: '>= 20.19.0'}
 
   remark-footnotes@2.0.0:
     resolution: {integrity: sha512-3Clt8ZMH75Ayjp9q4CorNeyjwIxHFcTkaektplKGl2A1jNGEUey8cKL0ZC5vJwfcD5GFGsNLImLG/NGzWIzoMQ==}
@@ -1598,6 +1704,15 @@ packages:
   sade@1.8.1:
     resolution: {integrity: sha512-xal3CZX1Xlo/k4ApwCFrHVACi9fBqJ7V+mwhBsuf/1IOKbBy098Fex+Wa/5QMubw09pSZ/u8EY8PWgevJsXp1A==}
     engines: {node: '>=6'}
+
+  scheduler@0.27.0:
+    resolution: {integrity: sha512-eNv+WrVbKu1f3vbYJT/xtiF5syA5HPIMtf9IgY/nKg0sWqzAUEvqY/xm7OcZc/qafLx/iO9FgOmeSAp4v5ti/Q==}
+
+  scheduler@0.28.0:
+    resolution: {integrity: sha512-juorfCmIkIw8tT+p5BXSm6PJjQF/ycEYmKyzURCIt/RaZIhL+PulbQ9Yu2z1HdOJDdqDTlxA1+xKBmHXJsczAw==}
+
+  scule@1.3.0:
+    resolution: {integrity: sha512-6FtHJEvt+pVMIB9IBY+IcCJ6Z5f1iQnytgyfKMhDKgmzYG+TeH/wx1y3l27rshSbLiSanrR9ffZDrEsmjlQF2g==}
 
   semver@7.8.1:
     resolution: {integrity: sha512-rkVq3IXh+4FDGch+KwzX3aV9W3kO54GyEgpvBzSyctDA6Xtd7RJQV1xmXbeQp5v7+VzLOfVqiutSE6GICgPFvg==}
@@ -1635,6 +1750,12 @@ packages:
     peerDependencies:
       svelte: ^4.0.0 || ^5.0.0-next.0
       typescript: '>=5.0.0'
+
+  svelte2tsx@0.7.61:
+    resolution: {integrity: sha512-EpQ/+UHITBULeUojx/LLD3uTYasZXcX1BrqlrzfLUnT9vdUhaOWK59a3ryWcFU8L0sY1SP+gRhJ2Beiis98+qw==}
+    peerDependencies:
+      svelte: ^3.55 || ^4.0.0-next.0 || ^4.0 || ^5.0.0-next.0
+      typescript: ^4.9.4 || ^5.0.0 || ^6.0.0
 
   svelte@5.53.3:
     resolution: {integrity: sha512-pRUBr6j6uQDgBi208gHnGRMykw0Rf2Yr1HmLyRucsvcaYgIUxswJkT93WZJflsmezu5s8Lq+q78EoyLv2yaFCg==}
@@ -1680,6 +1801,10 @@ packages:
 
   tslib@2.8.1:
     resolution: {integrity: sha512-oJFu94HQb+KVduSUQL7wnpmqnfmLsOA/nAh6b6EH0wCEoK0/mPeXU6c3wKDV83MkOuHPRHtSXKKU99IBazS/2w==}
+
+  typesafe-actions@5.1.0:
+    resolution: {integrity: sha512-bna6Yi1pRznoo6Bz1cE6btB/Yy8Xywytyfrzu/wc+NFW3ZF0I+2iCGImhBsoYYCOWuICtRO4yHcnDlzgo1AdNg==}
+    engines: {node: '>= 4'}
 
   typescript@5.9.3:
     resolution: {integrity: sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw==}
@@ -1860,6 +1985,22 @@ snapshots:
       '@allmaps/render': 1.0.0-beta.83
       '@allmaps/stdlib': 1.0.0-beta.41
 
+  '@atlas-viewer/atlas@3.2.4(@iiif/helpers@4.0.0(@iiif/parser@4.0.1))(react-reconciler@0.34.0(react@19.3.0))(react@19.3.0)':
+    dependencies:
+      '@atlas-viewer/dna': 0.5.0
+      '@atlas-viewer/iiif-image-api': 2.2.2
+      '@iiif/helpers': 4.0.0(@iiif/parser@4.0.1)
+      '@iiif/presentation-3': 2.2.3
+      react: 19.3.0
+      react-reconciler: 0.34.0(react@19.3.0)
+      scheduler: 0.27.0
+
+  '@atlas-viewer/dna@0.5.0': {}
+
+  '@atlas-viewer/iiif-image-api@2.2.2':
+    dependencies:
+      '@iiif/presentation-3': 2.2.3
+
   '@emnapi/runtime@1.10.0':
     dependencies:
       tslib: 2.8.1
@@ -1945,14 +2086,14 @@ snapshots:
 
   '@iiif/builder@2.0.1':
     dependencies:
-      '@iiif/helpers': 1.5.8(@iiif/parser@2.2.9)
-      '@iiif/parser': 2.2.9
+      '@iiif/helpers': 1.6.1(@iiif/parser@2.2.14)
+      '@iiif/parser': 2.2.14
       '@iiif/presentation-3': 2.2.3
       '@iiif/presentation-3-normalized': 0.9.7
 
-  '@iiif/helpers@1.5.8(@iiif/parser@2.2.9)':
+  '@iiif/helpers@1.6.1(@iiif/parser@2.2.14)':
     dependencies:
-      '@iiif/parser': 2.2.9
+      '@iiif/parser': 2.2.14
       '@iiif/presentation-2': 1.0.4(@iiif/presentation-3@2.2.3)
       '@iiif/presentation-3': 2.2.3
       '@iiif/presentation-3-normalized': 0.9.7
@@ -1962,12 +2103,26 @@ snapshots:
       parse-svg-path: 0.1.2
       svg-arc-to-cubic-bezier: 3.2.0
 
-  '@iiif/parser@2.2.9':
+  '@iiif/helpers@4.0.0(@iiif/parser@4.0.1)':
+    dependencies:
+      '@iiif/parser': 4.0.1
+      '@terraformer/wkt': 2.2.1
+      '@types/geojson': 7946.0.13
+      mitt: 3.0.1
+      typesafe-actions: 5.1.0
+    optionalDependencies:
+      abs-svg-path: 0.1.1
+      parse-svg-path: 0.1.2
+      svg-arc-to-cubic-bezier: 3.2.0
+
+  '@iiif/parser@2.2.14':
     dependencies:
       '@iiif/presentation-2': 1.0.4(@iiif/presentation-3@2.2.3)
       '@iiif/presentation-3': 2.2.3
       '@iiif/presentation-3-normalized': 0.9.7
       '@types/geojson': 7946.0.16
+
+  '@iiif/parser@4.0.1': {}
 
   '@iiif/presentation-2@1.0.4(@iiif/presentation-3@2.2.3)':
     dependencies:
@@ -2264,6 +2419,17 @@ snapshots:
     optionalDependencies:
       typescript: 5.9.3
 
+  '@sveltejs/package@2.5.8(svelte@5.53.3)(typescript@5.9.3)':
+    dependencies:
+      chokidar: 5.0.0
+      kleur: 4.1.5
+      sade: 1.8.1
+      semver: 7.8.1
+      svelte: 5.53.3
+      svelte2tsx: 0.7.61(svelte@5.53.3)(typescript@5.9.3)
+    transitivePeerDependencies:
+      - typescript
+
   '@sveltejs/vite-plugin-svelte-inspector@5.0.2(@sveltejs/vite-plugin-svelte@6.2.4(svelte@5.53.3)(vite@7.3.1(@types/node@25.9.1)(jiti@2.6.1)(lightningcss@1.31.1)(yaml@2.9.0)))(svelte@5.53.3)(vite@7.3.1(@types/node@25.9.1)(jiti@2.6.1)(lightningcss@1.31.1)(yaml@2.9.0))':
     dependencies:
       '@sveltejs/vite-plugin-svelte': 6.2.4(svelte@5.53.3)(vite@7.3.1(@types/node@25.9.1)(jiti@2.6.1)(lightningcss@1.31.1)(yaml@2.9.0))
@@ -2348,6 +2514,8 @@ snapshots:
       '@tailwindcss/oxide': 4.2.0
       tailwindcss: 4.2.0
       vite: 7.3.1(@types/node@25.9.1)(jiti@2.6.1)(lightningcss@1.31.1)(yaml@2.9.0)
+
+  '@terraformer/wkt@2.2.1': {}
 
   '@turf/along@7.3.5':
     dependencies:
@@ -3536,6 +3704,10 @@ snapshots:
     dependencies:
       readdirp: 4.1.2
 
+  chokidar@5.0.0:
+    dependencies:
+      readdirp: 5.1.1
+
   clsx@2.1.1: {}
 
   comlink@4.4.2: {}
@@ -3560,6 +3732,8 @@ snapshots:
       d3-array: 1.2.4
 
   d3-voronoi@1.1.2: {}
+
+  dedent-js@1.0.1: {}
 
   deepmerge@4.3.1: {}
 
@@ -3754,6 +3928,8 @@ snapshots:
 
   minimist@1.2.8: {}
 
+  mitt@3.0.1: {}
+
   ml-array-max@2.0.0:
     dependencies:
       is-any-array: 3.0.0
@@ -3848,7 +4024,16 @@ snapshots:
     dependencies:
       quickselect: 3.0.0
 
+  react-reconciler@0.34.0(react@19.3.0):
+    dependencies:
+      react: 19.3.0
+      scheduler: 0.28.0
+
+  react@19.3.0: {}
+
   readdirp@4.1.2: {}
+
+  readdirp@5.1.1: {}
 
   remark-footnotes@2.0.0: {}
 
@@ -3898,6 +4083,12 @@ snapshots:
   sade@1.8.1:
     dependencies:
       mri: 1.2.0
+
+  scheduler@0.27.0: {}
+
+  scheduler@0.28.0: {}
+
+  scule@1.3.0: {}
 
   semver@7.8.1: {}
 
@@ -3962,6 +4153,13 @@ snapshots:
     transitivePeerDependencies:
       - picomatch
 
+  svelte2tsx@0.7.61(svelte@5.53.3)(typescript@5.9.3):
+    dependencies:
+      dedent-js: 1.0.1
+      scule: 1.3.0
+      svelte: 5.53.3
+      typescript: 5.9.3
+
   svelte@5.53.3:
     dependencies:
       '@jridgewell/remapping': 2.3.5
@@ -4014,6 +4212,8 @@ snapshots:
   totalist@3.0.1: {}
 
   tslib@2.8.1: {}
+
+  typesafe-actions@5.1.0: {}
 
   typescript@5.9.3: {}
 

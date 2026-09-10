@@ -16,12 +16,6 @@ type IiifImageModule = {
   relativePath?: string;
   width?: number;
   height?: number;
-  sizes?: Array<{
-    width: number;
-    height: number;
-    size: string;
-  }>;
-  formats?: string[];
 };
 
 type ImageModule = IiifImageModule | string;
@@ -30,12 +24,6 @@ export type ContentIiifImage = {
   servicePath: string;
   width?: number;
   height?: number;
-  sizes: Array<{
-    width: number;
-    height: number;
-    size: string;
-  }>;
-  formats: string[];
 };
 
 export const isExternalUrl = (value: string | null | undefined) =>
@@ -141,19 +129,9 @@ export const getContentIiifImage = (
   const relativePath =
     image.relativePath ?? assetPath.replace(/^assets\/images\//, "");
   const servicePath = removeExtension(relativePath);
-  const fallbackSize =
-    image.width && image.height
-      ? [{ width: image.width, height: image.height, size: "max" }]
-      : [];
-  const sizes = image.sizes?.length ? image.sizes : fallbackSize;
-
-  if (!sizes.length) return undefined;
-
   return {
     servicePath,
     width: image.width,
     height: image.height,
-    sizes,
-    formats: image.formats?.length ? image.formats : ["jpg"],
   };
 };
