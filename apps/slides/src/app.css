@@ -38,6 +38,12 @@
 }
 
 @layer base {
+  /* Include nested scroll panels: allow panning/pinch zoom, without double-tap
+     page zoom. Map and Atlas canvases keep their own touch-action overrides. */
+  * {
+    touch-action: manipulation;
+  }
+
   :root {
     --font-body: "Source Sans 3", ui-sans-serif, system-ui, sans-serif;
     --font-display: "League Spartan", ui-sans-serif, system-ui, sans-serif;
@@ -123,6 +129,18 @@
     body {
       background: #000;
     }
+  }
+
+  :root[data-theme="light"],
+  :root[data-theme="light"] body {
+    background: #fff;
+    color-scheme: light;
+  }
+
+  :root[data-theme="dark"],
+  :root[data-theme="dark"] body {
+    background: #000;
+    color-scheme: dark;
   }
 }
 

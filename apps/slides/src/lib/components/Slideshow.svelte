@@ -126,6 +126,17 @@
   const themeToggleLabel = $derived(
     isDarkMode ? "Switch to light theme" : "Switch to dark theme",
   );
+
+  $effect(() => {
+    if (isDarkMode === undefined) return;
+    const root = document.documentElement;
+    const previous = root.dataset.theme;
+    root.dataset.theme = isDarkMode ? "dark" : "light";
+    return () => {
+      if (previous === undefined) delete root.dataset.theme;
+      else root.dataset.theme = previous;
+    };
+  });
   const layersToggleLabel = $derived(
     layersOpen ? "Close map layers" : "Open map layers",
   );
@@ -457,6 +468,13 @@
 <svelte:head>
   <title>{activeSlideshow.title}</title>
   <meta name="description" content={firstChapter?.description ?? project.description} />
+  <!-- Before hydration, follow the system preference. Afterwards, use the same
+       resolved theme as the interface, including a saved manual preference. -->
+  <meta name="theme-color" content={isDarkMode ? "#000000" : "#ffffff"}
+    media={isDarkMode === undefined ? "(prefers-color-scheme: light)" : undefined} />
+  {#if isDarkMode === undefined}
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#000000" />
+  {/if}
 </svelte:head>
 
 <div
