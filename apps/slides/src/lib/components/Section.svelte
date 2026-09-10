@@ -4,6 +4,7 @@
 </script>
 
 <script lang="ts">
+  import { enhanceFigures } from "$lib/shared/enhance-figures";
   let {
     title,
     description,
@@ -15,7 +16,7 @@
   } = $props();
 </script>
 
-<div class="slide-content clear-both">
+<div class="slide-content clear-both" use:enhanceFigures>
   <h1>{title}</h1>
   <p class="slide-description">{description}</p>
   {@render children?.()}
@@ -164,6 +165,18 @@
     color: color-mix(in srgb, currentColor 72%, transparent);
     font-size: 0.85em;
     line-height: 1.25;
+  }
+
+  :global(.slide-content img) {
+    height: auto;
+  }
+
+  :global(.slide-content figcaption > :first-child) {
+    margin-block-start: 0;
+  }
+
+  :global(.slide-content figcaption > :last-child) {
+    margin-block-end: 0;
   }
 
   :global(.slide-content code) {

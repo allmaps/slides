@@ -9,12 +9,6 @@ type IiifImageModule = {
   relativePath?: string;
   width?: number;
   height?: number;
-  sizes?: Array<{
-    width: number;
-    height: number;
-    size: string;
-  }>;
-  formats?: string[];
 };
 
 type ImageModule = IiifImageModule | string;
