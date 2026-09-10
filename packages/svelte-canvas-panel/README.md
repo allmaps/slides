@@ -114,6 +114,11 @@ View transitions respect reduced-motion preferences. Escape closes the modal;
 `+`/`-` zoom and `Home`/`0` fits the complete rotated canvas. Downloads exclude
 controls and captions. The two feature flags can be changed while mounted.
 
+The preview and dialog controls disable double-tap page zoom with
+`touch-action: manipulation`. The interactive canvas handles its own zoom/pan
+gestures. The preview's expand button uses a background change for keyboard focus
+instead of an outline.
+
 Defaults work without application CSS. Override inherited CSS variables on an
 ancestor or through Svelte component custom properties:
 

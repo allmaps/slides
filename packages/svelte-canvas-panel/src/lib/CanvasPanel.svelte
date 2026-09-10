@@ -166,7 +166,7 @@
   {#if ready}
     <div class="preview-controls">
       {#if enableDownloads}<button type="button" class="image-control" aria-label="Download image preview" onclick={download}><Download size={20} /></button>{/if}
-      <button type="button" class="image-control" bind:this={trigger} aria-label={`Open image viewer: ${label}`} onclick={enlarge}><Maximize size={20} /></button>
+      <button type="button" class="image-control expand-control" bind:this={trigger} aria-label={`Open image viewer: ${label}`} onclick={enlarge}><Maximize size={20} /></button>
     </div>
   {:else if !error && !showThumbnail}
     <p class="status" role="status">Loading image…</p>
@@ -207,6 +207,7 @@
 </svelte:element>
 
 <style>
+  .canvas-panel, .image-dialog { touch-action: manipulation; }
   .canvas-panel { margin: 0; width: 100%; font-family: var(--canvas-panel-font-family, inherit); }
   .inline-caption { margin-top: 0.75rem; font-size: 0.9em; line-height: 1.4; }
   .inline-caption :global(:first-child) { margin-top: 0; }
@@ -241,6 +242,8 @@
   .image-control { display: grid; place-items: center; width: 52px; height: 52px; border: 0; border-radius: 0.5rem; background: var(--canvas-panel-control-bg, rgb(18 26 28 / 0.65)); color: var(--canvas-panel-control-color, #fff); box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.25); backdrop-filter: blur(12px); cursor: pointer; pointer-events: auto; }
   .image-control:hover { background: var(--canvas-panel-control-hover-bg, rgb(18 26 28 / 0.3)); }
   .image-control:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; }
+  .expand-control:focus { outline: none; }
+  .expand-control:focus-visible { background: var(--canvas-panel-control-hover-bg, rgb(18 26 28 / 0.3)); }
   .status { position: absolute; inset: 0; margin: 0; display: grid; place-items: center; font-size: 0.85em; }
   .load-error { font-size: 0.85em; }
   .load-error button { border: 0; padding: 0; background: none; color: inherit; text-decoration: underline; cursor: pointer; }

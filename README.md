@@ -215,6 +215,11 @@ buttons and View Transition API; opening and closing move the same canvas
 immediately between the story and modal. Atlas's context-menu handler remains
 active in the non-interactive preview; zoom/pan listeners are limited to the modal.
 
+The interface disables double-tap page zoom while allowing page panning and pinch
+zoom. Map and image viewers keep their own gesture handling. The light/dark toggle
+also updates the browser's `theme-color`, page background and `color-scheme`, using
+the same saved preference as the interface.
+
 IIIF metadata is resolved **in the browser** using `@iiif/helpers`, and Atlas
 loads the image tiles; remote services must support CORS. There is no remote fetch or disk cache in the Markdown
 preprocessor. This does not mirror external images, manifests or maps: importing
