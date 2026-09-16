@@ -392,6 +392,7 @@
     }
 
     if (isSubslideshowActive) {
+      mainSlideshowStarted = true;
       subslideshowIndexOwner = activeSlideshow.id;
       subslideshowIndex = 0;
     } else {
