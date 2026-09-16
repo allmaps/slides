@@ -11,7 +11,7 @@
 
   import "../app.css";
 
-  let { children } = $props();
+  let { children, data } = $props();
 
   const project = getProject();
   const slideshow = $derived(getSlideshowByRoute(page.params.slideshow));
@@ -29,7 +29,7 @@
 </svelte:head>
 
 {#if slideshow && mainSlideshow}
-  <Slideshow {project} {slideshow} {mainSlideshow} />
+  <Slideshow {project} {slideshow} {mainSlideshow} thumbnails={data.thumbnails} />
 {:else}
   {@render children()}
 {/if}

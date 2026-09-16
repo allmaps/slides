@@ -60,6 +60,7 @@ const config = {
           "/[slideshow]",
           "/api/[...request]",
           "/iiif/[...request]",
+          "/thumbnails/[filename]",
         ];
         const unexpectedRoutes = routes.filter(
           (route) => !ignoredRoutes.includes(route),

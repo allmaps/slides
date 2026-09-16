@@ -10,10 +10,14 @@
     ScanSearch,
   } from "@lucide/svelte";
 
+  import { emptyThumbnails, type ThumbnailManifest } from "$lib/shared/thumbnails";
+  import { layerPreviewKey } from "$lib/shared/map/annotations";
+  import { withBaseUrl } from "$lib/shared/paths";
   import PanelOverlay from "$lib/components/PanelOverlay.svelte";
   import type { MapChapter, WarpedMapProps } from "$lib/shared/types";
 
   type Props = {
+    thumbnails?: ThumbnailManifest;
     chapter?: MapChapter;
     hiddenWarpedMapUrls?: string[];
     highlightedWarpedMapUrl?: string;
@@ -33,6 +37,7 @@
 
   let {
     chapter,
+    thumbnails = emptyThumbnails(),
     hiddenWarpedMapUrls = [],
     highlightedWarpedMapUrl,
     highlightEnabled = false,
@@ -158,6 +163,7 @@
         {@const hidden = isWarpedMapHidden(warpedMap)}
         {@const highlighted = highlightedWarpedMapUrl === warpedMap.url}
         {@const title = getLayerTitle(warpedMap, index)}
+        {@const image = thumbnails.layers[layerPreviewKey(warpedMap)]}
         <li>
           <div
             role="button"
@@ -173,7 +179,11 @@
             onkeydown={(event) => handleLayerRowKeydown(event, warpedMap.url)}
           >
             <div class="layer-preview" aria-hidden="true">
-              <Layers size={26} />
+              {#if image}
+                <img src={withBaseUrl(image.path)} width={image.width} height={image.height} alt="" loading="lazy" decoding="async" class="h-full w-full object-contain" />
+              {:else}
+                <Layers size={26} />
+              {/if}
             </div>
 
             <div class="min-w-0 flex-1">

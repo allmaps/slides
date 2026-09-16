@@ -11,6 +11,10 @@
   } from "@lucide/svelte";
   import type { PaddingOptions } from "maplibre-gl";
 
+  import { env } from "$env/dynamic/public";
+  import { withBaseUrl } from "$lib/shared/paths";
+  import { emptyThumbnails, type ThumbnailManifest } from "$lib/shared/thumbnails";
+
   import Map from "$lib/components/Map.svelte";
   import PanelOverlayToggle from "$lib/components/PanelOverlayToggle.svelte";
   import SlideshowLayers from "$lib/components/SlideshowLayers.svelte";
@@ -31,6 +35,7 @@
   } from "$lib/shared/types";
 
   type Props = {
+    thumbnails?: ThumbnailManifest;
     project: Project;
     slideshow: Slideshow;
     mainSlideshow?: Slideshow;
@@ -54,7 +59,7 @@
   type ThemePreference = "light" | "dark";
   type PanelOverlayName = "toc" | "layers";
 
-  let { project, slideshow, mainSlideshow, debug = dev }: Props = $props();
+  let { project, slideshow, mainSlideshow, debug = dev, thumbnails = emptyThumbnails() }: Props = $props();
 
   const activeSlideshow = $derived(slideshow);
   const rootSlideshow = $derived(mainSlideshow ?? slideshow);
@@ -97,6 +102,9 @@
   ));
 
   const firstChapter = $derived(chapters[0]);
+  const socialImage = $derived(thumbnails.social[activeSlideshow.id]);
+  const socialImageUrl = $derived(socialImage && /^https?:\/\//.test(env.PUBLIC_URL ?? "")
+    ? new URL(withBaseUrl(socialImage.path), env.PUBLIC_URL).href : undefined);
   const startMapSettings = $derived<MapChapterProps>(
     activeSlideshow.start ?? firstChapter ?? {},
   );
@@ -521,6 +529,16 @@
 </script>
 
 <svelte:head>
+  {#if socialImage && socialImageUrl}
+    <meta property="og:image" content={socialImageUrl} />
+    <meta property="og:image:width" content={String(socialImage.width)} />
+    <meta property="og:image:height" content={String(socialImage.height)} />
+    <meta property="og:image:type" content="image/jpeg" />
+    <meta property="og:image:alt" content={firstChapter?.title ?? activeSlideshow.title} />
+    <meta property="og:title" content={activeSlideshow.title} />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:image" content={socialImageUrl} />
+  {/if}
   <meta name="description" content={firstChapter?.description ?? project.description} />
   <!-- Before hydration, follow the system preference. Afterwards, use the same
        resolved theme as the interface, including a saved manual preference. -->
@@ -539,6 +557,7 @@
   <div class="absolute inset-0 z-0 min-h-0">
     {#if isDarkMode !== undefined}
       <Map
+        annotationUrls={thumbnails.annotations}
         chapters={mapChapters}
         index={mapIndex}
         {isDarkMode}
@@ -733,12 +752,16 @@
         ></button>
       {/if}
 
-      <div class="min-h-0 flex-1 overflow-hidden">
+      <!-- Anchor navigation must not scroll this viewport horizontally while
+           the track translates. Only each panel's inner content should scroll. -->
+      <div class="min-h-0 flex-1 overflow-clip">
         <div
           class="flex h-full w-[200%] transition-transform duration-500 ease-in-out motion-reduce:transition-none"
           style={`transform: translateX(${isSubslideshowActive ? "-50%" : "0"});`}
         >
           <SlideshowPanel
+            {thumbnails}
+            {isDarkMode}
             bind:this={mainPanel}
             class="h-full w-1/2 shrink-0"
             {project}
@@ -754,6 +777,8 @@
             {#if subslideshow}
               {#key subslideshow.id}
                 <SlideshowPanel
+                  {thumbnails}
+                  {isDarkMode}
                   bind:this={subslideshowPanel}
                   class="h-full"
                   {project}
@@ -786,6 +811,7 @@
         />
       {:else if layersOpen}
         <SlideshowLayers
+          {thumbnails}
           chapter={activeChapter}
           {hiddenWarpedMapUrls}
           {highlightedWarpedMapUrl}

@@ -2,9 +2,14 @@
   import { replaceState } from "$app/navigation";
   import { page } from "$app/state";
   import { tick, untrack } from "svelte";
+  import { withBaseUrl } from "$lib/shared/paths";
+  import { emptyThumbnails, slidePreviewKey, type ThumbnailManifest } from "$lib/shared/thumbnails";
   import { BookOpen, Presentation } from "@lucide/svelte";
 
-  import { getSlideshowRouteHref } from "$lib/shared/project";
+  import {
+    getChapterRouteHref,
+    getSlideshowRouteHref,
+  } from "$lib/shared/project";
   import type {
     MapChapter,
     Project,
@@ -13,6 +18,8 @@
   } from "$lib/shared/types";
 
   type Props = {
+    thumbnails?: ThumbnailManifest;
+    isDarkMode?: boolean;
     project: Project;
     slideshow: Slideshow;
     active?: boolean;
@@ -28,12 +35,24 @@
     href: string;
     title: string;
     slideCount: number;
+    slideshow: Slideshow;
+  };
+
+  type ReadMoreCard = {
+    previewKey?: string;
+    id: string;
+    href: string;
+    title: string;
+    badge: string;
+    ariaLabel: string;
   };
 
   const SLIDE_CHANGE_DELAY_MS = 120;
 
   let {
     project,
+    thumbnails = emptyThumbnails(),
+    isDarkMode = false,
     slideshow,
     active = true,
     overlayOpen = false,
@@ -89,6 +108,7 @@
               href: getSubslideshowHref(subslideshow),
               title: getSubslideshowTitle(reference, subslideshow),
               slideCount: subslideshow.chapters.length,
+              slideshow: subslideshow,
             };
           })
           .filter((reference) => reference !== undefined)
@@ -96,6 +116,36 @@
 
   const getSlideCountLabel = (count: number) =>
     `${count} ${count === 1 ? "slide" : "slides"}`;
+
+  const getReadMoreCards = (
+    subslideshows: ChapterSubslideshow[],
+  ): ReadMoreCard[] => {
+    if (
+      subslideshows.length === 1 &&
+      subslideshows[0].slideshow.chapters.length > 0
+    ) {
+      const subslideshow = subslideshows[0].slideshow;
+      const slideCount = subslideshow.chapters.length;
+
+      return subslideshow.chapters.map((chapter, index) => ({
+        id: `${subslideshow.id}:${chapter.slug}`,
+        previewKey: slidePreviewKey(subslideshow.id, chapter.slug),
+        href: getChapterRouteHref(subslideshow, chapter),
+        title: chapter.title,
+        badge: `${index + 1} / ${slideCount}`,
+        ariaLabel: `${chapter.title}, slide ${index + 1} of ${slideCount}`,
+      }));
+    }
+
+    return subslideshows.map((subslideshow) => ({
+      id: subslideshow.id,
+      previewKey: subslideshow.slideshow.chapters[0] ? slidePreviewKey(subslideshow.id, subslideshow.slideshow.chapters[0].slug) : undefined,
+      href: subslideshow.href,
+      title: subslideshow.title,
+      badge: getSlideCountLabel(subslideshow.slideCount),
+      ariaLabel: `${subslideshow.title}, ${getSlideCountLabel(subslideshow.slideCount)}`,
+    }));
+  };
 
   const closeToc = () => {
     onTocClose?.();
@@ -308,11 +358,13 @@
       {@const Component = chapter.Component}
       {@const isActive = currentSlug === chapter.slug}
       {@const subslideshows = getChapterSubslideshows(chapter)}
+      {@const readMoreCards = getReadMoreCards(subslideshows)}
       <section
         class="py-5 min-h-[60%] {isActive
           ? 'opacity-100'
           : 'opacity-40'} transition-opacity"
         data-index={index}
+        id={active ? chapter.slug : undefined}
         data-id={chapter.slug}
       >
         <Component />
@@ -322,16 +374,26 @@
               <BookOpen size={20} strokeWidth={1.8} aria-hidden="true" />
               <h2>Read more</h2>
             </div>
-            <div class="read-more__list" aria-label="Subslideshows">
-              {#each subslideshows as subslideshow}
+            <div
+              class="read-more__list"
+              aria-label={subslideshows.length === 1
+                ? "Slides"
+                : "Subslideshows"}
+            >
+              {#each readMoreCards as card (card.id)}
+                {@const image = card.previewKey ? thumbnails.slides[card.previewKey]?.[isDarkMode ? "dark" : "light"] : undefined}
                 <a
                   class="read-more__card"
-                  href={subslideshow.href}
-                  aria-label={`${subslideshow.title}, ${getSlideCountLabel(subslideshow.slideCount)}`}
+                  href={card.href}
+                  aria-label={card.ariaLabel}
                   onclick={closeToc}
                 >
                   <span class="read-more__preview" aria-hidden="true">
+                    {#if image}
+                      <img class="read-more__image" src={withBaseUrl(image.path)} width={image.width} height={image.height} alt="" loading="lazy" decoding="async" />
+                    {:else}
                     <span class="read-more__placeholder"></span>
+                    {/if}
                     <span class="read-more__count">
                       <Presentation
                         size={13}
@@ -339,11 +401,11 @@
                         aria-hidden="true"
                       />
                       <span class="read-more__count-text"
-                        >{getSlideCountLabel(subslideshow.slideCount)}</span
+                        >{card.badge}</span
                       >
                     </span>
                   </span>
-                  <span class="read-more__title">{subslideshow.title}</span>
+                  <span class="read-more__title">{card.title}</span>
                 </a>
               {/each}
             </div>
@@ -416,6 +478,12 @@
     aspect-ratio: 1.35;
     border-radius: 0.375rem;
     background: var(--app-hover-bg);
+  }
+
+  .read-more__image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
   }
 
   .read-more__placeholder {

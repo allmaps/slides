@@ -317,6 +317,8 @@ const getLocalStyleKeys = (path: string) => {
 
 const resolveConfiguredStyle = async (
   styleReference: BasemapStyleReference,
+  fetchFn: typeof fetch = fetch,
+  strict = false,
 ): Promise<StyleSpecification | undefined> => {
   if (typeof styleReference !== "string") return cloneJson(styleReference);
 
@@ -326,7 +328,7 @@ const resolveConfiguredStyle = async (
   }
 
   try {
-    const response = await fetch(styleReference);
+    const response = await fetchFn(styleReference);
 
     if (!response.ok) {
       throw new Error(`${response.status} ${response.statusText}`);
@@ -336,6 +338,7 @@ const resolveConfiguredStyle = async (
 
     return resolveStyleUrls(style, response.url || styleReference);
   } catch (error) {
+    if (strict) throw error;
     console.warn(
       `Could not load basemap style ${styleReference}. Falling back to Protomaps.\n  - ${error instanceof Error ? error.message : String(error)}`,
     );
@@ -437,7 +440,7 @@ const createProtomapsStyle = (
         lang: locale,
         labelsOnly: true,
       }),
-    ],
+    ] as LayerSpecification[],
   };
 };
 
@@ -535,12 +538,16 @@ export const createEmptyMapStyle = (
 export const resolveBasemapStyle = async ({
   theme,
   config,
+  fetchFn,
+  strict,
 }: {
   theme: ThemeMode;
   config: EffectiveBasemapStyleConfig;
+  fetchFn?: typeof fetch;
+  strict?: boolean;
 }): Promise<ResolvedBasemapStyle> => {
   const configuredStyle = config.style
-    ? await resolveConfiguredStyle(config.style)
+    ? await resolveConfiguredStyle(config.style, fetchFn, strict)
     : undefined;
   const style = configuredStyle ?? createProtomapsStyle(theme, config.protomaps);
   const foregroundColor = getForegroundColor(
@@ -573,3 +580,24 @@ export const resolveBasemapStyle = async ({
     foregroundColor,
   };
 };
+
+// Shared layer decisions for the live map and build-time rendering.
+export function getBasemapLayerVisibility(
+  style: ResolvedBasemapStyle, id: string, label: boolean,
+  state: EffectiveBasemapLayerState, hidden = false,
+): "visible" | "none" {
+  const original = style.originalLayerIdById.get(id) ?? id;
+  if (hidden || state.hiddenLayers.has(id) || state.hiddenLayers.has(original)
+    || (label && !state.labels.visible)) return "none";
+  return style.defaultVisibilityById.get(id) ?? "visible";
+}
+
+export function getLayerWithVisibility(
+  style: ResolvedBasemapStyle, layer: LayerSpecification, label: boolean,
+  state: EffectiveBasemapLayerState, hidden = false,
+): LayerSpecification {
+  const next = structuredClone(layer);
+  next.layout = { ...next.layout,
+    visibility: getBasemapLayerVisibility(style, layer.id, label, state, hidden) };
+  return next;
+}

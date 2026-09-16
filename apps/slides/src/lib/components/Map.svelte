@@ -7,14 +7,12 @@
   import "maplibre-gl/dist/maplibre-gl.css";
   import type {
     CenterZoomBearing,
-    CameraForBoundsOptions,
     EaseToOptions,
     FlyToOptions,
     GeoJSONSource,
     LayerSpecification,
     LngLatBoundsLike,
     PaddingOptions,
-    PointLike,
     SourceSpecification,
   } from "maplibre-gl";
 
@@ -22,9 +20,23 @@
     WarpedMapLayer,
     type MapLibreWarpedMapLayerOptions,
   } from "@allmaps/maplibre";
-  import { createFauxGeoreferencedMap } from "$lib/shared/utils";
+  import {
+    getAnnotationsFromChapters,
+    getUniqueAnnotations,
+    hidesBasemap,
+  } from "$lib/shared/map/annotations";
+  import {
+    resolveChapterCamera,
+    getCameraLayoutOptions,
+    type CameraLayoutOptions,
+  } from "$lib/shared/map/camera";
+  import { withBaseUrl } from "$lib/shared/paths";
+  import { createFauxGeoreferencedMap } from "$lib/shared/map/image";
+  import { prepareUserLayers, getUserLayerChange } from "$lib/shared/map/layers";
   import { slidesConfig } from "$lib/shared/app-config";
   import {
+    getBasemapLayerVisibility as resolveLayerVisibility,
+    getLayerWithVisibility as resolveLayerWithVisibility,
     FOREGROUND_LAYER_ID,
     createEmptyMapStyle,
     getBasemapStyleKey,
@@ -41,7 +53,6 @@
     DEFAULT_DURATION,
     DEFAULT_COLORS,
     DEFAULT_OVERVIEW_TILES_RESOLUTION,
-    LAYER_TYPES,
   } from "$lib/shared/settings";
 
   import type {
@@ -52,12 +63,8 @@
   } from "$lib/shared/types";
 
   type SpriteProps = NonNullable<MapChapterProps["sprite"]>;
-  type CameraLayoutOptions = {
-    padding: number | PaddingOptions;
-    offset?: PointLike;
-  };
-
   type Props = {
+    annotationUrls?: Record<string, string>;
     chapters: MapChapterProps[];
     index: number;
     isDarkMode?: boolean;
@@ -83,6 +90,7 @@
 
   let {
     chapters,
+    annotationUrls = {},
     index,
     isDarkMode,
     duration,
@@ -115,9 +123,7 @@
     currentWarpedMaps?.some((warpedMaps) => warpedMaps.type === "Image") ||
       false,
   );
-  let currentHideBasemap = $derived(
-    currentImageSlide || currentChapter?.hideBasemap,
-  );
+  let currentHideBasemap = $derived(hidesBasemap(currentChapter ?? {}));
   let currentPadding = $derived.by(() => {
     if (typeof padding === "number" || padding === undefined) {
       return padding ?? DEFAULT_PADDING;
@@ -202,8 +208,6 @@
   let pmtilesProtocolLoaded = false;
   let destroyed = false;
 
-  const MAPLIBRE_TILE_SIZE = 512;
-  const WEB_MERCATOR_WORLD_WIDTH = 40075016.68557849;
   const DEBUG_BOUNDS_SOURCE_ID = "slides-debug-bounds";
   const DEBUG_BOUNDS_LAYER_ID = "slides-debug-bounds-layer";
   const BASEMAP_STYLE_FADE_DURATION = 450;
@@ -215,22 +219,6 @@
     overviewTilesMaxResolution: DEFAULT_OVERVIEW_TILES_RESOLUTION,
   };
   const warpedMapLayer = new WarpedMapLayer(warpedMapLayerOptions);
-
-  const getUniqueAnnotations = (annotations: WarpedMapProps[]) =>
-    annotations.reduce((acc: WarpedMapProps[], current) => {
-      const annotationExists = acc.some(
-        (annotation) => annotation.url === current.url,
-      );
-      if (!annotationExists) {
-        acc.push(current);
-      }
-      return acc;
-    }, []);
-
-  const getAnnotationsFromChapters = (chapters: MapChapterProps[]) =>
-    getUniqueAnnotations(
-      chapters.flatMap((chapter) => chapter.warpedMaps ?? []),
-    );
 
   const areAnnotationsLoaded = (annotations: WarpedMapProps[]) =>
     annotations.every(({ url }) => mapIdsByAnnotationUrl.has(url));
@@ -249,20 +237,6 @@
         options,
       })),
     );
-
-  const getNativeMaxZoomForAnnotations = (annotations: WarpedMapProps[]) => {
-    const nativeMaxZooms = getMapIdsForAnnotations(annotations)
-      .map((id) => warpedMapLayer.getWarpedMap(id)?.resourceToProjectedGeoScale)
-      .filter(
-        (scale): scale is number =>
-          typeof scale === "number" && Number.isFinite(scale) && scale > 0,
-      )
-      .map((scale) =>
-        Math.log2((scale * WEB_MERCATOR_WORLD_WIDTH) / MAPLIBRE_TILE_SIZE),
-      );
-
-    return nativeMaxZooms.length > 0 ? Math.max(...nativeMaxZooms) : undefined;
-  };
 
   const rememberMapIdsForAnnotation = (url: string, ids: string[]) => {
     mapIdsByAnnotationUrl.set(url, ids);
@@ -317,9 +291,6 @@
       bounds ? getBoundsFeatureCollection(bounds) : getEmptyFeatureCollection(),
     );
   };
-
-  const cloneLayer = (layer: LayerSpecification): LayerSpecification =>
-    JSON.parse(JSON.stringify(layer)) as LayerSpecification;
 
   const normalizeColor = (color: string | undefined) =>
     color?.replace(/\s+/g, "").toLowerCase();
@@ -381,57 +352,14 @@
     foregroundOpacity = opacity;
   };
 
-  const getLayerOriginalId = (
-    basemapStyle: ResolvedBasemapStyle,
-    layerId: string,
-  ) => basemapStyle.originalLayerIdById.get(layerId) ?? layerId;
-
-  const isLayerHiddenByConfig = (
-    basemapStyle: ResolvedBasemapStyle,
-    layerId: string,
-    layerState: EffectiveBasemapLayerState,
-  ) => {
-    const originalLayerId = getLayerOriginalId(basemapStyle, layerId);
-
-    return (
-      layerState.hiddenLayers.has(layerId) ||
-      layerState.hiddenLayers.has(originalLayerId)
-    );
-  };
-
   const getBasemapLayerVisibility = (
-    basemapStyle: ResolvedBasemapStyle,
-    layerId: string,
-    isLabelLayer: boolean,
-    layerState: EffectiveBasemapLayerState,
-  ): "visible" | "none" => {
-    if (currentHideBasemap) return "none";
-    if (isLayerHiddenByConfig(basemapStyle, layerId, layerState)) return "none";
-    if (isLabelLayer && !layerState.labels.visible) return "none";
-
-    return basemapStyle.defaultVisibilityById.get(layerId) ?? "visible";
-  };
-
+    style: ResolvedBasemapStyle, id: string, label: boolean,
+    state: EffectiveBasemapLayerState,
+  ) => resolveLayerVisibility(style, id, label, state, currentHideBasemap);
   const getLayerWithVisibility = (
-    basemapStyle: ResolvedBasemapStyle,
-    layer: LayerSpecification,
-    isLabelLayer: boolean,
-    layerState: EffectiveBasemapLayerState,
-  ): LayerSpecification => {
-    const nextLayer = cloneLayer(layer);
-
-    nextLayer.layout = {
-      ...(nextLayer.layout ?? {}),
-      visibility: getBasemapLayerVisibility(
-        basemapStyle,
-        nextLayer.id,
-        isLabelLayer,
-        layerState,
-      ),
-    };
-
-    return nextLayer;
-  };
+    style: ResolvedBasemapStyle, layer: LayerSpecification, label: boolean,
+    state: EffectiveBasemapLayerState,
+  ) => resolveLayerWithVisibility(style, layer, label, state, currentHideBasemap);
 
   const getFirstLayerId = (predicate: (layerId: string) => boolean) =>
     map.getLayersOrder().find(predicate);
@@ -658,50 +586,6 @@
     return hasSpriteForMapIds(sprite, getMapIdsForAnnotations(currentWarpedMaps));
   };
 
-  const getCameraLayoutOptions = (
-    padding: number | PaddingOptions,
-  ): CameraLayoutOptions => {
-    if (typeof padding === "number") {
-      return { padding };
-    }
-
-    const top = padding.top ?? DEFAULT_PADDING;
-    const right = padding.right ?? DEFAULT_PADDING;
-    const bottom = padding.bottom ?? DEFAULT_PADDING;
-    const left = padding.left ?? DEFAULT_PADDING;
-    const horizontalPadding = (left + right) / 2;
-    const verticalPadding = (top + bottom) / 2;
-    const offset: [number, number] = [
-      (left - right) / 2,
-      (top - bottom) / 2,
-    ];
-
-    return {
-      padding: {
-        top: verticalPadding,
-        right: horizontalPadding,
-        bottom: verticalPadding,
-        left: horizontalPadding,
-      },
-      offset,
-    };
-  };
-
-  const getCameraForBoundsOptions = (
-    cameraLayoutOptions: CameraLayoutOptions,
-  ): CameraForBoundsOptions => ({
-    ...cameraLayoutOptions,
-    ...(currentLocation.bearing !== undefined
-      ? { bearing: currentLocation.bearing }
-      : {}),
-  });
-
-  const getBoundsCenter = (bounds: LngLatBoundsLike): [number, number] => {
-    const center = maplibregl.LngLatBounds.convert(bounds).getCenter();
-
-    return [center.lng, center.lat];
-  };
-
   function getFlyToOptions(
     camera: CenterZoomBearing | undefined,
     cameraLayoutOptions: CameraLayoutOptions,
@@ -795,7 +679,8 @@
           });
           rememberMapIdsForAnnotation(url, [id]);
         } else {
-          const georeferenceAnnotation = await fetch(url).then((response) =>
+          const snapshotUrl = annotationUrls[url];
+          const georeferenceAnnotation = await fetch(snapshotUrl ? withBaseUrl(snapshotUrl) : url).then((response) =>
             response.json(),
           );
 
@@ -960,75 +845,23 @@
       visibleMaps = mapIds;
       currentVisibleMaps = mapIds;
 
-      let mapIdsForBounds: string[] = [];
-      const boundsFilter = currentWarpedMaps.filter(
-        (annotation) => annotation.useBounds === true,
+      const camera = resolveChapterCamera(
+        currentChapter ?? {},
+        (annotation) => getMapIdsForAnnotationUrl(annotation.url)
+          .flatMap((id) => {
+            const warped = warpedMapLayer.getWarpedMap(id);
+            return warped ? [warped] : [];
+          }),
+        [container.clientWidth, container.clientHeight],
+        cameraLayoutOptions.padding,
+        {
+          center: [map.getCenter().lng, map.getCenter().lat],
+          zoom: map.getZoom(),
+          bearing: map.getBearing(),
+        },
       );
-      if (boundsFilter.length) {
-        boundsFilter.forEach(({ url }) => {
-          const ids = mapIdsByAnnotationUrl.get(url);
-          if (ids) {
-            mapIdsForBounds.push(...ids);
-          }
-        });
-      } else mapIdsForBounds = mapIds;
-
-      let camera: CenterZoomBearing | undefined;
-      let forceCameraOffset = false;
-      const bounds = warpedMapLayer.getMapsBounds(mapIdsForBounds);
-      setDebugBounds(bounds);
-      const locationBearing = currentLocation.bearing;
-
-      const firstMapWithBearingProp = currentWarpedMaps.find(
-        (annotation) => annotation.useBearing == true,
-      );
-      if (firstMapWithBearingProp && locationBearing === undefined) {
-        const warpedMapIdsUsedForBearing =
-          mapIdsByAnnotationUrl.get(firstMapWithBearingProp.url) || [];
-        const sortedMapIds: Set<string> = new Set(
-          warpedMapIdsUsedForBearing.concat(mapIdsForBounds),
-        );
-        camera = warpedMapLayer.getMapsCenterZoomBearing([...sortedMapIds], {
-          bearingSelection: "first",
-          ...cameraLayoutOptions,
-        });
-        forceCameraOffset = true;
-      } else if (bounds) {
-        camera = map.cameraForBounds(
-          bounds,
-          getCameraForBoundsOptions(cameraLayoutOptions),
-        );
-
-        if (camera && locationBearing !== undefined && !currentLocation.center) {
-          camera = {
-            ...camera,
-            center: getBoundsCenter(bounds),
-          };
-          forceCameraOffset = true;
-        }
-      }
-      const mapsUsedForZoom = currentWarpedMaps.filter(
-        (annotation) => annotation.useZoom === true,
-      );
-      const nativeMaxZoom = mapsUsedForZoom.length
-        ? getNativeMaxZoomForAnnotations(mapsUsedForZoom)
-        : undefined;
-      if (camera && nativeMaxZoom !== undefined) {
-        camera = {
-          ...camera,
-          zoom: nativeMaxZoom,
-        };
-      }
-      if (camera) {
-        if (debug) {
-          console.log("Updating warped map camera...", {
-            chapterIndex: index,
-            camera,
-            padding: currentPadding,
-          });
-        }
-        flyToCamera(camera, cameraLayoutOptions, forceCameraOffset);
-      }
+      setDebugBounds(warpedMapLayer.getMapsBounds(mapIds));
+      flyToCamera(camera, cameraLayoutOptions, true);
     } else if (mapLoaded) {
       // Hide all maps
       const mapsToHide = new Set(visibleMaps);
@@ -1214,24 +1047,12 @@
     }
     const layerList = Array.isArray(layers) ? layers : [layers];
 
-    layerList
-      .map((layer) => ({
-        ...layer,
-        id: `user-${layer.id}`,
-      }))
-      .reverse()
+    prepareUserLayers(layerList)
       .forEach((layer) => {
         const vectorTypes = ["symbol", "circle", "line", "raster", "fill"];
         const moveToFront = vectorTypes.includes(layer.type);
         map.addLayer(layer, moveToFront ? undefined : "warped-map-layer");
       });
-  }
-
-  function getLayerPaintType(id: string) {
-    const layerType = map.getLayer(id)?.type;
-    if (layerType && layerType in LAYER_TYPES) {
-      return LAYER_TYPES[layerType as keyof typeof LAYER_TYPES];
-    }
   }
 
   function setLayersOpacity() {
@@ -1240,23 +1061,14 @@
         console.log("Setting current layers opacity...", currentLayers);
       }
       currentLayers.forEach((layer) => {
-        const id = `user-${layer.layer}`;
-        if (layer.visibility) {
-          map.setLayoutProperty(id, "visibility", layer.visibility);
-        }
-        if (layer.opacity !== undefined) {
-          const paintProps = getLayerPaintType(id);
-          if (paintProps) {
-            paintProps.forEach((prop) => {
-              let options = {};
-              if (layer.duration) {
-                const transitionProp = `${prop}-transition`;
-                options = { duration: layer.duration };
-                map.setPaintProperty(id, transitionProp, options);
-              }
-              map.setPaintProperty(id, prop, layer.opacity, options);
-            });
-          }
+        const type = map.getLayer(`user-${layer.layer}`)?.type;
+        if (!type) return;
+        const { id, visibility, paint, duration } = getUserLayerChange(layer, type);
+        if (visibility) map.setLayoutProperty(id, "visibility", visibility);
+        for (const [property, value] of Object.entries(paint)) {
+          const options = duration ? { duration } : {};
+          if (duration) map.setPaintProperty(id, `${property}-transition`, options);
+          map.setPaintProperty(id, property, value);
         }
       });
     }
