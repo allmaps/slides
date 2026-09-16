@@ -87,7 +87,7 @@
     left: DEFAULT_PADDING,
   });
   let themePreference: ThemePreference | undefined = $state(undefined);
-  let startedSlideshowId: string | undefined = $state(undefined);
+  let mainSlideshowStarted = $state(false);
 
   const clampIndex = (index: number, length: number) =>
     length > 0 ? Math.min(Math.max(index, 0), length - 1) : 0;
@@ -102,7 +102,7 @@
   );
   const mapChapters = $derived([startMapSettings, ...chapters]);
   const startScreenVisible = $derived(
-    startedSlideshowId !== activeSlideshow.id,
+    activeSlideshow.id === project.main && !mainSlideshowStarted,
   );
   const startDescription = $derived(
     activeSlideshow.description ??
@@ -190,7 +190,9 @@
     );
     if (initialIndex < 0) return;
 
-    startedSlideshowId = activeSlideshow.id;
+    if (activeSlideshow.id === project.main) {
+      mainSlideshowStarted = true;
+    }
 
     if (isSubslideshowActive) {
       subslideshowIndexOwner = activeSlideshow.id;
@@ -303,7 +305,7 @@
 
     scrollToTopSignal += 1;
     updateMapLayout();
-    startedSlideshowId = activeSlideshow.id;
+    mainSlideshowStarted = true;
   };
 
   const highlightWarpedMap = (url?: string) => {
@@ -382,10 +384,11 @@
     clearWarpedMapHighlight();
 
     if (
+      activeSlideshow.id === project.main &&
       hash &&
       activeSlideshow.chapters.some((chapter) => chapter.slug === hash)
     ) {
-      startedSlideshowId = activeSlideshow.id;
+      mainSlideshowStarted = true;
     }
 
     if (isSubslideshowActive) {
@@ -556,7 +559,7 @@
     {/if}
   </div>
 
-  {#if isDarkMode !== undefined}
+  {#if isDarkMode !== undefined && activeSlideshow.id === project.main}
     <StartScreen
       title={activeSlideshow.title}
       description={startDescription}
