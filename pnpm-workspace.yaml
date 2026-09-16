@@ -4,8 +4,10 @@ packages:
   - packages/*
 
 allowBuilds:
+  '@maplibre/maplibre-gl-native': true
   esbuild: true
   sharp: true
 onlyBuiltDependencies:
+  - '@maplibre/maplibre-gl-native'
   - esbuild
   - sharp
