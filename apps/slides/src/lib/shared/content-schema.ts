@@ -79,6 +79,19 @@ const protomapsConfigSchema = z
     overrides: unknownRecordSchema.optional(),
   })
   .passthrough();
+const startScreenTextSchema = z
+  .object({
+    startButton: optionalString,
+    chapterCountSingular: optionalString,
+    chapterCountPlural: optionalString,
+    madeWith: optionalString,
+  })
+  .passthrough();
+const interfaceConfigSchema = z
+  .object({
+    startScreen: startScreenTextSchema.optional(),
+  })
+  .passthrough();
 export const mapConfigSchema = z
   .object({
     theme: themeModeSchema.optional(),
@@ -138,10 +151,8 @@ const warpedMapSchema = z
     url: (warpedMap.url ?? path) as string,
   }));
 
-export const slideMetadataSchema = z
+const mapChapterPropsSchema = z
   .object({
-    title: nonEmptyString,
-    description: optionalString,
     map: mapConfigSchema.optional(),
     location: optionalValue(
       z.object({
@@ -166,6 +177,13 @@ export const slideMetadataSchema = z
     contain: z.boolean().optional(),
     warpedMaps: optionalArray(warpedMapSchema),
     layers: optionalArray(mapLayerSchema),
+  })
+  .passthrough();
+
+export const slideMetadataSchema = mapChapterPropsSchema
+  .extend({
+    title: nonEmptyString,
+    description: optionalString,
     subslideshows: optionalArray(subslideshowReferenceSchema),
   })
   .passthrough();
@@ -189,7 +207,9 @@ const slideshowDefinitionSchema = z.object({
   path: nonEmptyString,
   slug: optionalSlug,
   title: optionalString,
+  description: optionalString,
   map: mapConfigSchema.optional(),
+  start: mapChapterPropsSchema.optional(),
 });
 
 export const slidesConfigSchema = z
@@ -204,6 +224,7 @@ export const slidesConfigSchema = z
       .default({}),
     map: mapConfigSchema.optional(),
     protomaps: protomapsConfigSchema.optional(),
+    interface: interfaceConfigSchema.optional(),
   })
   .passthrough();
 
@@ -303,6 +324,7 @@ export const parseSlidesConfig = (
       sources: config.sources,
       map: config.map,
       protomaps: config.protomaps,
+      interface: config.interface,
     },
   };
 };

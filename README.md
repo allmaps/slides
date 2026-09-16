@@ -25,6 +25,35 @@ This repository is a pnpm workspace:
 The selected content package contains one project. Its `slides.config.yml` holds
 the project metadata, slideshow definitions, sources, and application settings.
 
+Each slideshow can define a start-screen map using the same map fields as slide
+frontmatter. When `start` is omitted, the start screen uses the first slide's map
+settings:
+
+```yml
+slideshows:
+  - id: main
+    path: slideshows/00-main
+    title: Gravity Expeditions at Sea
+    start:
+      location:
+        center: [4.9, 52.37]
+        zoom: 11
+      warpedMaps:
+        - url: https://annotations.allmaps.org/maps/example
+```
+
+Start-screen text can be translated from the project configuration. Use
+`{count}` where the number of chapters should appear:
+
+```yml
+interface:
+  startScreen:
+    startButton: Start
+    chapterCountSingular: "{count} hoofdstuk in deze presentatie"
+    chapterCountPlural: "{count} hoofdstukken in deze presentatie"
+    madeWith: Gemaakt met
+```
+
 Install dependencies with `pnpm install`, start a development server:
 
 ```sh
@@ -138,6 +167,24 @@ generated `srcset`. Use `aria-label` on the figure to describe the image (or the
 caption is used). Keep blank lines around Markdown inside HTML, and do
 not indent it by four spaces. Captions support links, emphasis and paragraphs.
 Prefer institution object-record links and retain attribution and rights.
+
+## Callouts
+
+Use a semantic `aside` with the `callout` class. Keep blank lines around
+Markdown content inside the HTML element so links, emphasis, and other Markdown
+continue to work:
+
+```md
+<aside class="callout">
+
+<h2>About this story</h2>
+
+This short note can include [links](https://example.org) and *emphasis*.
+
+</aside>
+```
+
+The heading and body follow the green callout style used in the slide design.
 
 For **local derivatives**, a standalone Markdown image is enough. Its relative
 asset path resolves to the existing local IIIF service, and its alt text supplies

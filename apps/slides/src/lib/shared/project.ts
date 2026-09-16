@@ -4,11 +4,11 @@ import { slidesConfig } from "$lib/shared/app-config";
 import { slideFiles } from "$lib/shared/content-package";
 import {
   parseSlideMetadata,
-  type ParsedSlideMetadata,
 } from "$lib/shared/content-schema";
 import { getContentAssetUrl, withBaseUrl } from "$lib/shared/paths";
 import type {
   MapChapter,
+  MapChapterProps,
   Project,
   Slideshow,
   SlideshowDefinition,
@@ -41,7 +41,9 @@ const normalizeSlideshow = (
     slideshow.id === mainSlideshowId ? "" : (slideshow.slug ?? slideshow.id),
 });
 
-const resolveWarpedMaps = (metadata: ParsedSlideMetadata) => {
+const resolveWarpedMaps = <Metadata extends MapChapterProps>(
+  metadata: Metadata,
+): Metadata => {
   if (!metadata.warpedMaps) return metadata;
 
   return {
@@ -50,7 +52,7 @@ const resolveWarpedMaps = (metadata: ParsedSlideMetadata) => {
       ...warpedMap,
       url: getContentAssetUrl(warpedMap.url) ?? warpedMap.url,
     })),
-  };
+  } as Metadata;
 };
 
 const createSource = (source: SourceDefinition): SourceSpecification => {
@@ -103,6 +105,9 @@ const buildProject = (): Project => {
     return {
       ...slideshow,
       title: slideshow.title ?? slidesConfig.title,
+      start: slideshow.start
+        ? resolveWarpedMaps(slideshow.start)
+        : undefined,
       chapters: slidesBySlideshow.get(slideshow.path) ?? [],
       sources,
     };
@@ -112,6 +117,7 @@ const buildProject = (): Project => {
     title: slidesConfig.title,
     description: slidesConfig.description,
     main: slidesConfig.main,
+    interface: slidesConfig.interface,
     sources,
     slideshows,
   };

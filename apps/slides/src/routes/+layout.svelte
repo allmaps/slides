@@ -16,9 +16,15 @@
   const project = getProject();
   const slideshow = $derived(getSlideshowByRoute(page.params.slideshow));
   const mainSlideshow = getMainSlideshow();
+  const pageTitle = $derived(
+    slideshow && slideshow.id !== project.main && slideshow.title !== project.title
+      ? `${project.title} — ${slideshow.title}`
+      : project.title,
+  );
 </script>
 
 <svelte:head>
+  <title>{pageTitle}</title>
   <link rel="icon" href={favicon} />
 </svelte:head>
 

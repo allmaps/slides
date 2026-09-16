@@ -77,6 +77,7 @@
     layoutRevision?: number;
     resetSignal?: number;
     padding?: number | PaddingOptions;
+    controlsVisible?: boolean;
     debug?: boolean;
   };
 
@@ -98,6 +99,7 @@
     layoutRevision = 0,
     resetSignal = 0,
     padding,
+    controlsVisible = true,
     debug = dev,
   }: Props = $props();
 
@@ -1394,7 +1396,10 @@
   <div class="h-full min-h-0 w-full min-w-0" bind:this={container}></div>
 
   <div
-    class="pointer-events-none absolute top-3 right-3 z-10 flex flex-col gap-2 sm:top-4 sm:right-4 md:top-auto md:right-auto md:bottom-5 md:left-5 md:flex-row"
+    class="map-controls pointer-events-none absolute top-3 right-3 z-10 flex flex-col gap-2 sm:top-4 sm:right-4 md:top-auto md:right-auto md:bottom-5 md:left-5 md:flex-row"
+    class:map-controls--hidden={!controlsVisible}
+    aria-hidden={!controlsVisible}
+    inert={!controlsVisible}
   >
     <button
       type="button"
@@ -1435,3 +1440,30 @@
     </button>
   </div>
 </div>
+
+<style>
+  .map-controls {
+    opacity: 1;
+    transform: translateY(0);
+    transition:
+      opacity 350ms ease,
+      transform 500ms ease;
+  }
+
+  .map-controls--hidden {
+    opacity: 0;
+    transform: translateY(calc(-100% - 1.25rem));
+  }
+
+  @media (min-width: 768px) {
+    .map-controls--hidden {
+      transform: translateY(calc(100% + 1.25rem));
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .map-controls {
+      transition: none;
+    }
+  }
+</style>
