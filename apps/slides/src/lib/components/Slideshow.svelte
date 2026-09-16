@@ -16,13 +16,19 @@
   import SlideshowLayers from "$lib/components/SlideshowLayers.svelte";
   import SlideshowPanel from "$lib/components/SlideshowPanel.svelte";
   import SlideshowToc from "$lib/components/SlideshowToc.svelte";
+  import StartScreen from "$lib/components/StartScreen.svelte";
   import { getGeoJsonLayers } from "$lib/shared/geojson";
   import {
     getChapterRouteHref,
     getSlideshowRouteHref,
   } from "$lib/shared/project";
   import { DEFAULT_DURATION, DEFAULT_PADDING } from "$lib/shared/settings";
-  import type { MapChapter, Project, Slideshow } from "$lib/shared/types";
+  import type {
+    MapChapter,
+    MapChapterProps,
+    Project,
+    Slideshow,
+  } from "$lib/shared/types";
 
   type Props = {
     project: Project;
@@ -81,6 +87,7 @@
     left: DEFAULT_PADDING,
   });
   let themePreference: ThemePreference | undefined = $state(undefined);
+  let startedSlideshowId: string | undefined = $state(undefined);
 
   const clampIndex = (index: number, length: number) =>
     length > 0 ? Math.min(Math.max(index, 0), length - 1) : 0;
@@ -90,6 +97,17 @@
   ));
 
   const firstChapter = $derived(chapters[0]);
+  const startMapSettings = $derived<MapChapterProps>(
+    activeSlideshow.start ?? firstChapter ?? {},
+  );
+  const mapChapters = $derived([startMapSettings, ...chapters]);
+  const startScreenVisible = $derived(
+    startedSlideshowId !== activeSlideshow.id,
+  );
+  const startDescription = $derived(
+    activeSlideshow.description ??
+      (activeSlideshow.id === project.main ? project.description : undefined),
+  );
   const activeIndex = $derived.by(() =>
     clampIndex(
       isSubslideshowActive
@@ -99,6 +117,10 @@
         : mainIndex,
       chapters.length,
     ),
+  );
+  const mapIndex = $derived(startScreenVisible ? 0 : activeIndex + 1);
+  const effectiveMapPadding = $derived(
+    startScreenVisible ? DEFAULT_PADDING : mapPadding,
   );
   const activeChapter = $derived(chapters[activeIndex]);
   const headerTitle = $derived(rootSlideshow.title);
@@ -167,6 +189,8 @@
       (chapter) => chapter.slug === hash,
     );
     if (initialIndex < 0) return;
+
+    startedSlideshowId = activeSlideshow.id;
 
     if (isSubslideshowActive) {
       subslideshowIndexOwner = activeSlideshow.id;
@@ -265,6 +289,23 @@
     mapResetSignal += 1;
   };
 
+  const startSlideshow = () => {
+    closePanelOverlays();
+    clearWarpedMapHighlight();
+    resetWarpedMapVisibility();
+
+    if (isSubslideshowActive) {
+      subslideshowIndexOwner = activeSlideshow.id;
+      subslideshowIndex = 0;
+    } else {
+      mainIndex = 0;
+    }
+
+    scrollToTopSignal += 1;
+    updateMapLayout();
+    startedSlideshowId = activeSlideshow.id;
+  };
+
   const highlightWarpedMap = (url?: string) => {
     if (!LAYER_HIGHLIGHT_ENABLED) return;
 
@@ -304,13 +345,15 @@
   const updateMapLayout = () => {
     if (!panelElement) return;
 
-    const rect = panelElement.getBoundingClientRect();
+    const panelStyle = window.getComputedStyle(panelElement);
+    const rightInset = Number.parseFloat(panelStyle.right) || 0;
+    const bottomInset = Number.parseFloat(panelStyle.bottom) || 0;
     const nextPadding = isWideLayout()
       ? {
           top: DEFAULT_PADDING,
           right: Math.max(
             DEFAULT_PADDING,
-            Math.ceil(window.innerWidth - rect.left + DEFAULT_PADDING),
+            Math.ceil(panelElement.offsetWidth + rightInset + DEFAULT_PADDING),
           ),
           bottom: DEFAULT_PADDING,
           left: DEFAULT_PADDING,
@@ -320,7 +363,7 @@
           right: DEFAULT_PADDING,
           bottom: Math.max(
             DEFAULT_PADDING,
-            Math.ceil(window.innerHeight - rect.top + DEFAULT_PADDING),
+            Math.ceil(panelElement.offsetHeight + bottomInset + DEFAULT_PADDING),
           ),
           left: DEFAULT_PADDING,
         };
@@ -334,8 +377,16 @@
 
   $effect(() => {
     activeSlideshow.id;
+    const hash = decodeHash(page.url.hash);
     activePanelOverlay = undefined;
     clearWarpedMapHighlight();
+
+    if (
+      hash &&
+      activeSlideshow.chapters.some((chapter) => chapter.slug === hash)
+    ) {
+      startedSlideshowId = activeSlideshow.id;
+    }
 
     if (isSubslideshowActive) {
       subslideshowIndexOwner = activeSlideshow.id;
@@ -466,7 +517,6 @@
 </script>
 
 <svelte:head>
-  <title>{activeSlideshow.title}</title>
   <meta name="description" content={firstChapter?.description ?? project.description} />
   <!-- Before hydration, follow the system preference. Afterwards, use the same
        resolved theme as the interface, including a saved manual preference. -->
@@ -485,8 +535,8 @@
   <div class="absolute inset-0 z-0 min-h-0">
     {#if isDarkMode !== undefined}
       <Map
-        {chapters}
-        index={activeIndex}
+        chapters={mapChapters}
+        index={mapIndex}
         {isDarkMode}
         {sources}
         {layers}
@@ -495,7 +545,8 @@
         duration={DEFAULT_DURATION}
         layoutRevision={mapLayoutRevision}
         resetSignal={mapResetSignal}
-        padding={mapPadding}
+        padding={effectiveMapPadding}
+        controlsVisible={!startScreenVisible}
         highlight={highlightedWarpedMapUrl}
         {hiddenWarpedMapUrls}
         {zoomToWarpedMapUrl}
@@ -505,10 +556,27 @@
     {/if}
   </div>
 
-  <div class="pointer-events-none absolute inset-0 z-10">
+  {#if isDarkMode !== undefined}
+    <StartScreen
+      title={activeSlideshow.title}
+      description={startDescription}
+      chapterCount={chapters.length}
+      visible={startScreenVisible}
+      {isDarkMode}
+      text={project.interface?.startScreen}
+      onStart={startSlideshow}
+    />
+  {/if}
+
+  <div
+    class="pointer-events-none absolute inset-0 z-10"
+    aria-hidden={startScreenVisible}
+    inert={startScreenVisible}
+  >
     {#if isSubslideshowActive}
       <a
-        class="pointer-events-auto absolute top-3 left-3 flex min-h-[52px] max-w-[calc(100vw-12rem)] items-center rounded-lg bg-[var(--app-map-control-bg)] px-4 py-2 text-left text-[28px] leading-[1.1] font-normal text-[var(--app-map-control-text)] shadow-2xl backdrop-blur-md sm:top-4 sm:left-4 md:top-5 md:left-5 md:max-w-[28rem]"
+        class="story-title pointer-events-auto absolute top-3 left-3 flex min-h-[52px] max-w-[calc(100vw-12rem)] items-center rounded-lg bg-[var(--app-map-control-bg)] px-4 py-2 text-left text-[28px] leading-[1.1] font-normal text-[var(--app-map-control-text)] shadow-2xl backdrop-blur-md sm:top-4 sm:left-4 md:top-5 md:left-5 md:max-w-[28rem]"
+        class:story-title--hidden={startScreenVisible}
         href={mainHref}
         title={rootSlideshow.title}
         onclick={jumpToMainStart}
@@ -518,7 +586,8 @@
     {:else}
       <button
         type="button"
-        class="pointer-events-auto absolute top-3 left-3 flex min-h-[52px] max-w-[calc(100vw-12rem)] cursor-pointer items-center rounded-lg bg-[var(--app-map-control-bg)] px-4 py-2 text-left text-[28px] leading-[1.1] font-normal text-[var(--app-map-control-text)] shadow-2xl backdrop-blur-md sm:top-4 sm:left-4 md:top-5 md:left-5 md:max-w-[28rem]"
+        class="story-title pointer-events-auto absolute top-3 left-3 flex min-h-[52px] max-w-[calc(100vw-12rem)] cursor-pointer items-center rounded-lg bg-[var(--app-map-control-bg)] px-4 py-2 text-left text-[28px] leading-[1.1] font-normal text-[var(--app-map-control-text)] shadow-2xl backdrop-blur-md sm:top-4 sm:left-4 md:top-5 md:left-5 md:max-w-[28rem]"
+        class:story-title--hidden={startScreenVisible}
         title={rootSlideshow.title}
         onclick={jumpToMainStart}
       >
@@ -528,7 +597,8 @@
 
     <div
       bind:this={panelElement}
-      class="pointer-events-auto absolute right-3 bottom-3 flex h-[calc((100dvh-1.5rem)/2)] max-h-full min-h-0 w-[calc(100vw-1.5rem)] flex-col overflow-hidden rounded-lg bg-[var(--app-panel-bg)] text-[var(--app-text)] shadow-2xl backdrop-blur-md transition-none ease-in-out sm:right-4 sm:bottom-4 sm:h-[calc((100dvh-2rem)/2)] sm:w-[calc(100vw-2rem)] md:right-5 md:bottom-5 md:h-[calc(100dvh-2.5rem)] md:w-[480px] md:transition-[right,bottom,width,height] md:duration-500 motion-reduce:transition-none xl:w-[600px]"
+      class="story-panel pointer-events-auto absolute right-3 bottom-3 flex h-[calc((100dvh-1.5rem)/2)] max-h-full min-h-0 w-[calc(100vw-1.5rem)] flex-col overflow-hidden rounded-lg bg-[var(--app-panel-bg)] text-[var(--app-text)] shadow-2xl backdrop-blur-md sm:right-4 sm:bottom-4 sm:h-[calc((100dvh-2rem)/2)] sm:w-[calc(100vw-2rem)] md:right-5 md:bottom-5 md:h-[calc(100dvh-2.5rem)] md:w-[480px] xl:w-[600px]"
+      class:story-panel--hidden={startScreenVisible}
     >
       <header
         class="relative z-30 flex h-[52px] shrink-0 items-center gap-2 bg-[var(--app-panel-header-bg)] px-5 text-[16px] leading-[1.1] font-medium text-[var(--app-breadcrumb)] backdrop-blur"
@@ -727,3 +797,37 @@
     </div>
   </div>
 </div>
+
+<style>
+  .story-title,
+  .story-panel {
+    opacity: 1;
+    transform: translate(0, 0);
+    transition-duration: 500ms;
+    transition-property: opacity, transform, right, bottom, width, height;
+    transition-timing-function: ease-in-out;
+  }
+
+  .story-title--hidden {
+    opacity: 0;
+    transform: translateX(calc(-100% - 1.25rem));
+  }
+
+  .story-panel--hidden {
+    opacity: 0;
+    transform: translateY(calc(100% + 1.25rem));
+  }
+
+  @media (min-width: 768px) {
+    .story-panel--hidden {
+      transform: translateX(calc(100% + 1.25rem));
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .story-title,
+    .story-panel {
+      transition: none;
+    }
+  }
+</style>

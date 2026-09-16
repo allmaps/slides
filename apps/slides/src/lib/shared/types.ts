@@ -44,6 +44,17 @@ export type MapConfig = {
   protomaps?: ProtomapsStyleConfig;
 };
 
+export type StartScreenTextConfig = {
+  startButton?: string;
+  chapterCountSingular?: string;
+  chapterCountPlural?: string;
+  madeWith?: string;
+};
+
+export type InterfaceConfig = {
+  startScreen?: StartScreenTextConfig;
+};
+
 export type SlidesConfig = {
   title: string;
   description?: string;
@@ -52,6 +63,7 @@ export type SlidesConfig = {
   sources: Record<string, SourceDefinition>;
   map?: MapConfig;
   protomaps?: ProtomapsStyleConfig;
+  interface?: InterfaceConfig;
 };
 
 export type WarpedMapProps = {
@@ -125,12 +137,14 @@ export type SlideshowDefinition = {
   path: string;
   slug?: string;
   title?: string;
+  description?: string;
   map?: MapConfig;
+  start?: MapChapterProps;
 };
 
 export type Project = Pick<
   SlidesConfig,
-  "title" | "description" | "main"
+  "title" | "description" | "main" | "interface"
 > & {
   sources: Record<string, SourceSpecification>;
   slideshows: Slideshow[];
@@ -141,7 +155,9 @@ export type Slideshow = {
   path: string;
   slug: string;
   title: string;
+  description?: string;
   map?: MapConfig;
+  start?: MapChapterProps;
   chapters: MapChapter[];
   sources: Record<string, SourceSpecification>;
 };
