@@ -1,0 +1,11 @@
+**/node_modules
+**/.git
+**/.svelte-kit
+**/.vite
+**/build
+**/dist
+**/.DS_Store
+**/.env
+**/.env.*
+.pnpm-store
+content

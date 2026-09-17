@@ -16,7 +16,9 @@ slides validate @allmaps/gravity-at-sea
 
 `slides dev` resolves the named content package, reads `slides.config.yml` from
 that package root, watches that resolved package root, and reports validation
-errors. The app imports markdown, config, and assets through the stable
+errors using the same `@allmaps/slides-model` config, frontmatter and project
+validation as the app. This includes duplicate routes and missing subslideshow
+references. The app imports markdown, config, and assets through the stable
 `@allmaps/slides-content` import, which the CLI aliases to the selected package
 when it runs SvelteKit.
 
@@ -50,24 +52,27 @@ protomaps:
 
 Useful fields:
 
-| Field | Default | Description |
-| --- | --- | --- |
-| `app.directory` | workspace `apps/slides` | SvelteKit app directory. |
-| `site.basePath` | empty | SvelteKit base path, for example `/kattenburg-atlas`. |
-| `site.publicUrl` | `site.basePath` | Absolute public URL used by commands that need IDs. |
-| `protomaps.key` | empty | Public Protomaps key passed to the app. |
-| `iiif.enabled` | `true` | Generate and serve IIIF derivatives. |
-| `iiif.input` | `assets/images` | Source image root for manual IIIF generation and imported image paths. |
-| `iiif.output` | `static/iiif` | Output folder used by the manual `slides iiif` command. |
-| `iiif.id` | `PUBLIC_URL/iiif` | Public IIIF base URI used in generated metadata. |
-| `iiif.collectionLabel` | project title, then `Image Collection` | Label used for the root IIIF collection. |
-| `iiif.sizes` | `true` | Generate fixed-size full-image derivatives and advertise them in `info.json`. |
-| `iiif.tiles` | `true` | Generate tile pyramid derivatives and advertise them in `info.json`. |
-| `iiif.tileSize` | `1024` | Tile width and height. |
-| `iiif.webp` | `true` | Generate and advertise WebP derivatives. |
+| Field                  | Default                                | Description                                                                   |
+| ---------------------- | -------------------------------------- | ----------------------------------------------------------------------------- |
+| `app.directory`        | workspace `apps/slides`                | SvelteKit app directory.                                                      |
+| `site.basePath`        | empty                                  | SvelteKit base path, for example `/kattenburg-atlas`.                         |
+| `site.publicUrl`       | `site.basePath`                        | Absolute public URL used by commands that need IDs.                           |
+| `protomaps.key`        | empty                                  | Public Protomaps key passed to the app.                                       |
+| `iiif.enabled`         | `true`                                 | Generate and serve IIIF derivatives.                                          |
+| `iiif.input`           | `assets/images`                        | Source image root for manual IIIF generation and imported image paths.        |
+| `iiif.output`          | `static/iiif`                          | Output folder used by the manual `slides iiif` command.                       |
+| `iiif.id`              | `PUBLIC_URL/iiif`                      | Public IIIF base URI used in generated metadata.                              |
+| `iiif.collectionLabel` | project title, then `Image Collection` | Label used for the root IIIF collection.                                      |
+| `iiif.sizes`           | `true`                                 | Generate fixed-size full-image derivatives and advertise them in `info.json`. |
+| `iiif.tiles`           | `true`                                 | Generate tile pyramid derivatives and advertise them in `info.json`.          |
+| `iiif.tileSize`        | `1024`                                 | Tile width and height.                                                        |
+| `iiif.webp`            | `true`                                 | Generate and advertise WebP derivatives.                                      |
 
 Environment placeholders such as `${PUBLIC_PROTOMAPS_KEY}` are expanded before
-the config is applied.
+the config is applied. An explicit `PUBLIC_BASE_PATH` overrides `site.basePath`
+(including an empty value for origin-root deployments); a nonempty `PUBLIC_URL`
+overrides `site.publicUrl`. This lets the same content target Pages and a
+container deployment without rewriting its config.
 
 ## `slides iiif`
 
@@ -102,19 +107,19 @@ rather than directly to `iiif.output`.
 
 ### Options
 
-| Option | Default | Description |
-| --- | --- | --- |
-| `--force`, `-f` | off | Recreate existing image derivatives instead of skipping current ones. |
-| `--id <uri>` | `PUBLIC_URL/iiif` | Public IIIF base URI used in `info.json`, manifests, and collection IDs. |
-| `--collection-label <label>` | `iiif.collectionLabel` | Label used for the root IIIF collection. |
-| `--input <path>` | `iiif.input` or `assets/images` | Source image folder to scan recursively. |
-| `--output <path>` | `iiif.output` or `static/iiif` | Output folder for IIIF derivatives and JSON files. |
-| `--sizes` / `--no-sizes` | `iiif.sizes` | Generate or skip fixed-size full-image derivatives. |
-| `--tiles` / `--no-tiles` | `iiif.tiles` | Generate or skip tile pyramid derivatives. |
-| `--tile-size <pixels>` | `1024` | Tile width and height used for the image pyramid. |
-| `--webp` | on | Generate WebP derivatives alongside JPEG and advertise WebP in `info.json`. |
-| `--no-webp` | off | Generate JPEG derivatives only and omit WebP properties from `info.json`. |
-| `--help`, `-h` | off | Print the CLI help text. |
+| Option                       | Default                         | Description                                                                 |
+| ---------------------------- | ------------------------------- | --------------------------------------------------------------------------- |
+| `--force`, `-f`              | off                             | Recreate existing image derivatives instead of skipping current ones.       |
+| `--id <uri>`                 | `PUBLIC_URL/iiif`               | Public IIIF base URI used in `info.json`, manifests, and collection IDs.    |
+| `--collection-label <label>` | `iiif.collectionLabel`          | Label used for the root IIIF collection.                                    |
+| `--input <path>`             | `iiif.input` or `assets/images` | Source image folder to scan recursively.                                    |
+| `--output <path>`            | `iiif.output` or `static/iiif`  | Output folder for IIIF derivatives and JSON files.                          |
+| `--sizes` / `--no-sizes`     | `iiif.sizes`                    | Generate or skip fixed-size full-image derivatives.                         |
+| `--tiles` / `--no-tiles`     | `iiif.tiles`                    | Generate or skip tile pyramid derivatives.                                  |
+| `--tile-size <pixels>`       | `1024`                          | Tile width and height used for the image pyramid.                           |
+| `--webp`                     | on                              | Generate WebP derivatives alongside JPEG and advertise WebP in `info.json`. |
+| `--no-webp`                  | off                             | Generate JPEG derivatives only and omit WebP properties from `info.json`.   |
+| `--help`, `-h`               | off                             | Print the CLI help text.                                                    |
 
 `PUBLIC_URL` is set from the Slides config. If no public URL is configured, IDs
 are rooted at `/iiif`.
@@ -164,3 +169,14 @@ slides iiif --input static/images/maps --output /tmp/gravity-iiif-maps
 The generator renders each fixed size and each pyramid scale once per image,
 then crops tiles from those rendered levels. This avoids repeatedly decoding and
 resizing the original source image for every tile.
+
+## Static map previews
+
+`slides build` prepares scenes in the app, invokes `@allmaps/static-render` once
+as a batch CLI, then builds SvelteKit from the resulting thumbnail manifest.
+Native rendering does not run in a prerender worker. Use `slides build` rather
+than calling `vite build` directly when refreshing thumbnails.
+
+See [thumbnail generation](../../docs/thumbnail-generation.md) for cache and
+environment options and [the renderer package](../static-render/README.md) for
+standalone and Docker usage.

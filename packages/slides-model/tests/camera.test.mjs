@@ -7,7 +7,7 @@ import {
   resolveChapterCamera,
   unitsPerPixel,
   getCameraLayoutOptions,
-} from "../src/lib/shared/map/camera.ts";
+} from "../src/map/camera.ts";
 
 // Synthetic mask around Kattenburg; independent of installed content packages.
 const georeferencedMap = {

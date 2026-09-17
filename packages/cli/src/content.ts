@@ -1,7 +1,13 @@
 import { lstat, readdir, readFile } from "node:fs/promises";
 import path from "node:path";
+import { parseFrontmatter } from "@allmaps/slides-model/config";
+import {
+  slideMetadataSchema,
+  parseSlidesConfig,
+} from "@allmaps/slides-model/content-schema";
+import { buildProject } from "@allmaps/slides-model/project";
 
-import { type SlidesConfig } from "./config.ts";
+import { type RuntimeSlidesConfig } from "./config.ts";
 
 type ContentPackage = {
   name?: string;
@@ -43,7 +49,7 @@ const getPathStat = async (entryPath: string) => {
   }
 };
 
-const validateContentPackage = async (config: SlidesConfig) => {
+const validateContentPackage = async (config: RuntimeSlidesConfig) => {
   const packagePath = path.join(config.sourceContentDir, packageFilename);
   const packageStat = await getPathStat(packagePath);
 
@@ -64,24 +70,35 @@ const validateContentPackage = async (config: SlidesConfig) => {
   }
 };
 
-const countMarkdownFiles = async (directory: string): Promise<number> => {
-  let count = 0;
-
+const readSlideMetadata = async (
+  directory: string,
+  root: string,
+  slides: Record<string, { metadata: unknown }>,
+) => {
   for (const entry of await getDirectoryEntries(directory)) {
     const entryPath = path.join(directory, entry.name);
-
-    if (entry.isDirectory()) {
-      count += await countMarkdownFiles(entryPath);
-    } else if (entry.isFile() && entry.name.toLowerCase().endsWith(".md")) {
-      count += 1;
+    if (entry.isDirectory()) await readSlideMetadata(entryPath, root, slides);
+    else if (entry.isFile() && entry.name.toLowerCase().endsWith(".md")) {
+      let metadata: unknown;
+      try {
+        metadata = parseFrontmatter(await readFile(entryPath, "utf8"));
+      } catch (error) {
+        throw new Error(
+          `Invalid slide frontmatter ${entryPath}: ${String(error)}`,
+        );
+      }
+      const result = slideMetadataSchema.safeParse(metadata);
+      if (!result.success)
+        throw new Error(`Invalid slide ${entryPath}: ${result.error.message}`);
+      slides[path.relative(root, entryPath).split(path.sep).join("/")] = {
+        metadata,
+      };
     }
   }
-
-  return count;
 };
 
 export const validateContent = async (
-  config: SlidesConfig,
+  config: RuntimeSlidesConfig,
 ): Promise<ContentResult> => {
   await validateContentPackage(config);
 
@@ -91,7 +108,7 @@ export const validateContent = async (
       : [],
   );
 
-  let slideCount = 0;
+  const slides: Record<string, { metadata: unknown }> = {};
 
   for (const slideshowPath of slideshowPaths) {
     const directory = path.resolve(config.sourceContentDir, slideshowPath);
@@ -101,14 +118,23 @@ export const validateContent = async (
       throw new Error(`Slideshow directory not found: ${directory}`);
     }
 
-    slideCount += await countMarkdownFiles(directory);
+    await readSlideMetadata(directory, config.sourceContentDir, slides);
   }
 
-  return { slideCount, slideshowCount: slideshowPaths.length };
+  const parsed = parseSlidesConfig(
+    config.raw,
+    config.configPath ?? "slides.config",
+  );
+  if (!parsed.success) throw new Error("Invalid Slides configuration");
+  buildProject(parsed.data, slides);
+  return {
+    slideCount: Object.keys(slides).length,
+    slideshowCount: slideshowPaths.length,
+  };
 };
 
 export const formatContentResult = (
-  config: SlidesConfig,
+  config: RuntimeSlidesConfig,
   result: ContentResult,
 ) => {
   const contentLabel =
@@ -120,7 +146,7 @@ export const formatContentResult = (
 };
 
 export const watchContent = (
-  config: SlidesConfig,
+  config: RuntimeSlidesConfig,
   onValidated: (result: ContentResult) => void,
 ) => {
   let previousSnapshot: string | undefined;
@@ -134,8 +160,8 @@ export const watchContent = (
   ): Promise<string[]> => {
     const snapshot: string[] = [];
 
-    for (const entry of (await getDirectoryEntries(directory)).toSorted((a, b) =>
-      a.name.localeCompare(b.name),
+    for (const entry of (await getDirectoryEntries(directory)).toSorted(
+      (a, b) => a.name.localeCompare(b.name),
     )) {
       const entryPath = path.join(directory, entry.name);
       const stats = await getPathStat(entryPath);
@@ -144,9 +170,7 @@ export const watchContent = (
       const relativePath = path.relative(root, entryPath);
       const type = stats.isDirectory() ? "dir" : "file";
 
-      snapshot.push(
-        `${relativePath}:${type}:${stats.size}:${stats.mtimeMs}`,
-      );
+      snapshot.push(`${relativePath}:${type}:${stats.size}:${stats.mtimeMs}`);
 
       if (stats.isDirectory()) {
         snapshot.push(...(await getDirectorySnapshot(entryPath, root)));

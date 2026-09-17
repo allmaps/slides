@@ -3,12 +3,12 @@ import type {
   SourceSpecification,
   StyleSpecification,
 } from "maplibre-gl";
-import type { Camera } from "$lib/shared/map/camera";
+import type { Camera } from "@allmaps/slides-model/map/camera";
 import {
   getLayerWithVisibility,
   type EffectiveBasemapLayerState,
   type ResolvedBasemapStyle,
-} from "$lib/shared/basemap";
+} from "@allmaps/slides-model/basemap";
 import { type RenderCache } from "./cache.ts";
 import type { NativeRenderer } from "./native.ts";
 

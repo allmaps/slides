@@ -3,10 +3,7 @@ import { test } from "node:test";
 import { mkdtemp, rm, readdir } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import {
-  RemoteCache,
-  RenderCache,
-} from "../src/lib/server/thumbnails/cache.ts";
+import { RemoteCache, RenderCache } from "../src/cache.ts";
 
 async function temporary(t) {
   const root = await mkdtemp(path.join(tmpdir(), "slides-cache-"));

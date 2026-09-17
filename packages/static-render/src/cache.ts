@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { stableStringify } from "../../shared/map/annotations.ts";
+import { stableStringify } from "@allmaps/slides-model/map/annotations";
 
 export const digest = (data: string | Uint8Array) =>
   createHash("sha256").update(data).digest("hex");

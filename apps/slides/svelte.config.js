@@ -23,6 +23,8 @@ const getBasePath = (value) => {
 const basePath = getBasePath(
   process.env.PUBLIC_BASE_PATH ?? process.env.PUBLIC_URL,
 );
+// A container can mount the parent directory; the adapter recreates this child.
+const buildOutput = process.env.SLIDES_BUILD_OUTPUT ?? "build";
 const normalizePath = (value) => value.replace(/\/+$/g, "") || "/";
 const appRootPaths = new Set([
   "/",
@@ -38,8 +40,8 @@ const config = {
     adapter: adapter({
       // default options are shown. On some platforms
       // these options are set automatically — see below
-      pages: "build",
-      assets: "build",
+      pages: buildOutput,
+      assets: buildOutput,
       fallback: undefined,
       precompress: false,
       strict: true,
