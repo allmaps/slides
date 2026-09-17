@@ -152,7 +152,7 @@
     margin-block: 1.25em;
     border: 1px solid var(--highlight-fg);
     border-radius: 0.375rem;
-    background: var(--app-overlay-bg);
+    /* background: var(--app-overlay-bg); */
     padding: 0.625rem;
     color: var(--highlight-fg);
     letter-spacing: 0.01em;
@@ -229,7 +229,7 @@
 
   :global(.slide-content dl) {
     display: grid;
-    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-columns: 0.6fr 1.4fr;
     margin-block: 1.25em;
     width: 100%;
     font-size: 0.92em;
