@@ -28,6 +28,9 @@ export const getSlideshowByRoute = (slideshowSlug?: string) =>
 export const getSlideshowRouteHref = (slideshow: Slideshow) =>
   withBaseUrl(slideshow.slug);
 
+export const getChapterAnchorHref = (slideshow: Slideshow, chapter: MapChapter) =>
+  `${getSlideshowRouteHref(slideshow)}#${encodeURIComponent(chapter.slug)}`;
+
 export const getChapterRouteHref = (
   slideshow: Slideshow,
   chapter: MapChapter,
@@ -36,7 +39,7 @@ export const getChapterRouteHref = (
 
   return slideshow.chapters[0]?.slug === chapter.slug
     ? slideshowHref
-    : `${slideshowHref}#${encodeURIComponent(chapter.slug)}`;
+    : getChapterAnchorHref(slideshow, chapter);
 };
 
 export const getSlideshowRouteEntries = () =>
