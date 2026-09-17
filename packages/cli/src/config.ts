@@ -4,40 +4,11 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { parse } from "yaml";
+import { parseConfigDocument } from "@allmaps/slides-model/config";
+import { slidesConfigSchema } from "@allmaps/slides-model/content-schema";
 
-export type RawSlidesConfig = {
-  title?: string;
-  slideshows?: Array<{
-    path?: string;
-  }>;
-  app?: {
-    directory?: string;
-  };
-  site?: {
-    basePath?: string;
-    publicUrl?: string;
-  };
-  map?: {
-    protomaps?: {
-      key?: string;
-    };
-  };
-  protomaps?: {
-    key?: string;
-  };
-  interface?: Record<string, unknown>;
-  iiif?: {
-    enabled?: boolean | string | number;
-    input?: string;
-    output?: string;
-    id?: string;
-    collectionLabel?: string;
-    sizes?: boolean | string | number;
-    tiles?: boolean | string | number;
-    tileSize?: string | number;
-    webp?: boolean | string | number;
-  };
-};
+export type RawSlidesConfig =
+  import("@allmaps/slides-model/content-schema").ParsedSlidesConfig;
 
 type PackageJson = {
   name?: string;
@@ -59,7 +30,7 @@ export type LoadSlidesConfigOptions = {
   cwd?: string;
 };
 
-export type SlidesConfig = {
+export type RuntimeSlidesConfig = {
   configPath: string | undefined;
   rootDir: string;
   workspaceRoot: string;
@@ -143,34 +114,20 @@ const getBoolean = (value: unknown, fallback = false) => {
   return fallback;
 };
 
-const expandEnvValue = (value: unknown): unknown => {
-  if (typeof value === "string") {
-    return value.replace(/\$\{([A-Z0-9_]+)\}/gi, (_, name: string) => {
-      return process.env[name] ?? "";
-    });
-  }
-
-  if (Array.isArray(value)) {
-    return value.map((item) => expandEnvValue(item));
-  }
-
-  if (value && typeof value === "object") {
-    return Object.fromEntries(
-      Object.entries(value).map(([key, entry]) => [key, expandEnvValue(entry)]),
+const parseConfigFile = async (
+  configPath: string,
+): Promise<RawSlidesConfig> => {
+  const raw = parseConfigDocument(
+    await readFile(configPath, "utf8"),
+    configPath,
+    process.env,
+  );
+  const result = slidesConfigSchema.safeParse(raw);
+  if (!result.success)
+    throw new Error(
+      `Invalid Slides config ${configPath}: ${result.error.message}`,
     );
-  }
-
-  return value;
-};
-
-const parseConfigFile = async (configPath: string): Promise<RawSlidesConfig> => {
-  const contents = await readFile(configPath, "utf8");
-
-  if (configPath.endsWith(".json")) {
-    return expandEnvValue(JSON.parse(contents)) as RawSlidesConfig;
-  }
-
-  return (expandEnvValue(parse(contents) ?? {}) ?? {}) as RawSlidesConfig;
+  return result.data;
 };
 
 const findDefaultConfig = async (cwd: string) => {
@@ -369,13 +326,11 @@ const resolveContentPackageFromConfig = async (
   };
 };
 
-export const loadSlidesConfig = async (
-  {
-    configPath,
-    contentPackageName,
-    cwd = process.cwd(),
-  }: LoadSlidesConfigOptions = {},
-): Promise<SlidesConfig> => {
+export const loadSlidesConfig = async ({
+  configPath,
+  contentPackageName,
+  cwd = process.cwd(),
+}: LoadSlidesConfigOptions = {}): Promise<RuntimeSlidesConfig> => {
   const contentPackage = contentPackageName
     ? await resolveContentPackage(contentPackageName, cwd)
     : undefined;
@@ -394,20 +349,20 @@ export const loadSlidesConfig = async (
   }
 
   const resolvedContentPackage =
-    contentPackage ?? (await resolveContentPackageFromConfig(resolvedConfigPath));
+    contentPackage ??
+    (await resolveContentPackageFromConfig(resolvedConfigPath));
   const rootDir = resolvedConfigPath ? path.dirname(resolvedConfigPath) : cwd;
-  const raw = resolvedConfigPath ? await parseConfigFile(resolvedConfigPath) : {};
+  const raw = await parseConfigFile(resolvedConfigPath);
   const appDir = resolveFrom(
     rootDir,
     getString(raw.app?.directory, path.join(workspaceRoot, "apps", "slides")),
   );
   const publicBasePath = getString(
-    raw.site?.basePath,
-    process.env.PUBLIC_BASE_PATH ?? "",
+    process.env.PUBLIC_BASE_PATH ?? raw.site?.basePath,
   );
   const publicUrl = getString(
-    raw.site?.publicUrl,
-    process.env.PUBLIC_URL ?? publicBasePath,
+    getOptionalNonEmptyString(process.env.PUBLIC_URL) ?? raw.site?.publicUrl,
+    publicBasePath,
   );
   const protomapsKey = getString(
     raw.protomaps?.key ?? raw.map?.protomaps?.key,
@@ -449,7 +404,7 @@ export const loadSlidesConfig = async (
   };
 };
 
-export const getAppEnvironment = (config: SlidesConfig) => {
+export const getAppEnvironment = (config: RuntimeSlidesConfig) => {
   const env: NodeJS.ProcessEnv = {
     ...process.env,
     PUBLIC_BASE_PATH: config.publicBasePath,

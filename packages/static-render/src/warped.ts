@@ -1,11 +1,11 @@
 import { parseAnnotation, type GeoreferencedMap } from "@allmaps/annotation";
-import { Viewport, WarpedMap } from "@allmaps/render";
+import { Viewport, type WarpedMap } from "@allmaps/render";
 import { IntArrayRenderer } from "@allmaps/render/intarray";
 import { lonLatToWebMercator } from "@allmaps/project";
 import sharp from "sharp";
-import { createFauxGeoreferencedMap } from "$lib/shared/map/image";
-import { unitsPerPixel, type Camera } from "$lib/shared/map/camera";
-import type { WarpedMapProps } from "$lib/shared/types";
+import { createFauxGeoreferencedMap } from "@allmaps/slides-model/map/image";
+import { unitsPerPixel, type Camera } from "@allmaps/slides-model/map/camera";
+import type { WarpedMapProps } from "@allmaps/slides-model/types";
 import {
   digest,
   recipeHash,
@@ -14,6 +14,7 @@ import {
   type RenderCache,
 } from "./cache.ts";
 import type { Sources } from "./sources.ts";
+import { StaticWarpedMap } from "./static-warped-map.ts";
 
 export type LoadedLayer = {
   props: WarpedMapProps;
@@ -28,11 +29,6 @@ export async function loadLayer(
   sources: Sources,
 ): Promise<LoadedLayer> {
   const options = { ...props.options };
-  // IntArrayRenderer fits the backward transform independently. For projective
-  // maps this can differ substantially from the forward transform used to fit
-  // the camera. Use first-order polynomial geometry throughout the preview.
-  if (options.transformationType === "projective")
-    options.transformationType = "polynomial";
   const unsupported = [
     "removeColor",
     "colorize",
@@ -65,11 +61,6 @@ export async function loadLayer(
     maps = parseAnnotation(JSON.parse(annotation.bytes.toString()));
   }
   if (!maps.length) throw new Error(`No georeferenced maps: ${props.url}`);
-  maps = maps.map((map) =>
-    map.transformation?.type === "projective"
-      ? { ...map, transformation: { type: "polynomial" } }
-      : map,
-  );
   const imageRevisions = await Promise.all(
     maps.map((map) => sources.imageRevision(map.resource.id)),
   );
@@ -94,7 +85,7 @@ export async function loadLayer(
     annotation,
     maps: maps.map(
       (map, index) =>
-        new WarpedMap(`${recipeHash(map)}:${index}`, map, {}, options),
+        new StaticWarpedMap(`${recipeHash(map)}:${index}`, map, {}, options),
     ),
     revision: recipeHash({ maps, options, imageRevisions }),
   };
@@ -111,7 +102,7 @@ export async function renderWarpedLayer(
 ) {
   return cache.get(
     {
-      version: 1,
+      version: 2,
       renderer: "intarray-beta83",
       layer: layer.revision,
       camera,
@@ -161,13 +152,14 @@ export async function renderWarpedLayer(
           },
           (image, index) => image.pixels[index],
           (image) => [image.width, image.height],
-          { fetchFn, overviewTilesMaxResolution: 0 },
+          {
+            fetchFn,
+            overviewTilesMaxResolution: 0,
+            warpedMapFactory: (...args) => new StaticWarpedMap(...args),
+          },
         );
         try {
-          renderer.addGeoreferencedMap(
-            map.georeferencedMap,
-            map.mapOptions,
-          );
+          renderer.addGeoreferencedMap(map.georeferencedMap, map.mapOptions);
           const viewport = new Viewport(
             size,
             lonLatToWebMercator(camera.center),

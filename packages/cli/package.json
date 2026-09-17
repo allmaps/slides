@@ -13,12 +13,14 @@
     "check": "node bin/slides.js check",
     "validate": "node bin/slides.js validate",
     "sync": "node bin/slides.js validate",
-    "iiif": "node bin/slides.js iiif"
+    "iiif": "node bin/slides.js iiif",
+    "test": "node --test tests/*.test.mjs"
   },
   "dependencies": {
     "@allmaps/sveltekit-iiif": "workspace:*",
     "commander": "^14.0.2",
-    "yaml": "^2.9.0"
+    "yaml": "^2.9.0",
+    "@allmaps/slides-model": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^25.9.1",

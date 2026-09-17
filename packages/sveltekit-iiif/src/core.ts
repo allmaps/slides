@@ -9,7 +9,10 @@ import {
 import path from "node:path";
 
 import { IIIFBuilder } from "@iiif/builder";
-import sharp from "sharp";
+import sharp, { type Region, type Channels } from "sharp";
+import { getImageSize, getScaleFactors, createImagePipeline } from "./image.ts";
+import type { ImageSize } from "./image.ts";
+export type { ImageSize } from "./image.ts";
 
 export type ResolvedIiifOptions = {
   force: boolean;
@@ -80,11 +83,6 @@ export type ImageServiceInfo = {
     width: number;
     height: number;
   }>;
-  width: number;
-  height: number;
-};
-
-export type ImageSize = {
   width: number;
   height: number;
 };
@@ -387,37 +385,6 @@ async function readInfoJson(infoPath: string) {
   return JSON.parse(contents) as ImageServiceInfo;
 }
 
-function getImageSize(metadata: sharp.Metadata): ImageSize {
-  if (!metadata.width || !metadata.height) {
-    throw new Error("Could not read image width and height");
-  }
-
-  return {
-    width: metadata.width,
-    height: metadata.height,
-  };
-}
-
-function getScaleFactors({ width, height }: ImageSize, tileSize: number) {
-  const scaleFactors: number[] = [];
-  let scaleFactor = 1;
-
-  while (true) {
-    scaleFactors.push(scaleFactor);
-
-    if (
-      Math.ceil(width / scaleFactor) <= tileSize &&
-      Math.ceil(height / scaleFactor) <= tileSize
-    ) {
-      break;
-    }
-
-    scaleFactor *= 2;
-  }
-
-  return scaleFactors;
-}
-
 function getScaledSize({ width, height }: ImageSize, maxDimension: number) {
   const imageMaxDimension = Math.max(width, height);
   const scale = maxDimension / imageMaxDimension;
@@ -699,8 +666,7 @@ async function isDerivativeCurrent(
 }
 
 async function createRawImage(sourcePath: string, size: ImageSize) {
-  const { data, info } = await sharp(sourcePath, { limitInputPixels: false })
-    .resize(size.width, size.height, { fit: "fill" })
+  const { data, info } = await createImagePipeline(sourcePath, size)
     .flatten({ background: { r: 255, g: 255, b: 255 } })
     .raw()
     .toBuffer({ resolveWithObject: true });
@@ -717,7 +683,7 @@ async function writeRawDerivativeImage(
   image: RawImage,
   outputPath: string,
   format: OutputFormat,
-  extract?: sharp.Region,
+  extract?: Region,
 ) {
   await mkdir(path.dirname(outputPath), { recursive: true });
 
@@ -725,7 +691,7 @@ async function writeRawDerivativeImage(
     raw: {
       width: image.width,
       height: image.height,
-      channels: image.channels as sharp.Channels,
+      channels: image.channels as Channels,
     },
   });
 
@@ -745,7 +711,7 @@ async function writeRawDerivativeImages(
   outputPathForFormat: (format: OutputFormat) => string,
   outputSize: ImageSize,
   outputFormats: OutputFormat[],
-  extract?: sharp.Region,
+  extract?: Region,
 ) {
   for (const format of getWritableFormats(outputSize, outputFormats)) {
     await writeRawDerivativeImage(

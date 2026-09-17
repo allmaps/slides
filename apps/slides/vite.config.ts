@@ -22,7 +22,7 @@ export default defineConfig({
     sveltekit(),
   ],
   ssr: {
-    external: ["sharp"],
+    external: ["@allmaps/sveltekit-iiif", "@allmaps/static-render"],
   },
   resolve: {
     alias: contentPackageEntry

@@ -1,13 +1,13 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { fork } from "node:child_process";
-import { mkdtemp, rm } from "node:fs/promises";
+import { spawn } from "node:child_process";
+import { mkdtemp, rm, writeFile, readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import sharp from "sharp";
 import { Viewport } from "@allmaps/render";
 import { lonLatToWebMercator } from "@allmaps/project";
-import { unitsPerPixel } from "../src/lib/shared/map/camera.ts";
+import { unitsPerPixel } from "@allmaps/slides-model/map/camera";
 
 // Opt in on a machine with graphics libraries (Linux: run under xvfb-run).
 test(
@@ -19,18 +19,6 @@ test(
   async (t) => {
     const cacheDir = await mkdtemp(path.join(tmpdir(), "slides-native-test-"));
     t.after(() => rm(cacheDir, { recursive: true, force: true }));
-    const child = fork(
-      new URL(
-        "../src/lib/server/thumbnails/native-worker.mjs",
-        import.meta.url,
-      ),
-      [],
-      {
-        serialization: "advanced",
-        stdio: ["ignore", "inherit", "inherit", "ipc"],
-      },
-    );
-    t.after(() => child.kill());
     const center = [4.915, 52.377],
       zoom = 15,
       bearing = 37;
@@ -59,33 +47,56 @@ test(
         },
       ],
     };
-    const result = new Promise((resolve, reject) => {
+    const planPath = path.join(cacheDir, "plan.json");
+    await writeFile(
+      planPath,
+      JSON.stringify({
+        version: 1,
+        epoch: 0,
+        assets: { images: {}, data: {} },
+        layers: {},
+        resources: {},
+        jobs: [
+          {
+            id: "native",
+            layers: [],
+            camera: { center, zoom, bearing },
+            size: [400, 300],
+            format: "webp",
+            styles: {
+              lower: style,
+              upper: { version: 8, sources: {}, layers: [] },
+            },
+          },
+        ],
+      }),
+    );
+    const child = spawn(
+      process.execPath,
+      [
+        new URL("../bin/render.mjs", import.meta.url).pathname,
+        planPath,
+        "--assets",
+        cacheDir,
+        "--output",
+        cacheDir,
+        "--cache",
+        cacheDir,
+        "--offline",
+      ],
+      { stdio: "inherit" },
+    );
+    t.after(() => child.kill());
+    await new Promise((resolve, reject) => {
       child.on("error", reject);
-      child.on("exit", (code) => reject(new Error(`Renderer exited: ${code}`)));
-      child.on("message", (message) => {
-        if (message.type === "source")
-          reject(new Error(`Unexpected remote request: ${message.url}`));
-        else if (message.error) reject(new Error(message.error));
-        else if (message.type === "result") resolve(message.bytes);
-      });
+      child.on("exit", (code) =>
+        code === 0 ? resolve() : reject(new Error(`Renderer exited: ${code}`)),
+      );
     });
-    child.send({
-      type: "render",
-      id: 1,
-      cacheDir,
-      offline: true,
-      options: {
-        stylejson: style,
-        center,
-        zoom,
-        bearing,
-        pitch: 0,
-        width: 400,
-        height: 300,
-        ext: "png",
-      },
-    });
-    const png = await result;
+    const result = JSON.parse(
+      await readFile(path.join(cacheDir, "result.json"), "utf8"),
+    );
+    const png = await readFile(path.join(cacheDir, result.images.native.path));
     const { data, info } = await sharp(png)
       .ensureAlpha()
       .raw()
