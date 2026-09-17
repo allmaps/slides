@@ -11,14 +11,13 @@
   } from "@lucide/svelte";
   import type { PaddingOptions } from "maplibre-gl";
 
-  import { env } from "$env/dynamic/public";
-  import { withBaseUrl } from "$lib/shared/paths";
   import { emptyThumbnails, type ThumbnailManifest } from "$lib/shared/thumbnails";
 
   import Map from "$lib/components/Map.svelte";
   import PanelOverlayToggle from "$lib/components/PanelOverlayToggle.svelte";
   import SlideshowLayers from "$lib/components/SlideshowLayers.svelte";
   import SlideshowPanel from "$lib/components/SlideshowPanel.svelte";
+  import SlideshowSeo from "$lib/components/SlideshowSeo.svelte";
   import SlideshowToc from "$lib/components/SlideshowToc.svelte";
   import StartScreen from "$lib/components/StartScreen.svelte";
   import { getGeoJsonLayers } from "$lib/shared/geojson";
@@ -103,8 +102,6 @@
 
   const firstChapter = $derived(chapters[0]);
   const socialImage = $derived(thumbnails.social[activeSlideshow.id]);
-  const socialImageUrl = $derived(socialImage && /^https?:\/\//.test(env.PUBLIC_URL ?? "")
-    ? new URL(withBaseUrl(socialImage.path), env.PUBLIC_URL).href : undefined);
   const startMapSettings = $derived<MapChapterProps>(
     activeSlideshow.start ?? firstChapter ?? {},
   );
@@ -528,18 +525,9 @@
   });
 </script>
 
+<SlideshowSeo {project} slideshow={activeSlideshow} image={socialImage} />
+
 <svelte:head>
-  {#if socialImage && socialImageUrl}
-    <meta property="og:image" content={socialImageUrl} />
-    <meta property="og:image:width" content={String(socialImage.width)} />
-    <meta property="og:image:height" content={String(socialImage.height)} />
-    <meta property="og:image:type" content="image/jpeg" />
-    <meta property="og:image:alt" content={firstChapter?.title ?? activeSlideshow.title} />
-    <meta property="og:title" content={activeSlideshow.title} />
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:image" content={socialImageUrl} />
-  {/if}
-  <meta name="description" content={firstChapter?.description ?? project.description} />
   <!-- Before hydration, follow the system preference. Afterwards, use the same
        resolved theme as the interface, including a saved manual preference. -->
   <meta name="theme-color" content={isDarkMode ? "#000000" : "#ffffff"}
@@ -798,18 +786,18 @@
         </div>
       </div>
 
-      {#if tocOpen}
-        <SlideshowToc
-          {project}
-          slideshow={activeSlideshow}
-          {rootSlideshow}
-          currentSlug={activeChapter?.slug}
-          top={tocOverlayTop}
-          tab="toc"
-          onClose={closeToc}
-          onSelectLocalChapter={scrollActivePanelToChapter}
-        />
-      {:else if layersOpen}
+      <SlideshowToc
+        open={tocOpen}
+        {project}
+        slideshow={activeSlideshow}
+        {rootSlideshow}
+        currentSlug={activeChapter?.slug}
+        top={tocOverlayTop}
+        tab="toc"
+        onClose={closeToc}
+        onSelectLocalChapter={scrollActivePanelToChapter}
+      />
+      {#if layersOpen}
         <SlideshowLayers
           {thumbnails}
           chapter={activeChapter}

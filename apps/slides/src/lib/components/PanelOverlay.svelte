@@ -5,6 +5,7 @@
 
   type Props = {
     title: string;
+    open?: boolean;
     top?: string;
     bottomMargin?: string;
     tab?: "toc" | "layers";
@@ -17,6 +18,7 @@
 
   let {
     title,
+    open = true,
     top = "0",
     bottomMargin = "0.25rem",
     tab,
@@ -32,6 +34,8 @@
   class="panel-overlay-shell absolute inset-x-1 z-40 {tab
     ? `panel-overlay-shell--tab panel-overlay-shell--${tab}`
     : ''} {className}"
+  class:panel-overlay-shell--closed={!open}
+  inert={!open}
   style={`--panel-overlay-top: ${top}; --panel-overlay-bottom-margin: ${bottomMargin};`}
   transition:fade={{ duration: 150 }}
 >
@@ -69,6 +73,12 @@
     top: var(--panel-overlay-top);
     bottom: var(--panel-overlay-bottom-margin);
     pointer-events: none;
+    transition: opacity 150ms, visibility 150ms;
+  }
+
+  .panel-overlay-shell--closed {
+    opacity: 0;
+    visibility: hidden;
   }
 
   .panel-overlay {

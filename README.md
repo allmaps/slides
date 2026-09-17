@@ -101,6 +101,39 @@ Use another config file by calling the CLI directly:
 pnpm exec slides build @allmaps/gravity-at-sea --config content/gravity-at-sea/slides.production.yml
 ```
 
+### Search metadata
+
+Each slideshow's prerendered HTML includes a canonical URL, social metadata,
+and schema.org JSON-LD describing a `WebPage` and its
+`PresentationDigitalDocument`. The presentation's `hasPart` entries describe
+the chapters as `CreativeWork` sections, with titles, available descriptions,
+one-based positions, and links to their HTML anchors. Subslideshows also include
+a `BreadcrumbList` back to the project. Metadata updates on client navigation.
+
+URLs use the complete `site.publicUrl` (or the build-time `PUBLIC_URL` override),
+including its subpath. For example, `https://example.org/atlas/` produces
+`https://example.org/atlas/history` for the `history` slideshow. A trailing slash
+on the configured URL is optional. These remain deployment URLs when previewing
+on localhost, even if the local router runs at `/`. Set `PUBLIC_URL` to the local
+server URL to explicitly preview local metadata instead. `PUBLIC_BASE_PATH`
+controls where the app itself is served; it does not change the metadata URL.
+An absolute HTTP(S) public URL is required for canonical links and JSON-LD. Slideshow
+descriptions take precedence over first-slide and project descriptions. Existing
+social thumbnails are reused; no additional rendering is needed.
+
+The contents menu is included in the initial HTML, including collapsed entries,
+and chapter navigation uses ordinary links with descriptive text. This helps
+crawlers discover the same sections readers can open.
+
+Google [chooses sitelinks automatically](https://developers.google.com/search/docs/appearance/sitelinks);
+this markup cannot guarantee a chapter overview in a search result. Its
+[ItemList carousels](https://developers.google.com/search/docs/appearance/structured-data/carousel)
+support specific content types, not general slideshows. The
+[schema.org validator](https://validator.schema.org/) can check the full graph;
+Google's [Rich Results Test](https://search.google.com/test/rich-results) checks
+only Google-supported features, such as breadcrumbs. After deployment, use
+Search Console URL Inspection to check the indexed page and request recrawling.
+
 ## Routing
 
 The main slideshow is served at `/`. Other slideshows are served at
