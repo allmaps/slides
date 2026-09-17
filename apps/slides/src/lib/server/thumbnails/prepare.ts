@@ -72,6 +72,7 @@ export async function prepareThumbnails(options: {
   } = await createSourceContext({ ...options, assets });
   const plan: RenderPlan = {
     version: 1,
+    refresh: options.refresh,
     epoch,
     publicUrl: options.publicUrl,
     assets,

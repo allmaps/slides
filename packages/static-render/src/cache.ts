@@ -40,11 +40,76 @@ type RemoteCacheOptions = {
   refresh?: boolean;
   fetch?: typeof fetch;
   validate?: (bytes: Buffer) => void;
+  /** Reuse a previous source after temporary failures; force refresh stays strict. */
+  staleIfError?: boolean;
 };
+
+class RemoteFetchError extends Error {
+  readonly retryable: boolean;
+  constructor(message: string, retryable: boolean) {
+    super(message);
+    this.retryable = retryable;
+  }
+}
+
+const RETRY_ATTEMPTS = 5;
+const MAX_RETRY_DELAY_MS = 30_000;
+
+function retryDelay(response: Response | undefined, attempt: number) {
+  const value = response?.headers.get("retry-after");
+  const requested = value
+    ? /^\d+$/.test(value)
+      ? Number(value) * 1000
+      : Date.parse(value) - Date.now()
+    : 0;
+  return Math.min(
+    MAX_RETRY_DELAY_MS,
+    Math.max(1000 * 2 ** attempt, Number.isFinite(requested) ? requested : 0),
+  );
+}
+
+async function fetchResource(
+  url: string,
+  headers: Record<string, string>,
+  fetchFn: typeof fetch,
+) {
+  let failure: RemoteFetchError | undefined;
+  for (let attempt = 0; attempt < RETRY_ATTEMPTS; attempt++) {
+    let response: Response | undefined;
+    try {
+      response = await fetchFn(url, {
+        headers,
+        signal: AbortSignal.timeout(30_000),
+      });
+      if (response.status === 304) return { response };
+      if (response.ok)
+        return { response, bytes: Buffer.from(await response.arrayBuffer()) };
+      failure = new RemoteFetchError(
+        `Fetching ${url}: HTTP ${response.status}`,
+        response.status === 408 ||
+          response.status === 429 ||
+          response.status >= 500,
+      );
+      await response.body?.cancel().catch(() => {});
+    } catch (error) {
+      failure = new RemoteFetchError(`Fetching ${url}: ${String(error)}`, true);
+    }
+    if (!failure?.retryable) throw failure;
+    if (attempt + 1 < RETRY_ATTEMPTS)
+      await new Promise((resolve) =>
+        setTimeout(resolve, retryDelay(response, attempt)),
+      );
+  }
+  throw new RemoteFetchError(
+    `${failure?.message} (after ${RETRY_ATTEMPTS} attempts)`,
+    true,
+  );
+}
 
 /** Independent stores can share policy without mixing annotations with image tiles. */
 export class RemoteCache {
   private pending = new Map<string, Promise<CachedResource>>();
+  private stale = new Map<string, CachedResource>();
   hits = 0;
   downloads = 0;
   readonly root: string;
@@ -57,6 +122,11 @@ export class RemoteCache {
   }
 
   get(url: string): Promise<CachedResource> {
+    const stale = this.stale.get(url);
+    if (stale) {
+      this.hits++;
+      return Promise.resolve(stale);
+    }
     const existing = this.pending.get(url);
     if (existing) return existing;
     const promise = this.load(url).finally(() => this.pending.delete(url));
@@ -90,21 +160,30 @@ export class RemoteCache {
     };
     if (bytes && entry?.etag) headers["If-None-Match"] = entry.etag;
     if (bytes && entry?.modified) headers["If-Modified-Since"] = entry.modified;
-    let response: Response | undefined;
-    for (let attempt = 0; attempt < 3; attempt++) {
-      try {
-        response = await (this.options.fetch ?? fetch)(url, {
-          headers,
-          signal: AbortSignal.timeout(30_000),
-        });
-        if (response.status !== 429 && response.status < 500) break;
-        if (attempt === 2) break;
-        await response.body?.cancel();
-      } catch (error) {
-        if (attempt === 2) throw new Error(`Fetching ${url}: ${String(error)}`);
+    let fetched: Awaited<ReturnType<typeof fetchResource>>;
+    try {
+      fetched = await fetchResource(url, headers, this.options.fetch ?? fetch);
+    } catch (error) {
+      if (
+        error instanceof RemoteFetchError &&
+        error.retryable &&
+        this.options.staleIfError &&
+        !this.options.refresh &&
+        entry &&
+        bytes
+      ) {
+        this.hits++;
+        console.warn(
+          `[static-render] ${error.message}; using previously cached source (epoch ${entry.epoch})`,
+        );
+        // Leave its epoch unchanged so a later source request can revalidate it.
+        const resource = { bytes, hash: entry.hash, type: entry.type };
+        this.stale.set(url, resource);
+        return resource;
       }
-      await new Promise((resolve) => setTimeout(resolve, 250 * 2 ** attempt));
+      throw error;
     }
+    const { response } = fetched;
     if (response?.status === 304 && entry && bytes) {
       await atomicWrite(
         metadataPath,
@@ -115,8 +194,8 @@ export class RemoteCache {
     }
     if (!response?.ok)
       throw new Error(`Fetching ${url}: HTTP ${response?.status}`);
-    bytes = Buffer.from(await response.arrayBuffer());
-    if (!bytes.length) throw new Error(`Empty response: ${url}`);
+    bytes = fetched.bytes;
+    if (!bytes?.length) throw new Error(`Empty response: ${url}`);
     this.options.validate?.(bytes);
     const metadata: Entry = {
       hash: digest(bytes),

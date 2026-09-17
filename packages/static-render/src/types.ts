@@ -22,6 +22,8 @@ export type RenderJob = {
 export type RenderPlan = {
   version: 1;
   epoch: number;
+  /** Require fresh sources even when a previous snapshot exists. */
+  refresh?: boolean;
   publicUrl?: string;
   assets: SourceAssets;
   layers: Record<string, RenderLayer>;
