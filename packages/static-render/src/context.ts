@@ -27,6 +27,7 @@ export async function createSourceContext(options: {
   const remote = new RemoteCache(path.join(cacheRoot, "sources"), epoch, {
     offline,
     refresh,
+    staleIfError: true,
     fetch: async (input, init) => {
       const url = new URL(input instanceof Request ? input.url : String(input));
       const headers = new Headers(init?.headers);

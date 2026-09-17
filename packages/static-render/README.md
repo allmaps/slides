@@ -39,6 +39,15 @@ local image contents and renderer versions. A saved plan retains its remote
 source generation; prepare a new plan to refresh remote content. `--offline`
 requires a complete source snapshot and fails on missing inputs.
 
+Online source requests retry temporary network errors, HTTP 408, 429 and 5xx up to
+five times, with exponential backoff and a bounded `Retry-After` delay. If a
+source remains unavailable, a previously cached copy can be used with a warning
+for that batch. Its cache epoch is not advanced; a later source request can
+revalidate it. Annotation fetching and forced refresh remain strict, as do
+authentication errors, missing resources and cold-cache failures. The public
+URL in the plan supplies Protomaps' Origin/Referer headers; CI runner hostnames
+are not used as the deployment origin.
+
 This is currently a private workspace package with TypeScript source exports.
 The JS API is intended for a Node main process; use the CLI from worker-based
 build systems. Slides invokes the CLI once per batch, then SvelteKit reads only

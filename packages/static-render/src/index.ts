@@ -56,6 +56,7 @@ export async function renderBatch(
     ...options,
     assets: plan.assets,
     epoch: plan.epoch,
+    refresh: plan.refresh,
     publicUrl: plan.publicUrl,
   });
   const native = new NativeRenderer(
