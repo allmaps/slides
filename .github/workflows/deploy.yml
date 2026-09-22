@@ -14,27 +14,12 @@ jobs:
       pages: write
       id-token: write
     env:
-      PUBLIC_URL: "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}"
+      SLIDES_BASE_PATH: "/${{ github.event.repository.name }}"
+      SLIDES_PUBLIC_URL: "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}"
       PUBLIC_PROTOMAPS_KEY: ${{ vars.PUBLIC_PROTOMAPS_KEY }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
-
-      - name: Cache IIIF derivatives
-        id: iiif-cache
-        uses: actions/cache@v4
-        with:
-          path: static/iiif
-          key: iiif-${{ runner.os }}-${{ github.run_id }} # Can use time based key as well
-          restore-keys: |
-            iiif-${{ runner.os }}
-
-      - name: Delete previous cache
-        run: gh cache delete iiif-${{ runner.os }}
-        continue-on-error: true
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GH_REPO: ${{ github.repository }}
 
       - name: Install pnpm
         uses: pnpm/action-setup@v4
@@ -49,18 +34,18 @@ jobs:
           cache: "pnpm"
 
       - name: Install dependencies
-        run: pnpm install --no-frozen-lockfile
+        run: pnpm install --frozen-lockfile
 
-      - name: Create IIIF derivatives
-        run: pnpm iiif
+      - name: Set up native renderer
+        run: sudo sh packages/static-render/scripts/install-system-deps.sh
 
       - name: Build
-        run: pnpm build
+        run: xvfb-run -a pnpm exec slides build ./content/gravity-at-sea --outDir dist/gravity-at-sea
 
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v4
         with:
-          path: build
+          path: dist/gravity-at-sea
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4

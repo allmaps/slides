@@ -20,77 +20,82 @@ const getBasePath = (value) => {
   return basePath ? `/${basePath}` : "";
 };
 
-const basePath = getBasePath(
-  process.env.PUBLIC_BASE_PATH ?? process.env.PUBLIC_URL,
-);
-// A container can mount the parent directory; the adapter recreates this child.
-const buildOutput = process.env.SLIDES_BUILD_OUTPUT ?? "build";
-const normalizePath = (value) => value.replace(/\/+$/g, "") || "/";
-const appRootPaths = new Set([
-  "/",
-  ...(basePath ? [normalizePath(basePath)] : []),
-]);
+export function createSlidesConfig() {
+  const basePath = getBasePath(
+    process.env.PUBLIC_BASE_PATH ?? process.env.PUBLIC_URL,
+  );
+  // A container can mount the parent directory; the adapter recreates this child.
+  const buildOutput = process.env.SLIDES_BUILD_OUTPUT ?? "build";
+  const normalizePath = (value) => value.replace(/\/+$/g, "") || "/";
+  const appRootPaths = new Set([
+    "/",
+    ...(basePath ? [normalizePath(basePath)] : []),
+  ]);
 
-/** @type {import('@sveltejs/kit').Config} */
-const config = {
-  kit: {
-    // adapter-auto only supports some environments, see https://svelte.dev/docs/kit/adapter-auto for a list.
-    // If your environment is not supported, or you settled on a specific environment, switch out the adapter.
-    // See https://svelte.dev/docs/kit/adapters for more information about adapters.
-    adapter: adapter({
-      // default options are shown. On some platforms
-      // these options are set automatically — see below
-      pages: buildOutput,
-      assets: buildOutput,
-      fallback: undefined,
-      precompress: false,
-      strict: true,
-    }),
-    paths: {
-      base: basePath,
-    },
-    prerender: {
-      handleMissingId: ({ path, message }) => {
-        if (appRootPaths.has(normalizePath(path))) {
-          return;
-        }
-
-        throw new Error(message);
+  /** @type {import('@sveltejs/kit').Config} */
+  const config = {
+    kit: {
+      outDir: process.env.SLIDES_KIT_OUT_DIR ?? ".svelte-kit",
+      // adapter-auto only supports some environments, see https://svelte.dev/docs/kit/adapter-auto for a list.
+      // If your environment is not supported, or you settled on a specific environment, switch out the adapter.
+      // See https://svelte.dev/docs/kit/adapters for more information about adapters.
+      adapter: adapter({
+        // default options are shown. On some platforms
+        // these options are set automatically — see below
+        pages: buildOutput,
+        assets: buildOutput,
+        fallback: undefined,
+        precompress: false,
+        strict: true,
+      }),
+      paths: {
+        base: basePath,
       },
-      handleUnseenRoutes: ({ routes }) => {
-        const ignoredRoutes = [
-          "/[slideshow]",
-          "/api/[...request]",
-          "/iiif/[...request]",
-          "/thumbnails/[filename]",
-        ];
-        const unexpectedRoutes = routes.filter(
-          (route) => !ignoredRoutes.includes(route),
-        );
+      prerender: {
+        handleMissingId: ({ path, message }) => {
+          if (appRootPaths.has(normalizePath(path))) {
+            return;
+          }
 
-        if (unexpectedRoutes.length) {
-          throw new Error(
-            `The following prerenderable routes were not prerendered: ${unexpectedRoutes.join(", ")}`,
+          throw new Error(message);
+        },
+        handleUnseenRoutes: ({ routes }) => {
+          const ignoredRoutes = [
+            "/[slideshow]",
+            "/api/[...request]",
+            "/iiif/[...request]",
+            "/thumbnails/[filename]",
+          ];
+          const unexpectedRoutes = routes.filter(
+            (route) => !ignoredRoutes.includes(route),
           );
-        }
-      },
-    },
-    // router: {
-    //   type: "hash",
-    // },
-  },
-  preprocess: mdsvex({
-    extensions: [".svx", ".md"],
-    remarkPlugins: [remarkFootnotes],
-    rehypePlugins: [
-      removeFootnoteLinks,
-      rehypeImages,
-    ],
-    layout: {
-      _: join(import.meta.dirname, "./src/lib/components/Section.svelte"),
-    },
-  }),
-  extensions: [".svelte", ".svx", ".md"],
-};
 
-export default config;
+          if (unexpectedRoutes.length) {
+            throw new Error(
+              `The following prerenderable routes were not prerendered: ${unexpectedRoutes.join(", ")}`,
+            );
+          }
+        },
+      },
+      // router: {
+      //   type: "hash",
+      // },
+    },
+    preprocess: mdsvex({
+      extensions: [".svx", ".md"],
+      remarkPlugins: [remarkFootnotes],
+      rehypePlugins: [
+        removeFootnoteLinks,
+        rehypeImages,
+      ],
+      layout: {
+        _: join(import.meta.dirname, "./src/lib/components/Section.svelte"),
+      },
+    }),
+    extensions: [".svelte", ".svx", ".md"],
+  };
+
+  return config;
+}
+
+export default createSlidesConfig();

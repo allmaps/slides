@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
-import { renderLocalIiifRequest } from "@allmaps/sveltekit-iiif/image";
+import { renderLocalIiifRequest } from "@allmaps/iiif/image";
 import { digest, type CachedResource, RemoteCache } from "./cache.ts";
 
 export type SourceAssets = {

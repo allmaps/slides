@@ -6,7 +6,7 @@ import path from "node:path";
 import { renderBatch, validateRenderPlan } from "../src/index.ts";
 
 const emptyPlan = () => ({
-  version: 1,
+  version: 2,
   epoch: 0,
   assets: { images: {}, data: {} },
   layers: {},

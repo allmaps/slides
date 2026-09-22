@@ -1,7 +1,9 @@
 import { createHash, randomUUID } from "node:crypto";
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { stableStringify } from "@allmaps/slides-model/map/annotations";
+const stableStringify = (value: unknown) => JSON.stringify(value, (_, entry) =>
+  entry && typeof entry === "object" && !Array.isArray(entry)
+    ? Object.fromEntries(Object.entries(entry).sort(([a], [b]) => a.localeCompare(b))) : entry);
 
 export const digest = (data: string | Uint8Array) =>
   createHash("sha256").update(data).digest("hex");

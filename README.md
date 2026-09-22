@@ -10,20 +10,21 @@ Application to create map stories using MapLibre, Protomaps and Allmaps.
 
 ## Developing
 
-This repository is a pnpm workspace:
+This repository separates content, build tooling and the application:
 
-- `apps/slides` contains the SvelteKit application.
-- [`packages/svelte-canvas-panel`](packages/svelte-canvas-panel/README.md) contains
-  the reusable Svelte IIIF figure and zoom modal.
-- `packages/sveltekit-iiif` generates and serves local IIIF derivatives.
-- `content/gravity-at-sea` is the `@allmaps/gravity-at-sea` workspace package.
-  It exports the Gravity at Sea markdown, config, and assets.
-- `packages/cli` validates content and starts/builds the app.
-- `packages/slides-content` is the stable app import target. The CLI aliases it
-  to the selected content package when it starts the app.
+| Location | Role |
+| --- | --- |
+| `packages/slides` | Public `@allmaps/slides` CLI, content loader, model, build orchestration and Vite integration. |
+| `apps/slides` | SvelteKit presentation, routes and interaction. Included in the published Slides package. |
+| `packages/iiif` | Reusable `@allmaps/iiif` image generation, explicit catalogs and optional Vite integration. |
+| `packages/static-render` | Framework-independent map rendering from a serializable scene plan. |
+| `packages/svelte-canvas-panel` | Reusable Svelte IIIF figure and zoom modal. |
+| `content/*` | Independent sites: configuration, Markdown and assets. No JavaScript entry point required. |
 
-The selected content package contains one project. Its `slides.config.yml` holds
-the project metadata, slideshow definitions, sources, and application settings.
+The selected directory contains one project. Its `slides.config.yml` holds
+metadata, slideshow definitions, sources and application settings. See the
+[CLI documentation](packages/slides/README.md) for external installation and
+[architecture](docs/architecture.md) for the data flow and cache contracts.
 
 Each slideshow can define a start-screen map using the same map fields as slide
 frontmatter. When `start` is omitted, the start screen uses the first slide's map
@@ -54,52 +55,56 @@ interface:
     madeWith: Gemaakt met
 ```
 
-Install dependencies with `pnpm install`, start a development server:
+Use Node 24 and pnpm 10. Install dependencies with `pnpm install`, then select a
+site by directory:
 
 ```sh
-pnpm run dev
-
-# or start the server and open the app in a new browser tab
-pnpm run dev -- --open
+pnpm exec slides dev ./content/gravity-at-sea
+pnpm exec slides dev ./content/kattenburg-atlas --port 5174
+pnpm exec slides dev ./content/basemap-fixtures --port 5175
+pnpm exec slides check ./content/kattenburg-atlas
+pnpm exec slides validate ./content/gravity-at-sea
 ```
 
-During development, the app imports content directly from
-`@allmaps/slides-content`, a stable package name. The CLI resolves the selected
-content package, aliases `@allmaps/slides-content` to that package's entry
-point, watches the selected package root, and reports validation errors. It no
-longer copies markdown or assets into the app.
+Each server reads its original content files. Vite watches configuration,
+Markdown and assets, including additions, renames and removals. Separate sites
+have isolated application caches; they can run concurrently. Package-name
+selection remains supported when the content directory has a named
+`package.json`, but a package manifest is optional.
 
-The content package has a small entry point:
-
-```txt
-content/
-  gravity-at-sea/
-    package.json
-    index.ts
-    slides.config.yml
-    slideshows/
-    assets/
+```text
+content/my-story/
+  slides.config.yml
+  slideshows/
+  assets/
 ```
 
-`content/gravity-at-sea/index.ts` exports Vite glob imports for the config,
-markdown slides, and assets. Asset paths in markdown/frontmatter are resolved
-relative to the content package root.
+Map previews use the last completed thumbnail batch. Refresh them explicitly;
+a running dev server notices the completed manifest:
+
+```sh
+pnpm exec slides thumbnails ./content/kattenburg-atlas
+```
 
 ## Building
 
-To create a production version of your app:
-
 ```sh
-pnpm run build
+pnpm exec slides build ./content/kattenburg-atlas
+pnpm exec slides preview ./content/kattenburg-atlas
+# Select an explicit output or configuration:
+pnpm exec slides build ./content/gravity-at-sea --outDir dist/gravity \
+  --config ./content/gravity-at-sea/slides.config.yml
 ```
 
-You can preview the production build with `pnpm run preview`.
+Output defaults to `<content>/dist`; `--outDir` is relative to the current
+working directory. Builds generate map thumbnails and IIIF derivatives before
+SvelteKit exports the static site. On Linux, install the renderer's system
+libraries and run builds under Xvfb; see [native setup](packages/static-render/README.md).
 
-Use another config file by calling the CLI directly:
-
-```sh
-pnpm exec slides build @allmaps/gravity-at-sea --config content/gravity-at-sea/slides.production.yml
-```
+`pnpm dev`, `pnpm build`, `pnpm check` and `pnpm preview` select Gravity at Sea.
+Tests are available with `pnpm -r test`, `pnpm --filter @allmaps/slides test:dev`
+and `pnpm --filter @allmaps/slides test:package`. The latter creates a fresh
+consumer and checks packed releases, native pixels, IIIF and static output.
 
 ### Search metadata
 
@@ -158,8 +163,8 @@ protomaps:
   key: ${PUBLIC_PROTOMAPS_KEY}
 ```
 
-Generated folders such as `apps/slides/build` and SvelteKit/Vite caches are
-ignored by git.
+Generated sites in `content/*/dist` and caches in `node_modules/.vite/slides`
+are ignored by git.
 
 ## Images and captions
 
@@ -305,7 +310,7 @@ loads the image tiles; remote services must support CORS. There is no remote fet
 preprocessor. This does not mirror external images, manifests or maps: importing
 those into the content package is a separate, future CLI feature.
 
-Run Markdown regression tests with `pnpm --filter @allmaps/slides test`, and
+Run Markdown regression tests with `pnpm --filter @allmaps/slides-app test`, and
 viewer tests with `pnpm --filter @allmaps/svelte-canvas-panel test`.
 
 ### Viewer package
@@ -334,4 +339,4 @@ Painting-annotation source crop selectors, nonrectangular targets and audiovisua
 are outside this figure viewer's scope; unsupported figures show a loading error.
 
 Use the existing `slides dev`, `slides check` and `slides build` commands. For
-the local Kattenburg package, run `pnpm exec slides dev kattenburg-atlas`.
+the local Kattenburg package, run `pnpm exec slides dev ./content/kattenburg-atlas`.

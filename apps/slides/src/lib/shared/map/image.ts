@@ -1,1 +1,1 @@
-export * from "@allmaps/slides-model/map/image";
+export * from "@allmaps/slides/model/map/image";

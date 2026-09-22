@@ -1,1 +1,1 @@
-export * from "@allmaps/slides-model/geojson";
+export * from "@allmaps/slides/model/geojson";

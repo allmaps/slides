@@ -1,0 +1,62 @@
+{
+  "name": "@allmaps/iiif",
+  "version": "0.0.1",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./route": "./src/route.ts",
+    "./vite": "./src/vite.ts",
+    "./image": "./src/image.ts",
+    "./core": "./src/core.ts",
+    "./catalog": "./src/catalog.ts"
+  },
+  "dependencies": {
+    "@iiif/builder": "^2.0.1",
+    "sharp": "0.35.4"
+  },
+  "devDependencies": {
+    "@types/node": "^25.9.1",
+    "typescript": "^5.9.3",
+    "vite": "^7.3.1"
+  },
+  "scripts": {
+    "test": "node --test tests/*.test.mjs",
+    "check": "tsc --noEmit",
+    "build": "node ../../scripts/build-package.mjs",
+    "prepack": "pnpm run build"
+  },
+  "publishConfig": {
+    "access": "public",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "./route": {
+        "types": "./dist/route.d.ts",
+        "default": "./dist/route.js"
+      },
+      "./vite": {
+        "types": "./dist/vite.d.ts",
+        "default": "./dist/vite.js"
+      },
+      "./image": {
+        "types": "./dist/image.d.ts",
+        "default": "./dist/image.js"
+      },
+      "./core": {
+        "types": "./dist/core.d.ts",
+        "default": "./dist/core.js"
+      },
+      "./catalog": {
+        "types": "./dist/catalog.d.ts",
+        "default": "./dist/catalog.js"
+      }
+    }
+  },
+  "files": [
+    "dist",
+    "bin",
+    "README.md"
+  ]
+}

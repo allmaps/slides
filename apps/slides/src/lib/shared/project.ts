@@ -1,9 +1,7 @@
-import { buildProject } from "@allmaps/slides-model/project";
-import { slidesConfig } from "$lib/shared/app-config";
-import { slideFiles } from "$lib/shared/content-package";
-import { getContentAssetUrl, withBaseUrl } from "$lib/shared/paths";
+import { project as metadata } from "$lib/shared/content-package";
+import { slideFiles } from "virtual:slides/markdown";
+import { withBaseUrl } from "$lib/shared/paths";
 import type { MapChapter, Slideshow, Project } from "$lib/shared/types";
-const metadata = buildProject(slidesConfig, slideFiles, getContentAssetUrl);
 const project: Project = {
   ...metadata,
   slideshows: metadata.slideshows.map((show) => ({

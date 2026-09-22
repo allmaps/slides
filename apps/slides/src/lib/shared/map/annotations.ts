@@ -1,1 +1,1 @@
-export * from "@allmaps/slides-model/map/annotations";
+export * from "@allmaps/slides/model/map/annotations";

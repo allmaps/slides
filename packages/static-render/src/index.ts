@@ -11,7 +11,7 @@ export type * from "./types.ts";
 
 export function validateRenderPlan(plan: RenderPlan) {
   if (
-    plan.version !== 1 ||
+    plan.version !== 2 ||
     !Array.isArray(plan.jobs) ||
     !Number.isSafeInteger(plan.epoch) ||
     plan.epoch < 0
@@ -77,10 +77,10 @@ export async function renderBatch(
         layer.maps.map(({ map }) => sources.imageRevision(map.resource.id)),
       );
       layers.set(id, {
-        props: layer.props,
+        effects: layer.effects,
         revision: recipeHash({
           maps: layer.maps,
-          options: layer.props.options,
+          effects: layer.effects,
           revision: layer.revision,
           imageRevisions,
         }),

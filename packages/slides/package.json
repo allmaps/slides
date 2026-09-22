@@ -1,0 +1,158 @@
+{
+  "name": "@allmaps/slides",
+  "version": "0.0.1",
+  "type": "module",
+  "bin": {
+    "slides": "./bin/slides.js"
+  },
+  "scripts": {
+    "dev": "node bin/slides.js dev",
+    "build": "node ../../scripts/build-package.mjs",
+    "preview": "node bin/slides.js preview",
+    "check": "tsc --noEmit",
+    "validate": "node bin/slides.js validate",
+    "iiif": "node bin/slides.js iiif",
+    "test": "node --test tests/*.test.mjs",
+    "test:dev": "node tests/dev-smoke.mjs",
+    "prepack": "pnpm run build",
+    "test:package": "node tests/package-smoke.mjs"
+  },
+  "dependencies": {
+    "@allmaps/annotation": "1.0.0-beta.37",
+    "@allmaps/bearing": "1.0.0-beta.12",
+    "@allmaps/maplibre": "1.0.0-beta.43",
+    "@allmaps/project": "1.0.0-beta.9",
+    "@allmaps/render": "1.0.0-beta.83",
+    "@allmaps/stdlib": "1.0.0-beta.41",
+    "@protomaps/basemaps": "^5.7.2",
+    "@turf/turf": "^7.3.5",
+    "maplibre-gl": "^5.19.0",
+    "yaml": "^2.9.0",
+    "zod": "^4.4.3",
+    "@allmaps/iiif": "workspace:*",
+    "commander": "^14.0.2",
+    "vite": "^7.3.1",
+    "@allmaps/static-render": "workspace:*",
+    "@sveltejs/kit": "^2.50.2",
+    "@sveltejs/vite-plugin-svelte": "^6.2.4",
+    "@tailwindcss/vite": "^4.2.0",
+    "mdsvex": "^0.12.6",
+    "remark-footnotes": "2.0.0",
+    "svelte": "^5.51.0",
+    "svelte-check": "^4.3.6",
+    "tailwindcss": "^4.2.0",
+    "typescript": "^5.9.3",
+    "@allmaps/svelte-canvas-panel": "workspace:*",
+    "@lucide/svelte": "^1.34.0",
+    "@sveltejs/adapter-static": "^3.0.10",
+    "pmtiles": "^4.4.1",
+    "@types/node": "^25.9.1"
+  },
+  "devDependencies": {
+    "sharp": "0.35.4"
+  },
+  "exports": {
+    "./model": "./src/model/index.ts",
+    "./model/project": "./src/model/project.ts",
+    "./model/thumbnails": "./src/model/thumbnails.ts",
+    "./model/geojson": "./src/model/geojson.ts",
+    "./model/content-schema": "./src/model/content-schema.ts",
+    "./model/settings": "./src/model/settings.ts",
+    "./model/types": "./src/model/types.ts",
+    "./model/basemap": "./src/model/basemap.ts",
+    "./model/config": "./src/model/config.ts",
+    "./model/map/image": "./src/model/map/image.ts",
+    "./model/map/annotations": "./src/model/map/annotations.ts",
+    "./model/map/layers": "./src/model/map/layers.ts",
+    "./model/map/camera": "./src/model/map/camera.ts",
+    "./content": "./src/content/index.ts",
+    "./vite": "./src/vite/index.ts",
+    "./package.json": "./package.json",
+    "./build": "./src/build/index.ts",
+    "./build/catalog": "./src/build/catalog.ts"
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "description": "Build map stories from Markdown and local assets",
+  "publishConfig": {
+    "access": "public",
+    "exports": {
+      "./model": {
+        "types": "./dist/model/index.d.ts",
+        "default": "./dist/model/index.js"
+      },
+      "./model/project": {
+        "types": "./dist/model/project.d.ts",
+        "default": "./dist/model/project.js"
+      },
+      "./model/thumbnails": {
+        "types": "./dist/model/thumbnails.d.ts",
+        "default": "./dist/model/thumbnails.js"
+      },
+      "./model/geojson": {
+        "types": "./dist/model/geojson.d.ts",
+        "default": "./dist/model/geojson.js"
+      },
+      "./model/content-schema": {
+        "types": "./dist/model/content-schema.d.ts",
+        "default": "./dist/model/content-schema.js"
+      },
+      "./model/settings": {
+        "types": "./dist/model/settings.d.ts",
+        "default": "./dist/model/settings.js"
+      },
+      "./model/types": {
+        "types": "./dist/model/types.d.ts",
+        "default": "./dist/model/types.js"
+      },
+      "./model/basemap": {
+        "types": "./dist/model/basemap.d.ts",
+        "default": "./dist/model/basemap.js"
+      },
+      "./model/config": {
+        "types": "./dist/model/config.d.ts",
+        "default": "./dist/model/config.js"
+      },
+      "./model/map/image": {
+        "types": "./dist/model/map/image.d.ts",
+        "default": "./dist/model/map/image.js"
+      },
+      "./model/map/annotations": {
+        "types": "./dist/model/map/annotations.d.ts",
+        "default": "./dist/model/map/annotations.js"
+      },
+      "./model/map/layers": {
+        "types": "./dist/model/map/layers.d.ts",
+        "default": "./dist/model/map/layers.js"
+      },
+      "./model/map/camera": {
+        "types": "./dist/model/map/camera.d.ts",
+        "default": "./dist/model/map/camera.js"
+      },
+      "./content": {
+        "types": "./dist/content/index.d.ts",
+        "default": "./dist/content/index.js"
+      },
+      "./vite": {
+        "types": "./dist/vite/index.d.ts",
+        "default": "./dist/vite/index.js"
+      },
+      "./package.json": "./package.json",
+      "./build": {
+        "types": "./dist/build/index.d.ts",
+        "default": "./dist/build/index.js"
+      },
+      "./build/catalog": {
+        "types": "./dist/build/catalog.d.ts",
+        "default": "./dist/build/catalog.js"
+      }
+    }
+  },
+  "files": [
+    "dist",
+    "bin",
+    "README.md",
+    "app"
+  ]
+}

@@ -1,96 +1,17 @@
-import { parseAnnotation, type GeoreferencedMap } from "@allmaps/annotation";
 import { Viewport, type WarpedMap } from "@allmaps/render";
 import { IntArrayRenderer } from "@allmaps/render/intarray";
 import { lonLatToWebMercator } from "@allmaps/project";
 import sharp from "sharp";
-import { createFauxGeoreferencedMap } from "@allmaps/slides-model/map/image";
-import { unitsPerPixel, type Camera } from "@allmaps/slides-model/map/camera";
-import type { WarpedMapProps } from "@allmaps/slides-model/types";
-import {
-  digest,
-  recipeHash,
-  type RemoteCache,
-  type CachedResource,
-  type RenderCache,
-} from "./cache.ts";
+import { unitsPerPixel, type Camera } from "./camera.ts";
+import { digest, type RenderCache } from "./cache.ts";
 import type { Sources } from "./sources.ts";
 import { StaticWarpedMap } from "./static-warped-map.ts";
-
+export { StaticWarpedMap } from "./static-warped-map.ts";
 export type LoadedLayer = {
-  props: WarpedMapProps;
+  effects?: { opacity?: number; saturation?: number };
   maps: WarpedMap[];
   revision: string;
-  annotation?: CachedResource;
 };
-
-export async function loadLayer(
-  props: WarpedMapProps,
-  annotations: RemoteCache,
-  sources: Sources,
-): Promise<LoadedLayer> {
-  const options = { ...props.options };
-  const unsupported = [
-    "removeColor",
-    "colorize",
-    "distortionMeasure",
-    "renderMask",
-    "renderFullMask",
-    "renderGcps",
-    "renderTransformedGcps",
-    "renderVectors",
-    "renderGrid",
-  ];
-  for (const key of unsupported)
-    if ((options as Record<string, unknown>)[key])
-      throw new Error(
-        `Thumbnail effect '${key}' is not supported for ${props.url}`,
-      );
-  let annotation: CachedResource | undefined;
-  let maps: GeoreferencedMap[];
-  if (props.type === "Image")
-    maps = [
-      await createFauxGeoreferencedMap(props.url, {
-        ...props,
-        fetchFn: sources.fetch,
-      }),
-    ];
-  else {
-    annotation = await (/^https?:\/\//.test(props.url)
-      ? annotations.get(props.url)
-      : sources.get(props.url));
-    maps = parseAnnotation(JSON.parse(annotation.bytes.toString()));
-  }
-  if (!maps.length) throw new Error(`No georeferenced maps: ${props.url}`);
-  const imageRevisions = await Promise.all(
-    maps.map((map) => sources.imageRevision(map.resource.id)),
-  );
-  // The buffer renderer reads resourceMask directly, so normalize unmasked maps.
-  if (options.applyMask === false)
-    maps = maps.map((map) => {
-      const { width, height } = map.resource;
-      if (!width || !height)
-        throw new Error(`Unmasked thumbnail needs dimensions: ${props.url}`);
-      return {
-        ...map,
-        resourceMask: [
-          [0, 0],
-          [width, 0],
-          [width, height],
-          [0, height],
-        ],
-      };
-    });
-  return {
-    props,
-    annotation,
-    maps: maps.map(
-      (map, index) =>
-        new StaticWarpedMap(`${recipeHash(map)}:${index}`, map, {}, options),
-    ),
-    revision: recipeHash({ maps, options, imageRevisions }),
-  };
-}
-
 type DecodedImage = { pixels: Buffer; width: number; height: number };
 
 export async function renderWarpedLayer(
@@ -171,15 +92,15 @@ export async function renderWarpedLayer(
           );
           const rgba = await renderer.render(viewport);
           if (failures.length) throw new Error(failures.join("\n"));
-          const opacity = layer.props.options?.opacity ?? 1;
+          const opacity = layer.effects?.opacity ?? 1;
           for (let i = 3; i < rgba.length; i += 4)
             rgba[i] = Math.round(rgba[i] * opacity);
           let output = sharp(Buffer.from(rgba), {
             raw: { width: size[0], height: size[1], channels: 4 },
           });
-          if (layer.props.options?.saturation !== undefined)
+          if (layer.effects?.saturation !== undefined)
             output = output.modulate({
-              saturation: layer.props.options.saturation,
+              saturation: layer.effects.saturation,
             });
           inputs.push(await output.png().toBuffer());
         } finally {

@@ -1,6 +1,6 @@
 # @allmaps/static-render
 
-A Node 24 batch renderer for Slides map scenes. It consumes a serializable
+A Node 24 batch renderer for map scenes. It consumes a serializable
 `RenderPlan`, uses Chiitiler/MapLibre Native for basemaps and Allmaps
 `IntArrayRenderer` for warped maps, and publishes immutable image files plus a
 result manifest. It needs no DOM, SvelteKit server or custom native worker.
@@ -21,18 +21,18 @@ The CLI also accepts `--result /path/to/result.json` and `--offline`.
 See `src/types.ts` for the input contract and `tests/native.test.mjs` for a
 self-contained basemap example. A plan contains:
 
-- `version: 1` and `epoch`: a source-cache generation (normally a UTC day).
+- `version: 2` and `epoch`: a source-cache generation (normally a UTC day).
 - `assets`: local service/data URLs mapped to paths relative to `assetRoot`.
 - `layers`: normalized georeferenced maps and options, keyed by caller IDs.
 - `jobs`: ordered layer IDs, camera, dimensions, output format and optional
   lower/upper MapLibre styles. No styles means a transparent background.
 - `resources`: optional annotation JSON snapshots encoded as base64.
 
-`loadLayer` and `createSourceContext` are reusable preparation APIs. They resolve
-annotations and local IIIF images while preserving authored transforms; the app
-uses them before serializing the plan. The model package supplies shared camera,
-style and layer decisions. Plans may contain provider keys in style URLs: keep
-them in the private build cache, not the published site.
+`createSourceContext` resolves local IIIF images and remote resources. Annotation
+loading and application-specific map/style decisions belong to the caller;
+Slides prepares them in `@allmaps/slides/build`. The renderer has no dependency
+on the Slides model or SvelteKit. Plans may contain provider keys in style URLs:
+keep them in the private build cache, not the published site.
 
 Render recipes include geometry, camera, styles, options, source generations,
 local image contents and renderer versions. A saved plan retains its remote
@@ -48,10 +48,15 @@ authentication errors, missing resources and cold-cache failures. The public
 URL in the plan supplies Protomaps' Origin/Referer headers; CI runner hostnames
 are not used as the deployment origin.
 
-This is currently a private workspace package with TypeScript source exports.
+Workspace imports use TypeScript source; packed releases contain JavaScript
+and type declarations.
 The JS API is intended for a Node main process; use the CLI from worker-based
 build systems. Slides invokes the CLI once per batch, then SvelteKit reads only
 its manifest. Sharp and native dependency versions are pinned together.
+
+The current upstream Allmaps annotation package requires a temporary consumer
+Zod 4.4.3 override; see [installation notes](../slides/README.md). The workspace
+lockfile already selects that compatible version.
 
 ## Docker
 
@@ -80,16 +85,16 @@ the image and is discovered when mounted:
 ```sh
 docker build --platform linux/amd64 --target slides-build \
   -f packages/static-render/Dockerfile -t slides-build:local .
-mkdir -p apps/slides/.svelte-kit apps/slides/build
+mkdir -p .render-cache dist
 docker run --rm --platform linux/amd64 -e PUBLIC_BASE_PATH=kattenburg-atlas \
   -e SLIDES_BUILD_OUTPUT=/output/site \
   -v "$PWD/content:/workspace/content:ro" \
-  -v "$PWD/apps/slides/.svelte-kit:/workspace/apps/slides/.svelte-kit" \
-  -v "$PWD/apps/slides/build:/output" \
-  slides-build:local pnpm exec slides build kattenburg-atlas
+  -v "$PWD/.render-cache:/workspace/node_modules/.vite/slides" \
+  -v "$PWD/dist:/output" \
+  slides-build:local pnpm exec slides build ./content/kattenburg-atlas --outDir /output/site
 ```
 
-The static site appears in `apps/slides/build/site`. Mount its parent directory:
+The static site appears in `dist/site`. Mount its parent directory:
 SvelteKit deletes and recreates the configured output directory during export.
 
 This is an optional build-tool image. Kattenburg's ready-to-serve web image is

@@ -1,10 +1,10 @@
-export * from "@allmaps/slides-model/basemap";
+export * from "@allmaps/slides/model/basemap";
 import { env } from "$env/dynamic/public";
 import { mapStyleFiles } from "$lib/shared/content-package";
 import {
   getEffectiveBasemapStyleConfig as getConfig,
   resolveBasemapStyle as resolveStyle,
-} from "@allmaps/slides-model/basemap";
+} from "@allmaps/slides/model/basemap";
 export const getEffectiveBasemapStyleConfig = (
   options: Parameters<typeof getConfig>[0],
 ) => {

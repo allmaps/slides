@@ -1,12 +1,12 @@
 import type { GeoreferencedMap } from "@allmaps/annotation";
 import type { StyleSpecification } from "maplibre-gl";
-import type { WarpedMapProps } from "@allmaps/slides-model/types";
-import type { Camera } from "@allmaps/slides-model/map/camera";
+import type { StaticWarpedMap } from "./static-warped-map.ts";
+import type { Camera } from "./camera.ts";
 import type { SourceAssets } from "./sources.ts";
 
 export type RenderLayer = {
-  props: WarpedMapProps;
-  maps: Array<{ map: GeoreferencedMap; options: WarpedMapProps["options"] }>;
+  effects?: { opacity?: number; saturation?: number };
+  maps: Array<{ map: GeoreferencedMap; options: ConstructorParameters<typeof StaticWarpedMap>[3] }>;
   /** Optional caller revision for inputs beyond the serialized geometry/options. */
   revision?: string;
 };
@@ -20,7 +20,7 @@ export type RenderJob = {
 };
 /** JSON only: no Svelte components, callbacks, absolute asset paths or running app. */
 export type RenderPlan = {
-  version: 1;
+  version: 2;
   epoch: number;
   /** Require fresh sources even when a previous snapshot exists. */
   refresh?: boolean;

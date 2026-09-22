@@ -7,7 +7,7 @@ import path from "node:path";
 import sharp from "sharp";
 import { Viewport } from "@allmaps/render";
 import { lonLatToWebMercator } from "@allmaps/project";
-import { unitsPerPixel } from "@allmaps/slides-model/map/camera";
+import { unitsPerPixel } from "../src/camera.ts";
 
 // Opt in on a machine with graphics libraries (Linux: run under xvfb-run).
 test(
@@ -51,7 +51,7 @@ test(
     await writeFile(
       planPath,
       JSON.stringify({
-        version: 1,
+        version: 2,
         epoch: 0,
         assets: { images: {}, data: {} },
         layers: {},

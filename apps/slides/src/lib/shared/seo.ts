@@ -1,4 +1,4 @@
-import type { Project, Slideshow } from "@allmaps/slides-model/types";
+import type { Project, Slideshow } from "@allmaps/slides/model/types";
 
 // Paths are app-relative. Preserve the entire deployment URL independently of
 // the local router's base path, including when publicUrl has no trailing slash.

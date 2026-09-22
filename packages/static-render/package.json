@@ -1,7 +1,6 @@
 {
   "name": "@allmaps/static-render",
   "version": "0.0.1",
-  "private": true,
   "type": "module",
   "engines": {
     "node": ">=24"
@@ -17,19 +16,21 @@
     "./warped": "./src/warped.ts",
     "./basemap": "./src/basemap.ts",
     "./types": "./src/types.ts",
-    "./context": "./src/context.ts"
+    "./context": "./src/context.ts",
+    "./projective": "./src/static-warped-map.ts"
   },
   "scripts": {
     "test": "node --test tests/*.test.mjs",
     "test:native": "SLIDES_TEST_NATIVE=true node --test tests/native.test.mjs",
-    "check": "tsc --noEmit"
+    "check": "tsc --noEmit",
+    "build": "node ../../scripts/build-package.mjs",
+    "prepack": "pnpm run build"
   },
   "dependencies": {
     "@allmaps/annotation": "1.0.0-beta.37",
     "@allmaps/project": "1.0.0-beta.9",
     "@allmaps/render": "1.0.0-beta.83",
-    "@allmaps/slides-model": "workspace:*",
-    "@allmaps/sveltekit-iiif": "workspace:*",
+    "@allmaps/iiif": "workspace:*",
     "chiitiler": "1.24.2",
     "maplibre-gl": "^5.19.0",
     "sharp": "0.35.4"
@@ -37,5 +38,49 @@
   "devDependencies": {
     "@types/node": "^25.9.1",
     "typescript": "^5.9.3"
-  }
+  },
+  "publishConfig": {
+    "access": "public",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "./cli": "./bin/render.mjs",
+      "./cache": {
+        "types": "./dist/cache.d.ts",
+        "default": "./dist/cache.js"
+      },
+      "./sources": {
+        "types": "./dist/sources.d.ts",
+        "default": "./dist/sources.js"
+      },
+      "./warped": {
+        "types": "./dist/warped.d.ts",
+        "default": "./dist/warped.js"
+      },
+      "./basemap": {
+        "types": "./dist/basemap.d.ts",
+        "default": "./dist/basemap.js"
+      },
+      "./types": {
+        "types": "./dist/types.d.ts",
+        "default": "./dist/types.js"
+      },
+      "./context": {
+        "types": "./dist/context.d.ts",
+        "default": "./dist/context.js"
+      },
+      "./projective": {
+        "types": "./dist/static-warped-map.d.ts",
+        "default": "./dist/static-warped-map.js"
+      }
+    }
+  },
+  "files": [
+    "dist",
+    "bin",
+    "README.md",
+    "scripts/install-system-deps.sh"
+  ]
 }

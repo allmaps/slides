@@ -1,0 +1,42 @@
+name: Slides architecture
+on:
+  pull_request:
+    paths:
+      - "packages/**"
+      - "apps/slides/**"
+      - "scripts/**"
+      - "content/**"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - ".github/workflows/slides.yml"
+  workflow_dispatch:
+jobs:
+  integration:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.22.0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+      - name: Set up native renderer
+        run: sudo sh packages/static-render/scripts/install-system-deps.sh
+      - run: pnpm install --frozen-lockfile
+      - name: Unit and component checks
+        run: |
+          pnpm -r test
+          pnpm --filter @allmaps/slides --filter @allmaps/iiif --filter @allmaps/static-render check
+          pnpm exec slides check ./content/gravity-at-sea
+          pnpm exec slides validate ./content/basemap-fixtures
+      - name: Native pixel alignment
+        run: xvfb-run -a pnpm --filter @allmaps/static-render test:native
+      - name: Independent development sites
+        run: pnpm --filter @allmaps/slides test:dev
+      - name: Fresh installed consumer
+        run: xvfb-run -a pnpm --filter @allmaps/slides test:package

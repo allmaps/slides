@@ -2,7 +2,7 @@
 **/.git
 **/.svelte-kit
 **/.vite
-**/build
+apps/*/build
 **/dist
 **/.DS_Store
 **/.env

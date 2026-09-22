@@ -1,0 +1,9 @@
+**/node_modules
+**/.svelte-kit
+**/dist
+apps/*/build
+**/.git
+**/.agents
+**/.codex
+packages/slides/app
+artifacts

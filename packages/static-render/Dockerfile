@@ -16,7 +16,7 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY packages ./packages
 RUN pnpm install --frozen-lockfile --filter @allmaps/static-render...
 # Exercise image processing and actual native pixels, not just successful imports.
-RUN pnpm --filter @allmaps/slides-model --filter @allmaps/sveltekit-iiif --filter @allmaps/static-render test \
+RUN pnpm --filter @allmaps/iiif --filter @allmaps/static-render test \
     && SLIDES_TEST_NATIVE=true xvfb-run -a pnpm --filter @allmaps/static-render test:native
 COPY --chmod=755 packages/static-render/docker-entrypoint.sh /usr/local/bin/static-render-entrypoint
 ENTRYPOINT ["/usr/bin/tini", "--", "static-render-entrypoint"]
@@ -26,7 +26,6 @@ CMD ["node", "/workspace/packages/static-render/bin/render.mjs", "--help"]
 FROM renderer AS slides-build
 COPY apps ./apps
 RUN mkdir -p content && pnpm install --frozen-lockfile \
-    && pnpm --filter @allmaps/slides-model --filter @allmaps/static-render --filter @allmaps/sveltekit-iiif check \
-    && pnpm --filter @allmaps/slides check \
-    && pnpm --filter @allmaps/slides --filter @allmaps/slides-cli test
+    && pnpm --filter @allmaps/slides --filter @allmaps/static-render --filter @allmaps/iiif check \
+    && pnpm --filter @allmaps/slides --filter @allmaps/slides-app --filter @allmaps/svelte-canvas-panel test
 CMD ["pnpm", "exec", "slides", "build"]

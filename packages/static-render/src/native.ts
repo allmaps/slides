@@ -1,5 +1,4 @@
-import { getRenderedCameraBuffer, ChiitilerCache } from "chiitiler";
-import type { Camera } from "@allmaps/slides-model/map/camera";
+import type { Camera } from "./camera.ts";
 import type { StyleSpecification } from "maplibre-gl";
 import type { Sources } from "./sources.ts";
 
@@ -16,6 +15,7 @@ export class NativeRenderer {
     camera: Camera,
     size: [number, number],
   ): Promise<Buffer> {
+    const { getRenderedCameraBuffer, ChiitilerCache } = await import("chiitiler");
     const fallback = ChiitilerCache.fileCache({ dir: this.cacheDir, ttl: 0 });
     return getRenderedCameraBuffer({
       stylejson: style as Parameters<

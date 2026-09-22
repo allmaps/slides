@@ -4,15 +4,14 @@
   "version": "0.0.1",
   "type": "module",
   "scripts": {
-    "dev": "slides dev @allmaps/gravity-at-sea",
-    "build": "slides build @allmaps/gravity-at-sea",
-    "preview": "slides preview @allmaps/gravity-at-sea",
-    "check": "slides check @allmaps/gravity-at-sea",
-    "validate": "slides validate @allmaps/gravity-at-sea",
-    "sync": "slides validate @allmaps/gravity-at-sea",
-    "iiif": "slides iiif @allmaps/gravity-at-sea"
+    "dev": "slides dev ./content/gravity-at-sea",
+    "build": "slides build ./content/gravity-at-sea",
+    "preview": "slides preview ./content/gravity-at-sea",
+    "check": "slides check ./content/gravity-at-sea",
+    "validate": "slides validate ./content/gravity-at-sea",
+    "iiif": "slides iiif ./content/gravity-at-sea"
   },
   "devDependencies": {
-    "@allmaps/slides-cli": "workspace:*"
+    "@allmaps/slides": "workspace:*"
   }
 }

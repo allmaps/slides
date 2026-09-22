@@ -8,36 +8,30 @@ importers:
 
   .:
     devDependencies:
-      '@allmaps/slides-cli':
+      '@allmaps/slides':
         specifier: workspace:*
-        version: link:packages/cli
+        version: link:packages/slides
 
   apps/slides:
     dependencies:
+      '@allmaps/iiif':
+        specifier: workspace:*
+        version: link:../../packages/iiif
       '@allmaps/maplibre':
         specifier: 1.0.0-beta.43
         version: 1.0.0-beta.43
       '@allmaps/render':
         specifier: 1.0.0-beta.83
         version: 1.0.0-beta.83
-      '@allmaps/slides-content':
-        specifier: workspace:../../packages/slides-content
-        version: link:../../packages/slides-content
-      '@allmaps/slides-model':
+      '@allmaps/slides':
         specifier: workspace:*
-        version: link:../../packages/slides-model
-      '@allmaps/static-render':
-        specifier: workspace:*
-        version: link:../../packages/static-render
+        version: link:../../packages/slides
       '@allmaps/stdlib':
         specifier: 1.0.0-beta.41
         version: 1.0.0-beta.41
       '@allmaps/svelte-canvas-panel':
         specifier: workspace:*
         version: link:../../packages/svelte-canvas-panel
-      '@allmaps/sveltekit-iiif':
-        specifier: workspace:../../packages/sveltekit-iiif
-        version: link:../../packages/sveltekit-iiif
       '@lucide/svelte':
         specifier: ^1.34.0
         version: 1.34.0(svelte@5.53.3)
@@ -100,20 +94,14 @@ importers:
 
   content/kattenburg-atlas: {}
 
-  packages/cli:
+  packages/iiif:
     dependencies:
-      '@allmaps/slides-model':
-        specifier: workspace:*
-        version: link:../slides-model
-      '@allmaps/sveltekit-iiif':
-        specifier: workspace:*
-        version: link:../sveltekit-iiif
-      commander:
-        specifier: ^14.0.2
-        version: 14.0.3
-      yaml:
-        specifier: ^2.9.0
-        version: 2.9.0
+      '@iiif/builder':
+        specifier: ^2.0.1
+        version: 2.0.1
+      sharp:
+        specifier: 0.35.4
+        version: 0.35.4(@types/node@25.9.1)
     devDependencies:
       '@types/node':
         specifier: ^25.9.1
@@ -121,10 +109,11 @@ importers:
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
+      vite:
+        specifier: ^7.3.1
+        version: 7.3.1(@types/node@25.9.1)(jiti@2.6.1)(lightningcss@1.31.1)(yaml@2.9.0)
 
-  packages/slides-content: {}
-
-  packages/slides-model:
+  packages/slides:
     dependencies:
       '@allmaps/annotation':
         specifier: 1.0.0-beta.37
@@ -132,6 +121,9 @@ importers:
       '@allmaps/bearing':
         specifier: 1.0.0-beta.12
         version: 1.0.0-beta.12
+      '@allmaps/iiif':
+        specifier: workspace:*
+        version: link:../iiif
       '@allmaps/maplibre':
         specifier: 1.0.0-beta.43
         version: 1.0.0-beta.43
@@ -141,18 +133,69 @@ importers:
       '@allmaps/render':
         specifier: 1.0.0-beta.83
         version: 1.0.0-beta.83
+      '@allmaps/static-render':
+        specifier: workspace:*
+        version: link:../static-render
       '@allmaps/stdlib':
         specifier: 1.0.0-beta.41
         version: 1.0.0-beta.41
+      '@allmaps/svelte-canvas-panel':
+        specifier: workspace:*
+        version: link:../svelte-canvas-panel
+      '@lucide/svelte':
+        specifier: ^1.34.0
+        version: 1.34.0(svelte@5.53.3)
       '@protomaps/basemaps':
         specifier: ^5.7.2
         version: 5.7.2
+      '@sveltejs/adapter-static':
+        specifier: ^3.0.10
+        version: 3.0.10(@sveltejs/kit@2.53.0(@sveltejs/vite-plugin-svelte@6.2.4(svelte@5.53.3)(vite@7.3.1(@types/node@25.9.1)(jiti@2.6.1)(lightningcss@1.31.1)(yaml@2.9.0)))(svelte@5.53.3)(typescript@5.9.3)(vite@7.3.1(@types/node@25.9.1)(jiti@2.6.1)(lightningcss@1.31.1)(yaml@2.9.0)))
+      '@sveltejs/kit':
+        specifier: ^2.50.2
+        version: 2.53.0(@sveltejs/vite-plugin-svelte@6.2.4(svelte@5.53.3)(vite@7.3.1(@types/node@25.9.1)(jiti@2.6.1)(lightningcss@1.31.1)(yaml@2.9.0)))(svelte@5.53.3)(typescript@5.9.3)(vite@7.3.1(@types/node@25.9.1)(jiti@2.6.1)(lightningcss@1.31.1)(yaml@2.9.0))
+      '@sveltejs/vite-plugin-svelte':
+        specifier: ^6.2.4
+        version: 6.2.4(svelte@5.53.3)(vite@7.3.1(@types/node@25.9.1)(jiti@2.6.1)(lightningcss@1.31.1)(yaml@2.9.0))
+      '@tailwindcss/vite':
+        specifier: ^4.2.0
+        version: 4.2.0(vite@7.3.1(@types/node@25.9.1)(jiti@2.6.1)(lightningcss@1.31.1)(yaml@2.9.0))
       '@turf/turf':
         specifier: ^7.3.5
         version: 7.3.5
+      '@types/node':
+        specifier: ^25.9.1
+        version: 25.9.1
+      commander:
+        specifier: ^14.0.2
+        version: 14.0.3
       maplibre-gl:
         specifier: ^5.19.0
         version: 5.19.0
+      mdsvex:
+        specifier: ^0.12.6
+        version: 0.12.6(svelte@5.53.3)
+      pmtiles:
+        specifier: ^4.4.1
+        version: 4.5.0
+      remark-footnotes:
+        specifier: 2.0.0
+        version: 2.0.0
+      svelte:
+        specifier: ^5.51.0
+        version: 5.53.3
+      svelte-check:
+        specifier: ^4.3.6
+        version: 4.4.3(picomatch@4.0.3)(svelte@5.53.3)(typescript@5.9.3)
+      tailwindcss:
+        specifier: ^4.2.0
+        version: 4.2.0
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+      vite:
+        specifier: ^7.3.1
+        version: 7.3.1(@types/node@25.9.1)(jiti@2.6.1)(lightningcss@1.31.1)(yaml@2.9.0)
       yaml:
         specifier: ^2.9.0
         version: 2.9.0
@@ -160,30 +203,24 @@ importers:
         specifier: ^4.4.3
         version: 4.4.3
     devDependencies:
-      '@types/node':
-        specifier: ^25.9.1
-        version: 25.9.1
-      typescript:
-        specifier: ^5.9.3
-        version: 5.9.3
+      sharp:
+        specifier: 0.35.4
+        version: 0.35.4(@types/node@25.9.1)
 
   packages/static-render:
     dependencies:
       '@allmaps/annotation':
         specifier: 1.0.0-beta.37
         version: 1.0.0-beta.37
+      '@allmaps/iiif':
+        specifier: workspace:*
+        version: link:../iiif
       '@allmaps/project':
         specifier: 1.0.0-beta.9
         version: 1.0.0-beta.9
       '@allmaps/render':
         specifier: 1.0.0-beta.83
         version: 1.0.0-beta.83
-      '@allmaps/slides-model':
-        specifier: workspace:*
-        version: link:../slides-model
-      '@allmaps/sveltekit-iiif':
-        specifier: workspace:*
-        version: link:../sveltekit-iiif
       chiitiler:
         specifier: 1.24.2
         version: 1.24.2(@types/node@25.9.1)
@@ -231,25 +268,6 @@ importers:
       svelte-check:
         specifier: ^4.3.6
         version: 4.4.3(picomatch@4.0.3)(svelte@5.53.3)(typescript@5.9.3)
-      typescript:
-        specifier: ^5.9.3
-        version: 5.9.3
-      vite:
-        specifier: ^7.3.1
-        version: 7.3.1(@types/node@25.9.1)(jiti@2.6.1)(lightningcss@1.31.1)(yaml@2.9.0)
-
-  packages/sveltekit-iiif:
-    dependencies:
-      '@iiif/builder':
-        specifier: ^2.0.1
-        version: 2.0.1
-      sharp:
-        specifier: 0.35.4
-        version: 0.35.4(@types/node@25.9.1)
-    devDependencies:
-      '@types/node':
-        specifier: ^25.9.1
-        version: 25.9.1
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
