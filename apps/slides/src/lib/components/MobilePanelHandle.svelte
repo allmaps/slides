@@ -35,7 +35,7 @@
     event.preventDefault();
     button.focus({ preventScroll: true });
     const style = getComputedStyle(panel);
-    const inset = parseFloat(style.getPropertyValue("--app-edge-spacing"));
+    const inset = parseFloat(style.getPropertyValue("--navigator-bottom"));
     const full = parseFloat(style.maxHeight);
     const collapsed = parseFloat(style.getPropertyValue("--navigator-height"))
       + parseFloat(style.getPropertyValue("--panel-handle-height")) + inset;
@@ -140,7 +140,7 @@
       -webkit-user-select: none;
     }
     .panel-handle:active { cursor: grabbing; }
-    .panel-handle:focus-visible { outline: 2px solid var(--highlight-fg); outline-offset: -3px; }
+    .panel-handle:focus { outline: none; }
     .panel-handle__grip {
       width: 40px;
       height: 4px;

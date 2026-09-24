@@ -56,6 +56,7 @@ the preview and in the modal overlay. Pass caption content without a surrounding
 | `enableViewTransitions` | `true` | Animate opening/closing with the View Transition API when available. |
 | `loadImage` | `true` | Mount Atlas and request image pixels. Metadata always loads immediately. |
 | `preloadThumbnail` | `false` | Fetch a small service image while waiting for Atlas, even with `loadImage={false}`. |
+| `onLayoutReady` | — | Called after metadata settles and preview dimensions are applied, including on failure. Use before scrolling to content; does not wait for image pixels. |
 
 `runtimeOptions` supports `visibilityRatio` (default `0.8`, clamped to 0–1),
 `maxOverZoom` and `maxUnderZoom` (both default `1`, positive numbers). A lower

@@ -20,6 +20,7 @@ export const interfaceDefaults = {
   chapterCounter: '{current} / {total}',
   slideshowProgress: 'Slideshow progress',
   mapLayers: 'Map layers',
+  backgroundMap: 'Background map',
   chapters: 'Chapters',
   lightMode: 'Light mode',
   darkMode: 'Dark mode',

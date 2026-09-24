@@ -77,6 +77,7 @@
   let subslideshowIndexOwner: string | undefined = $state(undefined);
   let activePanelOverlay: PanelOverlayName | undefined = $state(undefined);
   let highlightedWarpedMapUrl: string | undefined = $state(undefined);
+  let basemapAttributions: string[] = $state([]);
   let hiddenWarpedMapUrls: string[] = $state([]);
   let zoomToWarpedMapUrl: string | undefined = $state(undefined);
   let zoomToWarpedMapSignal: number = $state(0);
@@ -395,14 +396,15 @@
       // Keep the map's last framing while the full-height card covers it. Use
       // the resting stops so overlay/handle animations never shift the map.
       const bottomInset = Number.parseFloat(panelStyle.bottom) || 0;
-      const collapsedHeight = NAVIGATOR_HEIGHT + PANEL_HANDLE_HEIGHT + bottomInset;
+      const navigatorInset = Number.parseFloat(panelStyle.getPropertyValue("--navigator-bottom")) || 0;
+      const collapsedHeight = NAVIGATOR_HEIGHT + PANEL_HANDLE_HEIGHT + navigatorInset;
       const halfHeight = Math.min(Math.max(collapsedHeight, viewportHeight / 2),
         Number.parseFloat(window.getComputedStyle(readingPanelElement).maxHeight));
       cardExtent = mobilePanelSize === "full"
-        ? lastMobileMapExtent ?? halfHeight
+        ? lastMobileMapExtent ?? halfHeight + bottomInset
         : mobilePanelSize === "collapsed"
-          ? collapsedHeight
-          : halfHeight;
+          ? collapsedHeight + bottomInset
+          : halfHeight + bottomInset;
       lastMobileMapExtent = cardExtent;
     }
     const reservePanel = panelVisible;
@@ -635,6 +637,7 @@
         resetSignal={mapResetSignal}
         padding={effectiveMapPadding}
         controlsVisible={!startScreenVisible}
+        onBasemapAttribution={(attributions) => { basemapAttributions = attributions; }}
         highlight={highlightedWarpedMapUrl}
         {hiddenWarpedMapUrls}
         {zoomToWarpedMapUrl}
@@ -813,6 +816,7 @@
         {#if layersOpen}
           <SlideshowLayers
             {thumbnails}
+            {basemapAttributions}
             chapter={activeChapter}
             {hiddenWarpedMapUrls}
             {highlightedWarpedMapUrl}
@@ -907,16 +911,18 @@
 
   @media (max-width: 767px) {
     .story-panel {
-      --mobile-panel-top: calc(var(--app-edge-spacing) + var(--app-title-height) + var(--app-control-gap));
-      --mobile-panel-full-height: calc(100dvh - var(--mobile-panel-top));
-      --mobile-panel-collapsed-height: calc(var(--navigator-height) + var(--panel-handle-height) + var(--app-edge-spacing));
+      --mobile-panel-top: calc(var(--app-title-height) + 2 * var(--app-edge-spacing));
+      --mobile-panel-full-height: calc(100dvh - var(--mobile-panel-top) - var(--app-edge-spacing));
+      --mobile-panel-collapsed-height: calc(var(--navigator-height) + var(--panel-handle-height) + var(--navigator-bottom));
       --mobile-panel-half-height: clamp(var(--mobile-panel-collapsed-height), 50dvh, var(--mobile-panel-full-height));
       --mobile-panel-rest-height: var(--mobile-panel-half-height);
       --mobile-panel-height: var(--mobile-panel-drag-height, var(--mobile-panel-rest-height));
-      --navigator-bottom: 0px;
-      --panel-scroll-clearance: calc(var(--navigator-height) + var(--app-edge-spacing) + 16px);
+      --panel-scroll-clearance: calc(var(--navigator-height) + var(--navigator-bottom) + 16px);
       /* Keep the navigator fixed while the reading card changes height. */
-      height: calc(var(--mobile-panel-full-height) - var(--app-edge-spacing));
+      height: var(--mobile-panel-full-height);
+      /* A small overshoot as the card enters after the start screen. */
+      transition-duration: 700ms;
+      transition-timing-function: cubic-bezier(.22, 1.12, .36, 1);
     }
     .story-panel--expanded {
       --mobile-panel-rest-height: var(--mobile-panel-full-height);
@@ -926,11 +932,9 @@
     }
     .reading-panel {
       top: auto;
-      bottom: calc(-1 * var(--app-edge-spacing));
+      bottom: 0;
       height: var(--mobile-panel-height);
       max-height: var(--mobile-panel-full-height);
-      border-bottom-left-radius: 0;
-      border-bottom-right-radius: 0;
       padding-top: var(--panel-handle-height);
       padding-bottom: 0;
       transition: height 550ms cubic-bezier(.22, 1.3, .36, 1);
@@ -942,7 +946,7 @@
     }
     .story-panel--dragging .reading-panel { transition: none; }
     .panel-overlays {
-      top: calc(100% + var(--app-edge-spacing) - min(var(--mobile-panel-height), var(--mobile-panel-full-height)) + var(--panel-handle-height));
+      top: calc(100% - min(var(--mobile-panel-height), var(--mobile-panel-full-height)) + var(--panel-handle-height));
     }
     /* A collapsed card has no content area; its overlays float above the navigator. */
     .story-panel--text-hidden .panel-overlays { top: 0; }

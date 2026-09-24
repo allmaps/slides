@@ -111,6 +111,16 @@ test("missing thumbnails and invalid public URLs do not invent image URLs or can
   }
 });
 
+test("social titles include the main slideshow title without duplicating it", () => {
+  const renamedProject = { ...project, title: "Different project label" };
+  for (const [slideshow, title] of [[main, "Atlas"], [history, "Atlas — History"], [{ ...history, title: "Atlas" }, "Atlas"]]) {
+    const { head } = render(Seo, { props: { project: renamedProject, slideshow } });
+    assert.ok(head.includes(`<meta property="og:title" content="${title}"`));
+    assert.ok(head.includes(`<meta name="twitter:title" content="${title}"`));
+    assert.equal(createSlideshowSeo({ project: renamedProject, slideshow }).title, title);
+  }
+});
+
 test("public URLs retain nested subpaths with or without a trailing slash", () => {
   for (const publicUrl of ["https://example.org/stories/atlas", "https://example.org/stories/atlas/"]) {
     assert.equal(absolutePublicUrl("history", publicUrl), "https://example.org/stories/atlas/history");

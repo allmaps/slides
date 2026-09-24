@@ -15,12 +15,14 @@
   import { emptyThumbnails, type ThumbnailManifest } from "$lib/shared/thumbnails";
   import { layerPreviewKey } from "$lib/shared/map/annotations";
   import { withBaseUrl } from "$lib/shared/paths";
+  import { parseAttribution } from "$lib/shared/attribution";
   import PanelOverlay from "$lib/components/PanelOverlay.svelte";
   import type { MapChapter, WarpedMapProps } from "$lib/shared/types";
 
   type Props = {
     thumbnails?: ThumbnailManifest;
     chapter?: MapChapter;
+    basemapAttributions?: string[];
     hiddenWarpedMapUrls?: string[];
     highlightedWarpedMapUrl?: string;
     highlightEnabled?: boolean;
@@ -39,6 +41,7 @@
 
   let {
     chapter,
+    basemapAttributions = [],
     thumbnails = emptyThumbnails(),
     hiddenWarpedMapUrls = [],
     highlightedWarpedMapUrl,
@@ -54,6 +57,7 @@
   }: Props = $props();
 
   const warpedMaps = $derived(chapter?.warpedMaps ?? []);
+  const attributionParts = $derived(basemapAttributions.map(parseAttribution));
   const hiddenWarpedMapUrlSet = $derived(new Set(hiddenWarpedMapUrls));
   const hiddenCount = $derived(
     warpedMaps.filter((warpedMap) =>
@@ -264,9 +268,18 @@
       {t("noWarpedMaps")}
     </p>
   {/if}
+  {#if attributionParts.length}
+    <div class="basemap-attribution mt-5 border-t border-current/15 pt-4 font-body text-[14px] leading-snug text-[var(--highlight-fg)]">
+      <h3 class="mb-1 font-medium">{t("backgroundMap")}</h3>
+      {#each attributionParts as parts}
+        <p>{#each parts as part}{#if part.href}<a href={part.href} target="_blank" rel="noreferrer">{part.text}</a>{:else}{part.text}{/if}{/each}</p>
+      {/each}
+    </div>
+  {/if}
 </PanelOverlay>
 
 <style>
+  .basemap-attribution a { color: inherit; text-decoration: none; }
   .layer-row {
     display: flex;
     min-width: 0;

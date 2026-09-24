@@ -1,5 +1,6 @@
 <script lang="ts">
   import { page } from "$app/state";
+  import { getSlideshowPageTitle } from "$lib/shared/seo";
 
   import favicon from "$lib/assets/favicon.svg";
   import Slideshow from "$lib/components/Slideshow.svelte";
@@ -16,11 +17,7 @@
   const project = getProject();
   const slideshow = $derived(getSlideshowByRoute(page.params.slideshow));
   const mainSlideshow = getMainSlideshow();
-  const pageTitle = $derived(
-    slideshow && slideshow.id !== project.main && slideshow.title !== project.title
-      ? `${project.title} — ${slideshow.title}`
-      : project.title,
-  );
+  const pageTitle = $derived(getSlideshowPageTitle(project, slideshow));
 </script>
 
 <svelte:head>

@@ -24,7 +24,8 @@
     <meta property="og:url" content={metadata.canonical} />
   {/if}
   <meta name="description" content={metadata.description} />
-  <meta property="og:title" content={slideshow.title} />
+  <meta property="og:title" content={metadata.title} />
+  <meta name="twitter:title" content={metadata.title} />
   <meta property="og:description" content={metadata.description} />
   {#if image && metadata.image}
     <meta property="og:image" content={metadata.image} />

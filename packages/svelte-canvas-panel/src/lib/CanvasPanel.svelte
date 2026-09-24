@@ -11,7 +11,7 @@
   let { manifest, startCanvas, imageService, region, label = "Image", caption, text = {},
     embedded = false, height, rotation = 0, runtimeOptions,
     enableDownloads = true, enableViewTransitions = true,
-    loadImage = true, preloadThumbnail = false }: CanvasPanelProps = $props();
+    loadImage = true, preloadThumbnail = false, onLayoutReady }: CanvasPanelProps = $props();
   const ui = $derived({
     enlargeImage: 'Enlarge image: {title}', openImage: 'Open image viewer: {title}', imageZoom: 'Image zoom',
     zoomIn: 'Zoom in', zoomOut: 'Zoom out', closeImage: 'Close image', loadingImage: 'Loading image…',
@@ -76,6 +76,11 @@
     ready = false;
     panel = undefined;
     queueMicrotask(close);
+  });
+
+  $effect(() => {
+    // Effects run after the aspect ratio has been written to the preview DOM.
+    if (previewSize || error) onLayoutReady?.();
   });
 
   $effect(() => {

@@ -2,6 +2,7 @@
   import { replaceState } from "$app/navigation";
   import { page } from "$app/state";
   import { tick, untrack } from "svelte";
+  import { waitForFigureLayouts } from "$lib/shared/enhance-figures";
   import { withBaseUrl } from "$lib/shared/paths";
   import { emptyThumbnails, slidePreviewKey, type ThumbnailManifest } from "$lib/shared/thumbnails";
   import ChapterContent from "$lib/components/ChapterContent.svelte";
@@ -56,7 +57,7 @@
   };
 
   const SLIDE_CHANGE_DELAY_MS = 120;
-  const SCROLL_IDLE_MS = 180;
+  const SCROLL_IDLE_MS = 350;
 
   let {
     project,
@@ -85,8 +86,10 @@
   let pendingHashScroll: string | undefined = $state();
   let navigationId = 0;
   let navigating = false;
+  let scrolling = false;
   let scrollIdleTimeout: ReturnType<typeof setTimeout> | undefined;
   let indexUpdateTimeout: ReturnType<typeof setTimeout> | undefined;
+  let previousScrollToTopSignal = untrack(() => scrollToTopSignal);
 
   const currentChapter = $derived(chapters[index]);
   const currentSlug = $derived(currentChapter?.slug);
@@ -200,8 +203,12 @@
       requestAnimationFrame(() => resolve());
     });
 
-  const waitForFonts = async () => {
-    await document.fonts?.ready;
+  const waitForLayout = async () => {
+    await tick();
+    if (!scrollContainer) return;
+    await Promise.all([document.fonts?.ready, waitForFigureLayouts(scrollContainer)]);
+    await tick();
+    await waitForNextFrame();
   };
 
   const scrollIntoView = (
@@ -214,19 +221,20 @@
 
     const elemRect = elem.getBoundingClientRect();
     const scrollContainerRect = scrollContainer.getBoundingClientRect();
-    const top = elemRect.top - scrollContainerRect.top + scrollContainer.scrollTop;
+    const top = slug === firstChapter?.slug ? 0 : elemRect.top - scrollContainerRect.top + scrollContainer.scrollTop;
     scrollContainer.scrollTo({ top, behavior });
   };
 
   const endNavigation = () => {
     navigationId += 1;
     navigating = false;
+    scrolling = false;
     clearTimeout(scrollIdleTimeout);
     clearTimeout(indexUpdateTimeout);
   };
 
   const waitForScrollIdle = () => {
-    if (!navigating) return;
+    if (!navigating || !scrolling) return;
     clearTimeout(scrollIdleTimeout);
     const request = navigationId;
     scrollIdleTimeout = setTimeout(() => {
@@ -259,9 +267,10 @@
     // Publish the destination immediately so repeated navigation uses the
     // newest target, not a chapter crossed by an earlier smooth scroll.
     setIndex(nextIndex);
-    await tick();
+    await waitForLayout();
     if (request !== navigationId || !scrollContainer) return;
 
+    scrolling = true;
     scrollIntoView(slug, behavior);
     waitForScrollIdle();
   };
@@ -312,11 +321,12 @@
   });
 
   $effect(() => {
-    scrollToTopSignal;
-
-    if (!scrollToTopSignal || !active || !scrollContainer) return;
-
-    scrollToTop();
+    const signal = scrollToTopSignal;
+    if (signal === previousScrollToTopSignal) return;
+    previousScrollToTopSignal = signal;
+    // A newly mounted subslideshow must not replay an earlier Start/top action
+    // and override its incoming chapter hash.
+    if (active && scrollContainer) untrack(() => scrollToTop());
   });
 
   $effect(() => {
@@ -350,19 +360,16 @@
 
       const initialHash = getCurrentHash();
       const initialHashIndex = getChapterIndexBySlug(initialHash);
+      const request = navigationId;
+      if (initialHashIndex >= 0) setIndex(initialHashIndex);
+      await waitForLayout();
+      if (cancelled || !scrollContainer) return;
 
-      if (initialHash && initialHashIndex >= 0) {
-        await waitForFonts();
-        if (cancelled || !scrollContainer) return;
-
-        setIndex(initialHashIndex);
-        scrollIntoView(initialHash, "auto");
-        await waitForNextFrame();
-        if (cancelled || !scrollContainer) return;
-
-        scrollIntoView(initialHash, "auto");
-      } else {
-        scrollContainer.scrollTop = 0;
+      // A newer keyboard/link navigation owns the scroll if it arrived while
+      // the viewers were loading. Never overwrite it with the initial hash.
+      if (request === navigationId) {
+        if (initialHashIndex >= 0) scrollIntoView(initialHash, "auto");
+        else scrollContainer.scrollTop = 0;
       }
 
       await waitForNextFrame();

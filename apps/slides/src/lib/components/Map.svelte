@@ -87,6 +87,7 @@
     resetSignal?: number;
     padding?: number | PaddingOptions;
     controlsVisible?: boolean;
+    onBasemapAttribution?: (attributions: string[]) => void;
     debug?: boolean;
   };
 
@@ -110,6 +111,7 @@
     resetSignal = 0,
     padding,
     controlsVisible = true,
+    onBasemapAttribution,
     debug = dev,
   }: Props = $props();
 
@@ -505,6 +507,21 @@
     }
   };
 
+  let lastAttribution = "";
+  const publishBasemapAttribution = () => {
+    if (!loadedBasemapStyle) return;
+    const attributions = [...new Set(loadedBasemapStyle.sourceIds.flatMap((id) => {
+      const configured = loadedBasemapStyle!.sources[id];
+      const attribution = (map.getSource(id)?.attribution ??
+        ("attribution" in configured ? configured.attribution : undefined))?.trim();
+      return attribution ? [attribution] : [];
+    }))];
+    const key = JSON.stringify(attributions);
+    if (key === lastAttribution) return;
+    lastAttribution = key;
+    onBasemapAttribution?.(attributions);
+  };
+
   const applyCurrentBasemapStyle = async () => {
     const styleKey = basemapStyleKey;
 
@@ -551,6 +568,7 @@
 
     loadedBasemapStyle = nextBasemapStyle;
     loadedBasemapStyleKey = styleKey;
+    publishBasemapAttribution();
 
     if (mapLoaded) {
       applyBasemapLayerState();
@@ -1150,6 +1168,12 @@
     };
 
     map.on("move", updateBearing);
+    // TileJSON may supply attribution after its style source was installed.
+    map.on("sourcedata", (event) => {
+      if (event.sourceDataType === "metadata" && loadedBasemapStyle?.sourceIds.includes(event.sourceId)) {
+        publishBasemapAttribution();
+      }
+    });
 
     map.on("styleimagemissing", async (event) => {
       const id = event.id;

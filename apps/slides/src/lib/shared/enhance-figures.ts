@@ -7,9 +7,20 @@ import type { CanvasPanelProps } from "@allmaps/svelte-canvas-panel";
 
 const resolveUrl = (value: string) => getContentAssetUrl(value) ?? withBaseUrl(value);
 
+const layouts = new Map<HTMLElement, Promise<void>>();
+
+/** Wait for metadata dimensions, including offscreen figures before a target. */
+export async function waitForFigureLayouts(root: HTMLElement) {
+  await Promise.all([...layouts].filter(([content]) => root.contains(content)).map(([, ready]) => ready));
+}
+
 /** Enhance authored HTML without requiring component imports in Markdown. */
 export function enhanceFigures(content: HTMLElement, t: InterfaceText = createInterfaceText()) {
   const cleanups: (() => void)[] = [];
+  const figuresReady: Promise<void>[] = [];
+  let finishLayout: () => void;
+  // Register synchronously, before the deferred Markdown enhancement runs.
+  layouts.set(content, new Promise<void>((resolve) => { finishLayout = resolve; }));
   let destroyed = false;
   const root = content.closest<HTMLElement>("[data-slideshow-scroll]");
   const pending = new Map<HTMLElement, () => void>();
@@ -62,6 +73,8 @@ export function enhanceFigures(content: HTMLElement, t: InterfaceText = createIn
     source.region = figure.dataset.region;
     source.rotation = figure.dataset.rotation ? Number(figure.dataset.rotation) : 0;
     const loadImage = writable(false);
+    const layoutReady = new Promise<void>((resolve) => { source.onLayoutReady = resolve; });
+    figuresReady.push(layoutReady);
     pending.set(figure, () => loadImage.set(true));
     const caption = figure.querySelector("figcaption");
     const target = document.createElement("div");
@@ -86,6 +99,7 @@ export function enhanceFigures(content: HTMLElement, t: InterfaceText = createIn
     // Mount every panel now: metadata establishes dimensions before scrolling.
     // Only activate Atlas when the figure reaches the measured preload range.
     for (const figure of content.querySelectorAll<HTMLElement>("figure")) enhance(figure);
+    void Promise.all(figuresReady).then(() => finishLayout());
     if (!pending.size) return;
     resize = new ResizeObserver(updateObserver);
     resize.observe(root ?? document.documentElement);
@@ -93,6 +107,8 @@ export function enhanceFigures(content: HTMLElement, t: InterfaceText = createIn
   });
   return { destroy() {
     destroyed = true;
+    finishLayout();
+    layouts.delete(content);
     observer?.disconnect();
     resize?.disconnect();
     pending.clear();

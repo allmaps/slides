@@ -27,6 +27,9 @@ export type CanvasPanelProps = (
   loadImage?: boolean;
   /** Opt into small service images while waiting for Atlas. Default false. */
   preloadThumbnail?: boolean;
+  /** Called after metadata has settled and preview dimensions are applied, even
+   * on failure. Does not wait for the lazily loaded Atlas image pixels. */
+  onLayoutReady?: () => void;
 };
 
 export type CanvasPanelText = Partial<Record<

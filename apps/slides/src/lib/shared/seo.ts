@@ -22,6 +22,13 @@ type SlideshowSeoOptions = {
   imagePath?: string;
 };
 
+export const getSlideshowPageTitle = (project: Project, slideshow?: Slideshow) => {
+  const mainTitle = project.slideshows.find((candidate) => candidate.id === project.main)?.title ?? project.title;
+  return slideshow && slideshow.id !== project.main && slideshow.title !== mainTitle
+    ? `${mainTitle} — ${slideshow.title}`
+    : mainTitle;
+};
+
 export const createSlideshowSeo = ({
   project,
   slideshow,
@@ -36,6 +43,7 @@ export const createSlideshowSeo = ({
   )?.trim();
 
   return {
+    title: getSlideshowPageTitle(project, slideshow),
     canonical,
     description,
     image,
