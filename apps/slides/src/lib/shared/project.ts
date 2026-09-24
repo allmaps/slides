@@ -1,11 +1,13 @@
 import { project as metadata } from "$lib/shared/content-package";
-import { slideFiles } from "virtual:slides/markdown";
+import { slideFiles, creditsFiles, sharedCreditsFile } from "virtual:slides/markdown";
 import { withBaseUrl } from "$lib/shared/paths";
 import type { MapChapter, Slideshow, Project } from "$lib/shared/types";
 const project: Project = {
   ...metadata,
+  CreditsComponent: sharedCreditsFile,
   slideshows: metadata.slideshows.map((show) => ({
     ...show,
+    CreditsComponent: creditsFiles[show.id],
     chapters: show.chapters.map((chapter) => ({
       ...chapter,
       Component: slideFiles[chapter.sourcePath].default,

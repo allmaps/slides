@@ -6,6 +6,7 @@ export type CanvasPanelProps = (
   | { imageService: string; manifest?: never; startCanvas?: never }
 ) & {
   label?: string;
+  text?: CanvasPanelText;
   caption?: Snippet;
   embedded?: boolean;
   /** Preview height in CSS pixels; otherwise follows the canvas or region ratio. */
@@ -27,3 +28,8 @@ export type CanvasPanelProps = (
   /** Opt into small service images while waiting for Atlas. Default false. */
   preloadThumbnail?: boolean;
 };
+
+export type CanvasPanelText = Partial<Record<
+  'image' | 'enlargeImage' | 'openImage' | 'imageZoom' | 'zoomIn' | 'zoomOut' | 'closeImage' |
+  'loadingImage' | 'imageLoadError' | 'tryAgain' | 'downloadPreview' | 'downloadView' |
+  'previewDownloadError' | 'viewDownloadError', string>>;

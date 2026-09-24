@@ -43,6 +43,7 @@ before(async () => {
     const source = await readFile(new URL(`../src/lib/components/${component}.svelte`, import.meta.url), "utf8");
     const { js } = compile(source
       .replaceAll('"$env/dynamic/public"', '"./environment.mjs"')
+      .replaceAll('"$lib/shared/interface-context"', JSON.stringify(new URL("../src/lib/shared/interface-context.ts", import.meta.url).href))
       .replaceAll('"$lib/shared/paths"', '"./environment.mjs"')
       .replaceAll('"$lib/shared/project"', '"./environment.mjs"')
       .replaceAll('"$lib/shared/seo"', JSON.stringify(new URL("../src/lib/shared/seo.ts", import.meta.url).href))

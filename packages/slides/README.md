@@ -66,6 +66,76 @@ Configuration paths and assets are relative to the content directory.
 relative to the invoking working directory. Output defaults to `<content>/dist`.
 Vite options such as `--port 5174` pass through to `dev`/`preview`.
 
+## Credits and navigation
+
+Configure one shared Markdown credits document at the top level. A slideshow can
+also specify its own document, which is appended after the shared credits:
+
+```yaml
+credits: credits.md
+slideshows:
+  - id: main
+    path: chapters
+  - id: history
+    path: history
+    credits: history/credits.md
+```
+
+The info panel takes its title from the shared document's frontmatter (or the
+slideshow document when no shared document exists). Additional documents use their
+own frontmatter titles as section headings:
+
+```md
+---
+title: Acknowledgements
+---
+
+Created by our contributors. [Sources](https://example.org).
+```
+
+Paths are relative to the content directory and must name existing `.md` files
+inside it. Frontmatter is optional; the configured interface label is the fallback
+title. Referenced credits files are excluded from chapter lists and update live.
+
+The navigator includes chapter links, a progress bar based on the current chapter,
+and menus for maps, chapters, theme and panel visibility. At 1536px, the reading
+panel widens from 480px to 600px and the navigator moves to its left at 480px wide.
+A subslideshow begins with its title and a back arrow above the first chapter,
+inside the scroll. Footer actions return to the main slideshow or, on the right,
+to the top. Chapter map badges
+open the map layers panel. On mobile, drag the handle between full, half-height
+and hidden positions; when hidden, the handle sits above the chapter count
+inside the navigator, and the progress bar is hidden. Tapping the handle also
+animates the text panel open.
+When the text panel is hidden or the navigator sits outside it, the maps,
+chapters and credits overlays open above the navigator. Opening these overlays
+does not change the map padding.
+
+Keyboard shortcuts: **Left / Right** for previous / next chapter, **B** to return
+to the main slideshow and **H** to hide / show the sidebar. Shortcuts leave text
+entry, modified browser shortcuts and image dialogs alone. The mobile handle also
+supports **Up / Down**, **Home** (hide) and **End** (expand).
+
+## Interface text
+
+English defaults, including accessibility labels and image viewer controls, live
+in `apps/slides/src/lib/shared/interface-settings.ts`. Override any key under
+`interface.text` in your content repository. Keep the named placeholders:
+
+```yaml
+interface:
+  text:
+    chapters: Hoofdstukken
+    mapLayers: Kaarten
+    chapterPosition: "Hoofdstuk {current} van {total}"
+    backToTitle: "Terug naar {title}"
+    readMore: Lees meer
+```
+
+Unspecified keys use English. Existing `interface.startScreen` settings remain
+supported; `interface.text` takes precedence. Kattenburg Atlas includes the full
+Dutch translation in its `slides.config.yml`.
+
 ## Development and derivatives
 
 Vite reads and watches original Markdown, configuration and assets. Additions,

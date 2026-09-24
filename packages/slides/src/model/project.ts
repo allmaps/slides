@@ -124,6 +124,7 @@ export const buildProject = (
     description: slidesConfig.description,
     main: slidesConfig.main,
     interface: slidesConfig.interface,
+    credits: slidesConfig.credits,
     sources,
     slideshows,
   };

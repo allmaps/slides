@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { getInterfaceText } from "$lib/shared/interface-context";
+  const t = getInterfaceText();
   import { dev } from "$app/environment";
   import { onMount } from "svelte";
   import { Minus, Plus } from "@lucide/svelte";
@@ -1134,6 +1136,7 @@
   onMount(() => {
     map = new maplibregl.Map({
       container,
+      locale: { "Map.Title": t("map") },
       style: createEmptyMapStyle(basemapTheme),
       maxPitch: 0,
       attributionControl: false,
@@ -1216,8 +1219,8 @@
     <button
       type="button"
       class="pointer-events-auto inline-flex h-[52px] w-[52px] cursor-pointer items-center justify-center rounded-lg bg-[var(--app-map-control-bg)] text-[var(--app-map-control-text)] shadow-2xl backdrop-blur-md"
-      aria-label="Zoom in"
-      title="Zoom in"
+      aria-label={t("zoomIn")}
+      title={t("zoomIn")}
       onclick={zoomIn}
     >
       <Plus size={24} aria-hidden="true" />
@@ -1226,8 +1229,8 @@
     <button
       type="button"
       class="pointer-events-auto inline-flex h-[52px] w-[52px] cursor-pointer items-center justify-center rounded-lg bg-[var(--app-map-control-bg)] text-[var(--app-map-control-text)] shadow-2xl backdrop-blur-md"
-      aria-label="Zoom out"
-      title="Zoom out"
+      aria-label={t("zoomOut")}
+      title={t("zoomOut")}
       onclick={zoomOut}
     >
       <Minus size={24} aria-hidden="true" />
@@ -1236,8 +1239,8 @@
     <button
       type="button"
       class="pointer-events-auto inline-flex h-[52px] w-[52px] cursor-pointer items-center justify-center rounded-lg bg-[var(--app-map-control-bg)] text-[var(--app-map-control-text)] shadow-2xl backdrop-blur-md"
-      aria-label="Reset north"
-      title="Reset north"
+      aria-label={t("resetNorth")}
+      title={t("resetNorth")}
       onclick={resetNorth}
     >
       <svg

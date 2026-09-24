@@ -104,6 +104,7 @@ const startScreenTextSchema = z
 const interfaceConfigSchema = z
   .object({
     startScreen: startScreenTextSchema.optional(),
+    text: z.record(z.string(), z.string()).optional(),
   })
   .passthrough();
 export const mapConfigSchema = z
@@ -218,6 +219,7 @@ const slideshowDefinitionSchema = z.object({
   slug: optionalSlug,
   title: optionalString,
   description: optionalString,
+  credits: optionalNonEmptyString,
   map: mapConfigSchema.optional(),
   start: mapChapterPropsSchema.optional(),
 });
@@ -244,6 +246,7 @@ export const slidesConfigSchema = z
     title: optionalString,
     description: optionalString,
     main: optionalNonEmptyString,
+    credits: optionalNonEmptyString,
     slideshows: z.array(slideshowDefinitionSchema).optional().default([]),
     sources: z
       .record(z.string(), sourceDefinitionSchema)
@@ -352,6 +355,7 @@ export const parseSlidesConfig = (
       map: config.map,
       protomaps: config.protomaps,
       interface: config.interface,
+      credits: config.credits,
     },
   };
 };

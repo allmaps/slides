@@ -53,6 +53,8 @@ export type StartScreenTextConfig = {
 
 export type InterfaceConfig = {
   startScreen?: StartScreenTextConfig;
+  /** Overrides for the app's English interface strings; supports {placeholders}. */
+  text?: Record<string, string>;
 };
 
 export type SlidesConfig = {
@@ -64,6 +66,8 @@ export type SlidesConfig = {
   map?: MapConfig;
   protomaps?: ProtomapsStyleConfig;
   interface?: InterfaceConfig;
+  /** Shared Markdown credits, shown before any slideshow-specific credits. */
+  credits?: string;
 };
 
 export type WarpedMapProps = {
@@ -138,14 +142,17 @@ export type SlideshowDefinition = {
   slug?: string;
   title?: string;
   description?: string;
+  /** Markdown credits, relative to the content root. */
+  credits?: string;
   map?: MapConfig;
   start?: MapChapterProps;
 };
 
 export type Project = Pick<
   SlidesConfig,
-  "title" | "description" | "main" | "interface"
+  "title" | "description" | "main" | "interface" | "credits"
 > & {
+  creditsTitle?: string;
   sources: Record<string, SourceSpecification>;
   slideshows: Slideshow[];
 };
@@ -156,6 +163,8 @@ export type Slideshow = {
   slug: string;
   title: string;
   description?: string;
+  credits?: string;
+  creditsTitle?: string;
   map?: MapConfig;
   start?: MapChapterProps;
   chapters: MapChapter[];

@@ -4,7 +4,10 @@
   import { tick, untrack } from "svelte";
   import { withBaseUrl } from "$lib/shared/paths";
   import { emptyThumbnails, slidePreviewKey, type ThumbnailManifest } from "$lib/shared/thumbnails";
-  import { BookOpen, Presentation } from "@lucide/svelte";
+  import ChapterContent from "$lib/components/ChapterContent.svelte";
+  import { getInterfaceText } from "$lib/shared/interface-context";
+  const t = getInterfaceText();
+  import { ArrowLeft, ArrowUp, BookOpen, Presentation } from "@lucide/svelte";
 
   import {
     getChapterRouteHref,
@@ -23,10 +26,15 @@
     project: Project;
     slideshow: Slideshow;
     active?: boolean;
+    suspended?: boolean;
     overlayOpen?: boolean;
     scrollToTopSignal?: number;
     onTocClose?: () => void;
     onIndexChange?: (index: number) => void;
+    hiddenWarpedMapUrls?: string[];
+    onShowLayers?: (slug: string) => void;
+    backHref?: string;
+    backTitle?: string;
     class?: string;
   };
 
@@ -55,10 +63,15 @@
     isDarkMode = false,
     slideshow,
     active = true,
+    suspended = false,
     overlayOpen = false,
     scrollToTopSignal = 0,
     onTocClose,
     onIndexChange,
+    hiddenWarpedMapUrls = [],
+    onShowLayers,
+    backHref,
+    backTitle,
     class: className = "",
   }: Props = $props();
 
@@ -115,7 +128,7 @@
       : [];
 
   const getSlideCountLabel = (count: number) =>
-    `${count} ${count === 1 ? "slide" : "slides"}`;
+    t(count === 1 ? "slideCountSingular" : "slideCountPlural", { count });
 
   const getReadMoreCards = (
     subslideshows: ChapterSubslideshow[],
@@ -133,7 +146,7 @@
         href: getChapterRouteHref(subslideshow, chapter),
         title: chapter.title,
         badge: `${index + 1} / ${slideCount}`,
-        ariaLabel: `${chapter.title}, slide ${index + 1} of ${slideCount}`,
+        ariaLabel: t("slideCard", { title: chapter.title, current: index + 1, total: slideCount }),
       }));
     }
 
@@ -143,7 +156,7 @@
       href: subslideshow.href,
       title: subslideshow.title,
       badge: getSlideCountLabel(subslideshow.slideCount),
-      ariaLabel: `${subslideshow.title}, ${getSlideCountLabel(subslideshow.slideCount)}`,
+      ariaLabel: t("slideshowCard", { title: subslideshow.title, count: getSlideCountLabel(subslideshow.slideCount) }),
     }));
   };
 
@@ -307,6 +320,7 @@
         threshold: 0,
       };
       const callback = (entries: IntersectionObserverEntry[]) => {
+        if (suspended) return;
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
             const elem = entry.target as HTMLElement;
@@ -318,7 +332,7 @@
 
             indexUpdateTimeout = window.setTimeout(() => {
               indexUpdateTimeout = undefined;
-              if (!cancelled) setIndex(nextIndex);
+              if (!cancelled && !suspended) setIndex(nextIndex);
             }, SLIDE_CHANGE_DELAY_MS);
           }
         });
@@ -343,19 +357,19 @@
 </script>
 
 <div
-  class="relative h-full min-h-0 text-[var(--app-text)] {className}"
+  class="relative flex h-full min-h-0 flex-col text-[var(--app-text)] {className}"
+  inert={!active || suspended}
 >
   <div
     bind:this={scrollContainer}
     data-slideshow-scroll
-    class="h-full min-h-0 overflow-x-hidden overflow-y-auto px-5 transition-opacity duration-150 {loaded
-      ? 'visible'
+    class="slideshow-scroll panel-scrollbar min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-3.5 transition-opacity duration-150 {loaded
+      ? ''
       : 'invisible'} {overlayOpen
       ? 'opacity-50'
       : 'opacity-100'}"
   >
     {#each chapters as chapter, index}
-      {@const Component = chapter.Component}
       {@const isActive = currentSlug === chapter.slug}
       {@const subslideshows = getChapterSubslideshows(chapter)}
       {@const readMoreCards = getReadMoreCards(subslideshows)}
@@ -367,18 +381,24 @@
         id={active ? chapter.slug : undefined}
         data-id={chapter.slug}
       >
-        <Component />
+        {#if index === 0 && backHref}
+          <a class="panel-link slideshow-heading" data-subslideshow-title href={backHref}
+            title={t('backToTitle', { title: backTitle ?? '' })} aria-label={t('backToTitle', { title: backTitle ?? '' })}>
+            <ArrowLeft size={20} aria-hidden="true" /><span>{slideshow.title}</span>
+          </a>
+        {/if}
+        <ChapterContent {chapter} hiddenMapUrls={hiddenWarpedMapUrls} onShowMaps={() => onShowLayers?.(chapter.slug)} />
         {#if subslideshows.length}
-          <aside class="read-more" aria-label="Read more">
+          <aside class="read-more" aria-label={t("readMore")}>
             <div class="read-more__heading">
               <BookOpen size={20} strokeWidth={1.8} aria-hidden="true" />
-              <h2>Read more</h2>
+              <h2>{t("readMore")}</h2>
             </div>
             <div
               class="read-more__list"
               aria-label={subslideshows.length === 1
-                ? "Slides"
-                : "Subslideshows"}
+                ? t("slides")
+                : t("subslideshows")}
             >
               {#each readMoreCards as card (card.id)}
                 {@const image = card.previewKey ? thumbnails.slides[card.previewKey]?.[isDarkMode ? "dark" : "light"] : undefined}
@@ -420,10 +440,40 @@
         {/if}
       </section>
     {/each}
+    <footer class="panel-footer">
+      {#if backHref}<a class="panel-link" href={backHref}><ArrowLeft size={20} aria-hidden="true" /><span>{t('backToMain')}</span></a>{/if}
+      <button class="panel-link panel-footer__top" type="button" onclick={() => scrollToTop()}><ArrowUp size={20} aria-hidden="true" /><span>{t('scrollToTop')}</span></button>
+    </footer>
   </div>
 </div>
 
 <style>
+  .slideshow-scroll {
+    /* Keep the viewport behind the floating navigator; only the end of the
+       content needs clearance so its final lines can be read above it. */
+    padding-bottom: var(--panel-scroll-clearance, calc(var(--navigator-height, 62px) + 16px));
+    margin-inline: 6px;
+    width: calc(100% - 12px);
+    scroll-padding-bottom: var(--panel-scroll-clearance, calc(var(--navigator-height, 62px) + 16px));
+  }
+
+  .panel-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--app-breadcrumb);
+    font-size: 18px;
+    line-height: 1.2;
+    text-align: left;
+    cursor: pointer;
+  }
+  .panel-link span { transform: translateY(0.08em); }
+  .panel-link :global(svg) { flex-shrink: 0; }
+  .panel-link:hover { text-decoration: underline; }
+  .slideshow-heading { margin-bottom: 24px; }
+  .panel-footer { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding-block: 24px 8px; }
+  .panel-footer__top { margin-left: auto; }
+
   .read-more {
     margin-top: 1.75rem;
   }

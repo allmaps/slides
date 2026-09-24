@@ -4,21 +4,26 @@
 </script>
 
 <script lang="ts">
+  import MapCountBadge from "$lib/components/MapCountBadge.svelte";
+  import { getInterfaceText } from "$lib/shared/interface-context";
   import { enhanceFigures } from "$lib/shared/enhance-figures";
   let {
     title,
+    hideTitle = false,
     description,
     children,
   }: {
-    title: string;
-    description: string;
+    title?: string;
+    hideTitle?: boolean;
+    description?: string;
     children: any;
   } = $props();
+  const t = getInterfaceText();
 </script>
 
-<div class="slide-content clear-both" use:enhanceFigures>
-  <h1>{title}</h1>
-  <p class="slide-description">{description}</p>
+<div class="slide-content clear-both" use:enhanceFigures={t}>
+  {#if title && !hideTitle}<h1>{title}<MapCountBadge /></h1>{/if}
+  {#if description}<p class="slide-description">{description}</p>{/if}
   {@render children?.()}
 </div>
 

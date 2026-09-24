@@ -1,3 +1,4 @@
+import { createInterfaceText, type InterfaceText } from "./interface-settings";
 import { mount, unmount } from "svelte";
 import { writable } from "svelte/store";
 import CanvasFigure from "$lib/components/CanvasFigure.svelte";
@@ -7,7 +8,7 @@ import type { CanvasPanelProps } from "@allmaps/svelte-canvas-panel";
 const resolveUrl = (value: string) => getContentAssetUrl(value) ?? withBaseUrl(value);
 
 /** Enhance authored HTML without requiring component imports in Markdown. */
-export function enhanceFigures(content: HTMLElement) {
+export function enhanceFigures(content: HTMLElement, t: InterfaceText = createInterfaceText()) {
   const cleanups: (() => void)[] = [];
   let destroyed = false;
   const root = content.closest<HTMLElement>("[data-slideshow-scroll]");
@@ -68,8 +69,8 @@ export function enhanceFigures(content: HTMLElement) {
     const component = mount(CanvasFigure, {
       target,
       props: {
-        source, loadImage,
-        label: figure.getAttribute("aria-label") || marker?.dataset.alt || caption?.textContent?.trim() || "Image",
+        source, loadImage, t,
+        label: figure.getAttribute("aria-label") || marker?.dataset.alt || caption?.textContent?.trim() || t("image"),
         caption: caption?.innerHTML ?? "",
       },
     });

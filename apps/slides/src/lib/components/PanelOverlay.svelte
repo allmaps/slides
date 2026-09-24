@@ -1,5 +1,7 @@
 <script lang="ts">
-  import type { Snippet } from "svelte";
+  import { getInterfaceText } from "$lib/shared/interface-context";
+  const t = getInterfaceText();
+  import { tick, type Snippet } from "svelte";
   import { fade } from "svelte/transition";
   import { X } from "@lucide/svelte";
 
@@ -22,12 +24,28 @@
     top = "0",
     bottomMargin = "0.25rem",
     tab,
-    closeLabel = "Close overlay",
+    closeLabel = t("closeOverlay"),
     onClose,
     actions,
     children,
     class: className = "",
   }: Props = $props();
+
+  let element: HTMLDivElement;
+  $effect(() => {
+    if (!open) return;
+    const previous = document.activeElement;
+    let cancelled = false;
+    tick().then(() => {
+      if (!cancelled) element?.querySelector<HTMLElement>(".panel-overlay-content")?.focus({ preventScroll: true });
+    });
+    return () => {
+      cancelled = true;
+      // A conditional overlay may already have left the DOM during teardown,
+      // in which case the browser has moved focus back to the document body.
+      if ((element?.contains(document.activeElement) || document.activeElement === document.body) && previous instanceof HTMLElement && previous.isConnected) previous.focus({ preventScroll: true });
+    };
+  });
 </script>
 
 <div
@@ -54,22 +72,38 @@
   {/if}
 
   <div
-    class="panel-overlay overflow-x-hidden overflow-y-auto rounded-lg bg-[var(--app-overlay-bg)] p-3 text-[var(--app-text)] sm:p-4"
+    bind:this={element}
+    role="region"
+    aria-label={title}
+    tabindex="-1"
+    class="panel-overlay overflow-hidden bg-[var(--app-overlay-bg)] text-[var(--app-text)]"
   >
-    <div class="mb-2 flex items-center justify-between gap-3">
-      <h2 class="translate-y-[0.08em] text-[28px] leading-[1.1] font-normal">
+    <div class="panel-overlay-header flex shrink-0 items-center justify-between gap-3 p-3 pb-2 sm:p-4 sm:pb-2">
+      <h2 class="min-w-0 translate-y-[0.08em] text-[28px] leading-[1.1] font-normal">
         {title}
       </h2>
 
-      {@render actions?.()}
+      <div class="flex shrink-0 items-center gap-2">
+        {@render actions?.()}
+        {#if !tab}
+          <button type="button" class="inline-flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-md text-[var(--app-overlay-icon)] hover:bg-[var(--app-overlay-selected-bg)]" aria-label={closeLabel} title={closeLabel} onclick={onClose}>
+            <X size={22} aria-hidden="true" />
+          </button>
+        {/if}
+      </div>
     </div>
 
-    {@render children?.()}
+    <div tabindex="-1" class="panel-overlay-content panel-scrollbar min-h-0 overflow-x-hidden overflow-y-auto px-3 pb-3 outline-none sm:px-4 sm:pb-4">
+      {@render children?.()}
+    </div>
   </div>
 </div>
 
 <style>
   .panel-overlay-shell {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
     top: var(--panel-overlay-top);
     bottom: var(--panel-overlay-bottom-margin);
     pointer-events: none;
@@ -83,11 +117,17 @@
 
   .panel-overlay {
     position: relative;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
     z-index: 2;
     max-height: 100%;
-    overscroll-behavior: contain;
+    border: 6px solid transparent;
+    border-radius: 17px;
+    background-clip: border-box;
     pointer-events: auto;
   }
+  .panel-overlay-content { overscroll-behavior: contain; }
 
   .panel-overlay-tab {
     position: absolute;

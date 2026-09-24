@@ -8,10 +8,17 @@
   import type { CanvasPanelProps } from "./types.ts";
   import type { IiifSource } from "./iiif-source.ts";
 
-  let { manifest, startCanvas, imageService, region, label = "Image", caption,
+  let { manifest, startCanvas, imageService, region, label = "Image", caption, text = {},
     embedded = false, height, rotation = 0, runtimeOptions,
     enableDownloads = true, enableViewTransitions = true,
     loadImage = true, preloadThumbnail = false }: CanvasPanelProps = $props();
+  const ui = $derived({
+    enlargeImage: 'Enlarge image: {title}', openImage: 'Open image viewer: {title}', imageZoom: 'Image zoom',
+    zoomIn: 'Zoom in', zoomOut: 'Zoom out', closeImage: 'Close image', loadingImage: 'Loading image…',
+    imageLoadError: 'The IIIF image could not be loaded.', tryAgain: 'Try again',
+    downloadPreview: 'Download image preview', downloadView: 'Download image view',
+    previewDownloadError: 'The image preview could not be downloaded.', viewDownloadError: 'The image view could not be downloaded.', ...text,
+  });
   const source = $derived<IiifSource>(manifest
     ? { type: "manifest", url: manifest, canvas: startCanvas, region }
     : { type: "image", url: imageService ?? "", region });
@@ -156,7 +163,7 @@
     {/if}
     {#key `${attempt}:${rotation}`}
       {#if resource && loadImage}
-        <AtlasViewer {resource} {label} {transitioning} {rotation} {runtimeOptions} target={open ? zoomPanel : undefined} onactivate={enlarge}
+        <AtlasViewer {resource} {label} enlargeLabel={ui.enlargeImage.replaceAll("{title}", label)} {transitioning} {rotation} {runtimeOptions} target={open ? zoomPanel : undefined} onactivate={enlarge}
           onready={(controls) => { panel = controls; ready = true; error = false; }}
           onerror={() => { error = true; }} />
       {/if}
@@ -165,20 +172,20 @@
   {#if open && poster}<img class="poster" src={poster} alt={label} />{/if}
   {#if ready}
     <div class="preview-controls">
-      {#if enableDownloads}<button type="button" class="image-control" aria-label="Download image preview" onclick={download}><Download size={20} /></button>{/if}
-      <button type="button" class="image-control expand-control" bind:this={trigger} aria-label={`Open image viewer: ${label}`} onclick={enlarge}><Maximize size={20} /></button>
+      {#if enableDownloads}<button type="button" class="image-control" aria-label={ui.downloadPreview} onclick={download}><Download size={20} /></button>{/if}
+      <button type="button" class="image-control expand-control" bind:this={trigger} aria-label={ui.openImage.replaceAll("{title}", label)} onclick={enlarge}><Maximize size={20} /></button>
     </div>
   {:else if !error && !showThumbnail}
-    <p class="status" role="status">Loading image…</p>
+    <p class="status" role="status">{ui.loadingImage}</p>
   {/if}
 </div>
 {#if error}
   <p class="load-error" role="status">
-    The IIIF image could not be loaded.
-    <button type="button" onclick={() => { error = false; attempt += 1; }}>Try again</button>
+    {ui.imageLoadError}
+    <button type="button" onclick={() => { error = false; attempt += 1; }}>{ui.tryAgain}</button>
   </p>
 {/if}
-{#if downloadError && !open}<p class="load-error" role="status">The image preview could not be downloaded.</p>{/if}
+{#if downloadError && !open}<p class="load-error" role="status">{ui.previewDownloadError}</p>{/if}
 {#if caption && !embedded}<figcaption class="inline-caption">{@render caption()}</figcaption>{/if}
 
 <!-- Native dialog supplies focus containment, Escape and top-layer rendering. -->
@@ -189,14 +196,14 @@
   <div class="zoom-panel" bind:this={zoomPanel}></div>
   {#if open}
     <div class="toolbar" style:view-transition-name={transitioning ? "canvas-panel-image-controls" : "none"}>
-      <div class="zoom-controls" role="group" aria-label="Image zoom">
-        <button type="button" class="image-control" aria-label="Zoom in" onclick={() => panel?.zoomIn()}><Plus size={22} /></button>
-        <button type="button" class="image-control" aria-label="Zoom out" onclick={() => panel?.zoomOut()}><Minus size={22} /></button>
-        {#if enableDownloads}<button type="button" class="image-control" aria-label="Download image view" onclick={download}><Download size={22} /></button>{/if}
+      <div class="zoom-controls" role="group" aria-label={ui.imageZoom}>
+        <button type="button" class="image-control" aria-label={ui.zoomIn} onclick={() => panel?.zoomIn()}><Plus size={22} /></button>
+        <button type="button" class="image-control" aria-label={ui.zoomOut} onclick={() => panel?.zoomOut()}><Minus size={22} /></button>
+        {#if enableDownloads}<button type="button" class="image-control" aria-label={ui.downloadView} onclick={download}><Download size={22} /></button>{/if}
       </div>
-      <button type="button" class="image-control" aria-label="Close image" onclick={close}><X size={24} /></button>
+      <button type="button" class="image-control" aria-label={ui.closeImage} onclick={close}><X size={24} /></button>
     </div>
-    {#if downloadError}<p class="modal-status" role="status">The image view could not be downloaded.</p>{/if}
+    {#if downloadError}<p class="modal-status" role="status">{ui.viewDownloadError}</p>{/if}
     {#if caption}
       <div class="caption-overlay" style:view-transition-name={transitioning ? "canvas-panel-image-caption" : "none"}>
         <div class="modal-caption">{@render caption()}</div>

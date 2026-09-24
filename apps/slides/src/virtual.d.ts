@@ -12,5 +12,7 @@ declare module "virtual:slides/content" {
 }
 
 declare module "virtual:slides/markdown" {
+  export const creditsFiles: Record<string, import("svelte").Component>;
+  export const sharedCreditsFile: import("svelte").Component | undefined;
   export const slideFiles: Record<string, { default: any; metadata: Record<string, unknown> }>;
 }

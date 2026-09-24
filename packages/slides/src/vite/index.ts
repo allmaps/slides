@@ -35,8 +35,12 @@ export function contentModule(content: ContentSnapshot) {
 // a circular dependency between their layout and the content registry.
 export function markdownModule(content: ContentSnapshot) {
   const entries = Object.entries(content.slides);
+  const credits = Object.entries(content.credits);
   return entries.map(([, slide], index) => `import * as slide${index} from ${JSON.stringify(slash(slide.filename))};`).join("\n")
-    + `\nexport const slideFiles = {${entries.map(([source], index) => `${JSON.stringify(source)}: slide${index}`).join(",")}};`;
+    + `\nexport const slideFiles = {${entries.map(([source], index) => `${JSON.stringify(source)}: slide${index}`).join(",")}};`
+    + "\n" + credits.map(([, credit], index) => `import credit${index} from ${JSON.stringify(slash(credit.filename))};`).join("\n")
+    + `\nexport const creditsFiles = {${credits.map(([showId], index) => `${JSON.stringify(showId)}: credit${index}`).join(",")}};`
+    + (content.sharedCredits ? `\nimport sharedCredit from ${JSON.stringify(slash(content.sharedCredits.filename))};\nexport const sharedCreditsFile = sharedCredit;` : "\nexport const sharedCreditsFile = undefined;");
 }
 
 export function slidesContent(): Plugin {
@@ -69,7 +73,7 @@ export function slidesContent(): Plugin {
       if (source !== id && source !== `\0${markdownId}`) return;
       const content = await loadContent(runtime);
       this.addWatchFile(content.config.configPath);
-      for (const file of [...Object.values(content.slides).map(s => s.filename), ...content.images, ...content.data]) this.addWatchFile(file);
+      for (const file of [...Object.values(content.slides).map(s => s.filename), ...Object.values(content.credits).map(c => c.filename), ...(content.sharedCredits ? [content.sharedCredits.filename] : []), ...content.images, ...content.data]) this.addWatchFile(file);
       return source === id ? contentModule(content) : markdownModule(content);
     },
     async configureServer(server) {

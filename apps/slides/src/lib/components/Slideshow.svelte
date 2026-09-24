@@ -1,26 +1,25 @@
 <script lang="ts">
+  import { goto } from "$app/navigation";
+  import { provideInterfaceText } from "$lib/shared/interface-context";
+  import { slideshowShortcut } from "$lib/shared/keyboard";
   import { dev } from "$app/environment";
   import { page } from "$app/state";
-  import { onMount, tick } from "svelte";
-  import {
-    ArrowLeft,
-    Layers as LayersIcon,
-    ListTree,
-    Moon,
-    Sun,
-  } from "@lucide/svelte";
+  import { onMount, tick, untrack } from "svelte";
   import type { PaddingOptions } from "maplibre-gl";
 
   import { emptyThumbnails, type ThumbnailManifest } from "$lib/shared/thumbnails";
 
   import Map from "$lib/components/Map.svelte";
-  import PanelOverlayToggle from "$lib/components/PanelOverlayToggle.svelte";
+  import MobilePanelHandle from "$lib/components/MobilePanelHandle.svelte";
+  import PanelOverlay from "$lib/components/PanelOverlay.svelte";
+  import SlideshowNavigator from "$lib/components/SlideshowNavigator.svelte";
   import SlideshowLayers from "$lib/components/SlideshowLayers.svelte";
   import SlideshowPanel from "$lib/components/SlideshowPanel.svelte";
   import SlideshowSeo from "$lib/components/SlideshowSeo.svelte";
   import SlideshowToc from "$lib/components/SlideshowToc.svelte";
   import StartScreen from "$lib/components/StartScreen.svelte";
   import { getGeoJsonLayers } from "$lib/shared/geojson";
+  import type { MobilePanelSize } from "$lib/shared/mobile-panel";
   import {
     getChapterRouteHref,
     getSlideshowRouteHref,
@@ -49,16 +48,20 @@
     scrollToTop: (behavior?: ScrollBehavior) => void;
   };
 
-  const PANEL_TRANSITION_MS = 500;
-  const PANEL_HEADER_HEIGHT = "52px";
-  const PANEL_OVERLAY_OVERLAP = "0.625rem";
+  const PANEL_TRANSITION_MS = 550;
+  const PANEL_OUTSET = 8;
+  const NAVIGATOR_HEIGHT = 62;
+  const PANEL_HANDLE_HEIGHT = 36;
+  const PANEL_NAVIGATOR_SPACE = `var(--panel-overlay-clearance, ${NAVIGATOR_HEIGHT + 6}px)`;
   const LAYER_HIGHLIGHT_ENABLED = false;
   const THEME_STORAGE_KEY = "slides-theme";
 
   type ThemePreference = "light" | "dark";
-  type PanelOverlayName = "toc" | "layers";
+  type PanelOverlayName = "toc" | "layers" | "credits";
 
   let { project, slideshow, mainSlideshow, debug = dev, thumbnails = emptyThumbnails() }: Props = $props();
+
+  const t = provideInterfaceText(() => project.interface);
 
   const activeSlideshow = $derived(slideshow);
   const rootSlideshow = $derived(mainSlideshow ?? slideshow);
@@ -92,6 +95,15 @@
   });
   let themePreference: ThemePreference | undefined = $state(undefined);
   let mainSlideshowStarted = $state(false);
+  let panelVisible = $state(true);
+  let mobilePanelExpanded = $state(false);
+  let mobileDragHeight: number | undefined = $state();
+  let mobileDragging = $state(false);
+  let mobileResizing = $state(false);
+  let mobileResizeTimeout: ReturnType<typeof setTimeout> | undefined;
+  const mobilePanelSize = $derived<MobilePanelSize>(
+    !panelVisible ? "collapsed" : mobilePanelExpanded ? "full" : "half",
+  );
 
   const clampIndex = (index: number, length: number) =>
     length > 0 ? Math.min(Math.max(index, 0), length - 1) : 0;
@@ -128,32 +140,18 @@
     startScreenVisible ? DEFAULT_PADDING : mapPadding,
   );
   const activeChapter = $derived(chapters[activeIndex]);
-  const headerTitle = $derived(rootSlideshow.title);
-  const headerSubTitle = $derived(
-    isSubslideshowActive ? activeSlideshow.title : undefined,
-  );
-  const headerChapterTitle = $derived(activeChapter?.title);
-  const headerActiveTitle = $derived(headerSubTitle ?? headerTitle);
   const tocOpen = $derived(activePanelOverlay === "toc");
   const layersOpen = $derived(activePanelOverlay === "layers");
+  const creditsOpen = $derived(activePanelOverlay === "credits");
+  const CreditsComponent = $derived(activeSlideshow.CreditsComponent);
+  const SharedCredits = $derived(project.CreditsComponent);
+  const creditsTitle = $derived((SharedCredits ? project.creditsTitle : activeSlideshow.creditsTitle) ?? t("credits"));
   const panelOverlayOpen = $derived(activePanelOverlay !== undefined);
-  const showHeaderChapterTitle = $derived(
-    headerChapterTitle !== undefined && headerChapterTitle !== headerActiveTitle,
-  );
-  const headerAccessibleTitle = $derived.by(() =>
-    [headerTitle, headerSubTitle, showHeaderChapterTitle ? headerChapterTitle : undefined]
-      .filter((title, index, titles) => title && titles.indexOf(title) === index)
-      .join(", "),
-  );
   const mainHref = $derived(getSlideshowRouteHref(rootSlideshow));
   const mainBreadcrumbHref = $derived.by(() => {
     const chapter = rootSlideshow.chapters[mainIndex];
     return chapter ? getChapterRouteHref(rootSlideshow, chapter) : mainHref;
   });
-  const themeToggleLabel = $derived(
-    isDarkMode ? "Switch to light theme" : "Switch to dark theme",
-  );
-
   $effect(() => {
     if (isDarkMode === undefined) return;
     const root = document.documentElement;
@@ -164,13 +162,6 @@
       else root.dataset.theme = previous;
     };
   });
-  const layersToggleLabel = $derived(
-    layersOpen ? "Close map layers" : "Open map layers",
-  );
-  const tocOverlayTop = $derived(
-    `calc(${PANEL_HEADER_HEIGHT} - ${PANEL_OVERLAY_OVERLAP})`,
-  );
-
   const parseThemePreference = (
     value: string | null,
   ): ThemePreference | undefined =>
@@ -251,6 +242,35 @@
     activePanelOverlay = "layers";
   };
 
+  const togglePanel = () => { closePanelOverlays(); panelVisible = !panelVisible; };
+  const showChapterLayers = async (slug: string) => {
+    await scrollActivePanelToChapter(slug);
+    activePanelOverlay = "layers";
+  };
+
+  const handleKeyboard = (event: KeyboardEvent) => {
+    if (event.key === "Escape" && panelOverlayOpen) {
+      event.preventDefault();
+      closePanelOverlays();
+      return;
+    }
+    const target = event.target instanceof Element ? event.target : undefined;
+    const blocked = startScreenVisible || !!document.querySelector('dialog[open]') || !!target?.closest(
+      'input, textarea, select, [contenteditable]:not([contenteditable="false"]), [role="textbox"], [role="slider"], .maplibregl-canvas',
+    );
+    const action = slideshowShortcut({ ...event, key: event.key, altKey: event.altKey, ctrlKey: event.ctrlKey,
+      metaKey: event.metaKey, shiftKey: event.shiftKey, defaultPrevented: event.defaultPrevented, blocked });
+    if (!action) return;
+    if (action === "back" && !isSubslideshowActive) return;
+    event.preventDefault();
+    if (action === "togglePanel") togglePanel();
+    else if (action === "back") void goto(mainBreadcrumbHref);
+    else {
+      const chapter = chapters[activeIndex + (action === "next" ? 1 : -1)];
+      if (chapter) void scrollActivePanelToChapter(chapter.slug);
+    }
+  };
+
   const toggleTheme = () => {
     const nextIsDarkMode = !(isDarkMode ?? false);
     themePreference = nextIsDarkMode ? "dark" : "light";
@@ -263,18 +283,6 @@
     }
   };
 
-  const scrollActivePanelToTop = () => {
-    closePanelOverlays();
-    scrollToTopSignal += 1;
-  };
-
-  const resetActiveSlideView = () => {
-    closePanelOverlays();
-    clearWarpedMapHighlight();
-    resetWarpedMapVisibility();
-    mapResetSignal += 1;
-  };
-
   const waitForNextFrame = () =>
     new Promise<void>((resolve) => {
       requestAnimationFrame(() => resolve());
@@ -285,7 +293,7 @@
     await tick();
     await waitForNextFrame();
     await (isSubslideshowActive ? subslideshowPanel : mainPanel)
-      ?.scrollToChapter(slug);
+      ?.scrollToChapter(slug, panelVisible ? "smooth" : "auto");
   };
 
   const jumpToMainStart = () => {
@@ -349,18 +357,40 @@
     a.left === b.left;
   const isWideLayout = () => window.matchMedia("(min-width: 768px)").matches;
 
+  const startMobileResize = () => {
+    closePanelOverlays();
+    clearTimeout(mobileResizeTimeout);
+    mobileDragging = true;
+    mobileResizing = true;
+  };
+
+  const snapMobilePanel = (size: MobilePanelSize) => {
+    closePanelOverlays();
+    clearTimeout(mobileResizeTimeout);
+    mobileDragging = false;
+    mobileResizing = true;
+    panelVisible = size !== "collapsed";
+    mobilePanelExpanded = size === "full";
+    mobileDragHeight = undefined;
+    mobileResizeTimeout = setTimeout(() => {
+      mobileResizing = false;
+      updateMapLayout();
+    }, window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : PANEL_TRANSITION_MS);
+  };
+
   const updateMapLayout = () => {
-    if (!panelElement) return;
+    if (!panelElement || mobileResizing) return;
 
     const panelStyle = window.getComputedStyle(panelElement);
     const rightInset = Number.parseFloat(panelStyle.right) || 0;
     const bottomInset = Number.parseFloat(panelStyle.bottom) || 0;
+    const reservePanel = panelVisible;
     const nextPadding = isWideLayout()
       ? {
           top: DEFAULT_PADDING,
           right: Math.max(
             DEFAULT_PADDING,
-            Math.ceil(panelElement.offsetWidth + rightInset + DEFAULT_PADDING),
+            reservePanel ? Math.ceil(panelElement.offsetWidth + PANEL_OUTSET + rightInset + DEFAULT_PADDING) : DEFAULT_PADDING,
           ),
           bottom: DEFAULT_PADDING,
           left: DEFAULT_PADDING,
@@ -370,7 +400,11 @@
           right: DEFAULT_PADDING,
           bottom: Math.max(
             DEFAULT_PADDING,
-            Math.ceil(panelElement.offsetHeight + bottomInset + DEFAULT_PADDING),
+            // Keep a usable map viewport even when the reading panel is expanded.
+            Math.min(
+              Math.ceil((reservePanel ? panelElement.offsetHeight + PANEL_OUTSET : NAVIGATOR_HEIGHT + 20) + bottomInset + DEFAULT_PADDING),
+              (panelElement.parentElement?.clientHeight ?? window.innerHeight) - DEFAULT_PADDING - 120,
+            ),
           ),
           left: DEFAULT_PADDING,
         };
@@ -383,11 +417,31 @@
   };
 
   $effect(() => {
-    activeSlideshow.id;
-    const hash = decodeHash(page.url.hash);
-    activePanelOverlay = undefined;
-    clearWarpedMapHighlight();
+    panelVisible;
+    tick().then(updateMapLayout);
+  });
 
+  $effect(() => {
+    const slideshowId = activeSlideshow.id;
+    // Changing chapters updates the hash too. Reset the subslideshow only
+    // when its route changes, otherwise hidden-panel navigation loses its index.
+    untrack(() => {
+      activePanelOverlay = undefined;
+      clearWarpedMapHighlight();
+      if (isSubslideshowActive) {
+        mainSlideshowStarted = true;
+        subslideshowIndexOwner = slideshowId;
+        subslideshowIndex = Math.max(0, chapters.findIndex(
+          chapter => chapter.slug === decodeHash(page.url.hash),
+        ));
+      } else {
+        subslideshowIndexOwner = undefined;
+      }
+    });
+  });
+
+  $effect(() => {
+    const hash = decodeHash(page.url.hash);
     if (
       activeSlideshow.id === project.main &&
       hash &&
@@ -396,13 +450,6 @@
       mainSlideshowStarted = true;
     }
 
-    if (isSubslideshowActive) {
-      mainSlideshowStarted = true;
-      subslideshowIndexOwner = activeSlideshow.id;
-      subslideshowIndex = 0;
-    } else {
-      subslideshowIndexOwner = undefined;
-    }
   });
 
   $effect(() => {
@@ -507,6 +554,7 @@
     queueImmediateMapLayoutUpdate();
 
     return () => {
+      clearTimeout(mobileResizeTimeout);
       media?.removeEventListener("change", handleMediaChange);
       panelObserver?.disconnect();
       panelElement?.removeEventListener(
@@ -524,6 +572,8 @@
     };
   });
 </script>
+
+<svelte:window onkeydown={handleKeyboard} />
 
 <SlideshowSeo {project} slideshow={activeSlideshow} image={socialImage} />
 
@@ -574,7 +624,6 @@
       chapterCount={chapters.length}
       visible={startScreenVisible}
       {isDarkMode}
-      text={project.interface?.startScreen}
       onStart={startSlideshow}
     />
   {/if}
@@ -608,215 +657,197 @@
 
     <div
       bind:this={panelElement}
-      class="story-panel pointer-events-auto absolute right-3 bottom-3 flex h-[calc((100dvh-1.5rem)/2)] max-h-full min-h-0 w-[calc(100vw-1.5rem)] flex-col overflow-hidden rounded-lg bg-[var(--app-panel-bg)] text-[var(--app-text)] shadow-2xl backdrop-blur-md sm:right-4 sm:bottom-4 sm:h-[calc((100dvh-2rem)/2)] sm:w-[calc(100vw-2rem)] md:right-5 md:bottom-5 md:h-[calc(100dvh-2.5rem)] md:w-[480px] xl:w-[600px]"
+      class="story-panel pointer-events-none absolute right-3 bottom-3 flex h-[calc((100dvh-1.5rem)/2)] max-h-full min-h-0 w-[calc(100vw-1.5rem)] flex-col text-[var(--app-text)] sm:right-4 sm:bottom-4 sm:h-[calc((100dvh-2rem)/2)] sm:w-[calc(100vw-2rem)] md:right-5 md:bottom-5 md:h-[calc(100dvh-2.5rem)] md:w-[480px] 2xl:w-[600px]"
       class:story-panel--hidden={startScreenVisible}
+      class:story-panel--text-hidden={!panelVisible}
+      class:story-panel--expanded={mobilePanelExpanded}
+      class:story-panel--dragging={mobileDragging}
+      data-panel-size={mobilePanelSize}
+      style={`--panel-outset: ${PANEL_OUTSET}px; --navigator-height: ${NAVIGATOR_HEIGHT}px; --panel-handle-height: ${PANEL_HANDLE_HEIGHT}px;`}
+      style:--mobile-panel-drag-height={mobileDragHeight === undefined ? undefined : `${mobileDragHeight}px`}
     >
-      <header
-        class="relative z-30 flex h-[52px] shrink-0 items-center gap-2 bg-[var(--app-panel-header-bg)] px-5 text-[16px] leading-[1.1] font-medium text-[var(--app-breadcrumb)] backdrop-blur"
+      <div
+        id="slideshow-reading-panel"
+        class="reading-panel min-h-0 overflow-hidden rounded-[24px] bg-[var(--app-panel-bg)] shadow-2xl backdrop-blur-md"
+        class:reading-panel--hidden={!panelVisible}
+        aria-hidden={!panelVisible}
+        inert={!panelVisible}
       >
-        {#if isSubslideshowActive}
-          <a
-            class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-[var(--app-icon)] hover:bg-[var(--app-hover-bg)]"
-            href={mainBreadcrumbHref}
-            aria-label={`Back to ${rootSlideshow.title}`}
-            title={`Back to ${rootSlideshow.title}`}
-            onclick={closePanelOverlays}
-          >
-            <ArrowLeft size={18} aria-hidden="true" />
-          </a>
-        {/if}
-
-        <div
-          class="relative h-5 min-w-0 flex-1 overflow-hidden font-medium"
-          aria-label={headerAccessibleTitle}
-        >
+        <!-- Anchor navigation must not scroll this viewport horizontally while
+             the track translates. Only each panel's inner content should scroll. -->
+        <div class="h-full min-h-0 overflow-clip">
           <div
-            class="absolute inset-0 flex min-w-0 items-baseline overflow-hidden transition-all duration-300 ease-in-out motion-reduce:transition-none {isSubslideshowActive
-              ? 'pointer-events-none -translate-y-1 opacity-0'
-              : 'translate-y-0 opacity-100'}"
-            aria-hidden={isSubslideshowActive}
+            class="flex h-full w-[200%] transition-transform duration-500 ease-in-out motion-reduce:transition-none"
+            style={`transform: translateX(${isSubslideshowActive ? "-50%" : "0"});`}
           >
-            <button
-              type="button"
-              class="max-w-[45%] shrink-0 translate-y-[0.14em] cursor-pointer overflow-hidden truncate whitespace-nowrap p-0 text-left"
-              aria-label={`Scroll ${headerTitle} to top`}
-              tabindex={isSubslideshowActive ? -1 : undefined}
-              title={headerTitle}
-              onclick={scrollActivePanelToTop}
-            >
-              {headerTitle}
-            </button>
+            <SlideshowPanel
+              {thumbnails}
+              {isDarkMode}
+              bind:this={mainPanel}
+              class="h-full w-1/2 shrink-0"
+              {project}
+              slideshow={rootSlideshow}
+              active={!isSubslideshowActive}
+              suspended={!panelVisible || mobileResizing}
+              overlayOpen={panelOverlayOpen && !isSubslideshowActive}
+              {hiddenWarpedMapUrls}
+              onShowLayers={showChapterLayers}
+              {scrollToTopSignal}
+              onTocClose={closeToc}
+              onIndexChange={(index) => (mainIndex = index)}
+            />
 
-            {#if showHeaderChapterTitle}
-              <span class="ml-2 shrink-0 translate-y-[0.14em] text-[var(--app-icon)]">/</span>
-              <button
-                type="button"
-                class="ml-2 min-w-0 translate-y-[0.14em] cursor-pointer overflow-hidden truncate p-0 text-left opacity-75"
-                aria-label={`Reset map view for ${headerChapterTitle}`}
-                tabindex={isSubslideshowActive ? -1 : undefined}
-                title={headerChapterTitle}
-                onclick={resetActiveSlideView}
-              >
-                {headerChapterTitle}
-              </button>
-            {/if}
-          </div>
-
-          <div
-            class="absolute inset-0 flex min-w-0 items-baseline overflow-hidden transition-all duration-300 ease-in-out motion-reduce:transition-none {isSubslideshowActive
-              ? 'translate-y-0 opacity-100'
-              : 'pointer-events-none translate-y-1 opacity-0'}"
-            aria-hidden={!isSubslideshowActive}
-          >
-            {#if headerSubTitle}
-              <button
-                type="button"
-                class="max-w-[55%] shrink-0 translate-y-[0.14em] cursor-pointer overflow-hidden truncate whitespace-nowrap p-0 text-left"
-                aria-label={`Scroll ${headerSubTitle} to top`}
-                tabindex={isSubslideshowActive ? undefined : -1}
-                title={headerSubTitle}
-                onclick={scrollActivePanelToTop}
-              >
-                {headerSubTitle}
-              </button>
-            {/if}
-
-            {#if showHeaderChapterTitle}
-              <span class="ml-2 shrink-0 translate-y-[0.14em] text-[var(--app-icon)]">/</span>
-              <button
-                type="button"
-                class="ml-2 min-w-0 translate-y-[0.14em] cursor-pointer overflow-hidden truncate p-0 text-left opacity-75"
-                aria-label={`Reset map view for ${headerChapterTitle}`}
-                tabindex={isSubslideshowActive ? undefined : -1}
-                title={headerChapterTitle}
-                onclick={resetActiveSlideView}
-              >
-                {headerChapterTitle}
-              </button>
-            {/if}
-          </div>
-        </div>
-
-        <button
-          type="button"
-          class="inline-flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-md text-[var(--app-icon)] hover:bg-[var(--app-hover-bg)]"
-          aria-label={themeToggleLabel}
-          title={themeToggleLabel}
-          onclick={toggleTheme}
-        >
-          {#if isDarkMode}
-            <Sun size={18} aria-hidden="true" />
-          {:else}
-            <Moon size={18} aria-hidden="true" />
-          {/if}
-        </button>
-
-        <PanelOverlayToggle
-          active={tocOpen}
-          aria-label={tocOpen ? "Close table of contents" : "Open table of contents"}
-          title={tocOpen ? "Close table of contents" : "Open table of contents"}
-          onclick={toggleToc}
-        >
-          <ListTree size={18} aria-hidden="true" />
-        </PanelOverlayToggle>
-
-        <PanelOverlayToggle
-          active={layersOpen}
-          aria-label={layersToggleLabel}
-          title={layersToggleLabel}
-          onclick={toggleLayers}
-        >
-          <LayersIcon size={18} aria-hidden="true" />
-        </PanelOverlayToggle>
-      </header>
-
-      {#if panelOverlayOpen}
-        <button
-          type="button"
-          class="absolute inset-x-0 top-[52px] bottom-0 z-20 cursor-default bg-transparent p-0 focus:outline-none"
-          aria-label="Close panel overlay"
-          tabindex="-1"
-          onclick={closePanelOverlays}
-        ></button>
-      {/if}
-
-      <!-- Anchor navigation must not scroll this viewport horizontally while
-           the track translates. Only each panel's inner content should scroll. -->
-      <div class="min-h-0 flex-1 overflow-clip">
-        <div
-          class="flex h-full w-[200%] transition-transform duration-500 ease-in-out motion-reduce:transition-none"
-          style={`transform: translateX(${isSubslideshowActive ? "-50%" : "0"});`}
-        >
-          <SlideshowPanel
-            {thumbnails}
-            {isDarkMode}
-            bind:this={mainPanel}
-            class="h-full w-1/2 shrink-0"
-            {project}
-            slideshow={rootSlideshow}
-            active={!isSubslideshowActive}
-            overlayOpen={panelOverlayOpen && !isSubslideshowActive}
-            {scrollToTopSignal}
-            onTocClose={closeToc}
-            onIndexChange={(index) => (mainIndex = index)}
-          />
-
-          <div class="h-full min-h-0 w-1/2 shrink-0">
-            {#if subslideshow}
-              {#key subslideshow.id}
-                <SlideshowPanel
-                  {thumbnails}
-                  {isDarkMode}
-                  bind:this={subslideshowPanel}
-                  class="h-full"
-                  {project}
-                  slideshow={subslideshow}
-                  active={isSubslideshowActive}
-                  overlayOpen={panelOverlayOpen && isSubslideshowActive}
-                  {scrollToTopSignal}
-                  onTocClose={closeToc}
-                  onIndexChange={(index) => {
-                    subslideshowIndexOwner = activeSlideshow.id;
-                    subslideshowIndex = index;
-                  }}
-                />
-              {/key}
-            {/if}
+            <div class="h-full min-h-0 w-1/2 shrink-0">
+              {#if subslideshow}
+                {#key subslideshow.id}
+                  <SlideshowPanel
+                    {thumbnails}
+                    {isDarkMode}
+                    bind:this={subslideshowPanel}
+                    class="h-full"
+                    {project}
+                    slideshow={subslideshow}
+                    active={isSubslideshowActive}
+                    suspended={!panelVisible || mobileResizing}
+                    overlayOpen={panelOverlayOpen && isSubslideshowActive}
+                    {hiddenWarpedMapUrls}
+                    backHref={mainBreadcrumbHref}
+                    backTitle={rootSlideshow.title}
+                    onShowLayers={showChapterLayers}
+                    {scrollToTopSignal}
+                    onTocClose={closeToc}
+                    onIndexChange={(index) => {
+                      subslideshowIndexOwner = activeSlideshow.id;
+                      subslideshowIndex = index;
+                    }}
+                  />
+                {/key}
+              {/if}
+            </div>
           </div>
         </div>
       </div>
 
-      <SlideshowToc
-        open={tocOpen}
-        {project}
-        slideshow={activeSlideshow}
-        {rootSlideshow}
-        currentSlug={activeChapter?.slug}
-        top={tocOverlayTop}
-        tab="toc"
-        onClose={closeToc}
-        onSelectLocalChapter={scrollActivePanelToChapter}
+      <MobilePanelHandle
+        panel={panelElement}
+        size={mobilePanelSize}
+        onDragStart={startMobileResize}
+        onDrag={(height) => { mobileDragHeight = height; panelVisible = true; }}
+        onSnap={snapMobilePanel}
       />
-      {#if layersOpen}
-        <SlideshowLayers
-          {thumbnails}
-          chapter={activeChapter}
-          {hiddenWarpedMapUrls}
-          {highlightedWarpedMapUrl}
-          highlightEnabled={LAYER_HIGHLIGHT_ENABLED}
-          top={tocOverlayTop}
-          tab="layers"
-          onClose={closePanelOverlays}
-          onToggleVisibility={toggleWarpedMapVisibility}
-          onZoomToBounds={zoomToWarpedMapBounds}
-          onHighlight={highlightWarpedMap}
+
+      <div class="navigator-positioner">
+        <SlideshowNavigator
+          slideshow={activeSlideshow}
+          index={activeIndex}
+          {panelVisible}
+          isDarkMode={isDarkMode ?? false}
+          {creditsOpen}
+          backHref={isSubslideshowActive ? mainBreadcrumbHref : undefined}
+          backTitle={rootSlideshow.title}
+          onNavigate={scrollActivePanelToChapter}
+          onLayers={toggleLayers}
+          onChapters={toggleToc}
+          onTheme={toggleTheme}
+          onTogglePanel={togglePanel}
+          onCredits={() => {
+            const wasOpen = creditsOpen;
+            closePanelOverlays();
+            if (!wasOpen) activePanelOverlay = "credits";
+          }}
+          onMenuOpen={closePanelOverlays}
         />
-      {/if}
+      </div>
+
+      <div class="panel-overlays" class:panel-overlays--at-navigator={!panelVisible}>
+        {#if panelOverlayOpen}
+          <button
+            type="button"
+            class="pointer-events-auto absolute inset-x-0 top-0 z-20 cursor-default rounded-t-[24px] bg-transparent p-0 focus:outline-none"
+            style={`bottom: ${PANEL_NAVIGATOR_SPACE};`}
+            aria-label={t("closePanelOverlay")}
+            tabindex="-1"
+            onclick={closePanelOverlays}
+          ></button>
+        {/if}
+
+        <SlideshowToc
+          open={tocOpen}
+          {project}
+          slideshow={activeSlideshow}
+          {rootSlideshow}
+          currentSlug={activeChapter?.slug}
+          top="var(--reading-overlay-top, 8px)"
+          bottomMargin={PANEL_NAVIGATOR_SPACE}
+          onClose={closeToc}
+          onSelectLocalChapter={scrollActivePanelToChapter}
+        />
+        {#if layersOpen}
+          <SlideshowLayers
+            {thumbnails}
+            chapter={activeChapter}
+            {hiddenWarpedMapUrls}
+            {highlightedWarpedMapUrl}
+            highlightEnabled={LAYER_HIGHLIGHT_ENABLED}
+            top="var(--reading-overlay-top, 8px)"
+            bottomMargin={PANEL_NAVIGATOR_SPACE}
+            onClose={closePanelOverlays}
+            onToggleVisibility={toggleWarpedMapVisibility}
+            onZoomToBounds={zoomToWarpedMapBounds}
+            onHighlight={highlightWarpedMap}
+          />
+        {/if}
+        {#if creditsOpen}
+          <PanelOverlay title={creditsTitle} top="var(--reading-overlay-top, 8px)" bottomMargin={PANEL_NAVIGATOR_SPACE} closeLabel={t("closeCredits")} onClose={closePanelOverlays}>
+            {#if SharedCredits}<SharedCredits hideTitle />{/if}
+            {#if CreditsComponent && activeSlideshow.credits !== project.credits}
+              {#if SharedCredits}<h3 class="mt-6 mb-3 text-[24px]">{activeSlideshow.creditsTitle ?? activeSlideshow.title}</h3>{/if}
+              <CreditsComponent hideTitle />
+            {/if}
+            {#if !SharedCredits && !CreditsComponent}
+              <p class="text-[18px] leading-snug">{activeSlideshow.title}</p>
+              <p class="mt-3 text-[16px] leading-snug">{t("noCredits")}</p>
+            {/if}
+          </PanelOverlay>
+        {/if}
+      </div>
     </div>
   </div>
 </div>
 
 <style>
+  .reading-panel {
+    position: absolute;
+    inset: calc(-1 * var(--panel-outset));
+    pointer-events: auto;
+    padding-block: 12px;
+  }
+  .reading-panel--hidden {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+  }
+
+  .navigator-positioner,
+  .panel-overlays {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    transition: right 500ms ease-in-out, width 500ms ease-in-out;
+  }
+  .navigator-positioner {
+    right: var(--navigator-offset, 0px);
+    width: var(--navigator-width, 100%);
+    height: var(--navigator-height);
+  }
+  .panel-overlays { top: 0; }
+  .panel-overlays--at-navigator {
+    right: var(--navigator-offset, 0px);
+    width: var(--navigator-width, 100%);
+    --panel-overlay-clearance: calc(var(--navigator-height) + 6px);
+  }
+
   .story-title,
   .story-panel {
     opacity: 1;
@@ -836,15 +867,60 @@
     transform: translateY(calc(100% + 1.25rem));
   }
 
+  @media (max-width: 767px) {
+    .story-panel {
+      --panel-inset: 12px;
+      transition-duration: 550ms;
+      transition-timing-function: cubic-bezier(.22, 1.3, .36, 1);
+      --reading-overlay-top: var(--panel-handle-height);
+      height: var(--mobile-panel-drag-height, var(--mobile-panel-rest-height, calc((100dvh - 2 * var(--panel-inset)) / 2)));
+    }
+    .story-panel--expanded {
+      --mobile-panel-rest-height: calc(100dvh - 2 * var(--panel-inset));
+    }
+    .story-panel--dragging { transition: none; }
+    .reading-panel {
+      padding-top: var(--panel-handle-height);
+      transform: translateY(0);
+      transition: transform 550ms cubic-bezier(.22, 1.3, .36, 1), opacity 180ms ease, visibility 0s;
+    }
+    .reading-panel--hidden {
+      transform: translateY(calc(100% - var(--navigator-height)));
+      transition-delay: 0s, 0s, 550ms;
+    }
+    .story-panel--dragging .reading-panel { transition: none; }
+  }
+
+  @media (min-width: 640px) and (max-width: 767px) {
+    .story-panel { --panel-inset: 16px; }
+  }
+
   @media (min-width: 768px) {
+    .story-panel { --navigator-width: 480px; }
     .story-panel--hidden {
       transform: translateX(calc(100% + 1.25rem));
     }
   }
 
+  @media (min-width: 1536px) {
+    .story-panel {
+      --navigator-offset: calc(100% + 24px);
+      --panel-overlay-clearance: 8px;
+      --panel-scroll-clearance: 16px;
+    }
+    .panel-overlays {
+      right: var(--navigator-offset);
+      width: var(--navigator-width);
+      --panel-overlay-clearance: calc(var(--navigator-height) + 6px);
+    }
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .story-title,
-    .story-panel {
+    .story-panel,
+    .reading-panel,
+    .navigator-positioner,
+    .panel-overlays {
       transition: none;
     }
   }

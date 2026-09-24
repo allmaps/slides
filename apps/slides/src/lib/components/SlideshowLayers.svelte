@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { getInterfaceText } from "$lib/shared/interface-context";
+  const t = getInterfaceText();
   import { browser, dev } from "$app/environment";
   import { page } from "$app/state";
   import { env } from "$env/dynamic/public";
@@ -78,12 +80,12 @@
   const getLayerTitle = (warpedMap: WarpedMapProps, index: number) =>
     warpedMap.caption ??
     getFilenameLabel(warpedMap.homepage ?? warpedMap.url) ??
-    `Map layer ${index + 1}`;
+    t("mapLayer", { count: index + 1 });
 
   const getLayerMeta = (warpedMap: WarpedMapProps) =>
     warpedMap.provenance ??
     getUrlHost(warpedMap.homepage ?? warpedMap.url) ??
-    (warpedMap.type === "Image" ? "Image layer" : "Georeference annotation");
+    t(warpedMap.type === "Image" ? "imageLayer" : "georeferenceAnnotation");
 
   const isExternalUrl = (url: string) =>
     EXTERNAL_URL_PATTERN.test(url) || url.startsWith("//");
@@ -131,24 +133,22 @@
   };
 
   const describeLayerCount = () => {
-    if (warpedMaps.length === 0) return "No map layers for this slide";
+    if (warpedMaps.length === 0) return t("noLayers");
 
-    const visibleText = `${visibleCount} map ${
-      visibleCount === 1 ? "layer" : "layers"
-    } visible`;
+    const visibleText = t(visibleCount === 1 ? "visibleLayerSingular" : "visibleLayerPlural", { count: visibleCount });
 
     return hiddenCount > 0
-      ? `${visibleText}, ${hiddenCount} hidden`
+      ? t("hiddenLayerCount", { visible: visibleText, count: hiddenCount })
       : visibleText;
   };
 </script>
 
 <PanelOverlay
-  title="Map layers"
+  title={t("mapLayers")}
   {top}
   {bottomMargin}
   {tab}
-  closeLabel="Close map layers"
+  closeLabel={t("closeLayers")}
   {onClose}
   class={className}
 >
@@ -168,7 +168,7 @@
           <div
             role="button"
             tabindex="0"
-            aria-label={hidden ? `Show ${title}` : `Hide ${title}`}
+            aria-label={t(hidden ? "showTitle" : "hideTitle", { title })}
             aria-pressed={!hidden}
             class="layer-row {hidden ? 'layer-row--hidden' : ''} {highlighted
               ? 'layer-row--highlighted'
@@ -212,7 +212,7 @@
                     rel="noreferrer"
                     onclick={stopLayerRowClick}
                   >
-                    <span>Open in Allmaps</span>
+                    <span>{t("openInAllmaps")}</span>
                     <MoveUpRight size={12} aria-hidden="true" />
                   </a>
                 {/if}
@@ -223,9 +223,9 @@
               <button
                 type="button"
                 class="layer-icon-button"
-                aria-label={hidden ? "Show map layer" : "Hide map layer"}
+                aria-label={t(hidden ? "showMapLayer" : "hideMapLayer")}
                 aria-pressed={!hidden}
-                title={hidden ? "Show map layer" : "Hide map layer"}
+                title={t(hidden ? "showMapLayer" : "hideMapLayer")}
                 onfocus={() => setLayerHighlight(warpedMap.url)}
                 onblur={() => setLayerHighlight(undefined)}
                 onclick={(event) => {
@@ -243,8 +243,8 @@
               <button
                 type="button"
                 class="layer-icon-button"
-                aria-label="Zoom to map layer"
-                title="Zoom to map layer"
+                aria-label={t("zoomToMapLayer")}
+                title={t("zoomToMapLayer")}
                 onfocus={() => setLayerHighlight(warpedMap.url)}
                 onblur={() => setLayerHighlight(undefined)}
                 onclick={(event) => {
@@ -261,7 +261,7 @@
     </ol>
   {:else}
     <p class="py-2 font-body text-[15px] leading-[1.35] text-[var(--app-muted)]">
-      This slide does not use any warped maps.
+      {t("noWarpedMaps")}
     </p>
   {/if}
 </PanelOverlay>

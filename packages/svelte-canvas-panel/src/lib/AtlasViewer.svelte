@@ -13,9 +13,10 @@
   import type { CanvasPanelProps } from "./types.ts";
   import type { IiifResource } from "./iiif-resource.ts";
 
-  let { resource, label, target, transitioning = false, rotation, runtimeOptions, onactivate, onready, onerror }: {
+  let { resource, label, enlargeLabel, target, transitioning = false, rotation, runtimeOptions, onactivate, onready, onerror }: {
     resource: IiifResource;
     label: string;
+    enlargeLabel?: string;
     target?: HTMLElement;
     transitioning?: boolean;
     rotation: number;
@@ -199,7 +200,7 @@
     enables zoom shortcuts without adding an invisible tab stop. -->
   <canvas bind:this={canvas} class:interactive={Boolean(target)} data-background="transparent"
     style:view-transition-name={transitioning ? "canvas-panel-image" : "none"}
-    role={target ? "img" : "button"} aria-label={target ? label : `Enlarge image: ${label}`} tabindex="-1"></canvas>
+    role={target ? "img" : "button"} aria-label={target ? label : (enlargeLabel ?? `Enlarge image: ${label}`)} tabindex="-1"></canvas>
 </div>
 
 <style>

@@ -28,6 +28,27 @@ export function within(root: string, filename: string) {
 }
 export async function loadContent(config: RuntimeSlidesConfig) {
   const slides: Record<string, { metadata: unknown; filename: string }> = {};
+  const credits: Record<string, { filename: string; title?: string }> = {};
+  const creditPaths = new Set<string>();
+  const loadCredits = async (creditPath: string, owner: string) => {
+    const filename = path.resolve(config.sourceContentDir, creditPath);
+    within(config.sourceContentDir, filename);
+    if (!/\.md$/i.test(filename)) throw new Error(`Credits for ${owner} must be a Markdown (.md) file: ${filename}`);
+    if (!await exists(filename) || !(await stat(filename)).isFile())
+      throw new Error(`Credits file not found for ${owner}: ${filename}`);
+    const canonicalPath = await realpath(filename);
+    within(config.sourceContentDir, canonicalPath);
+    creditPaths.add(canonicalPath);
+    const metadata = (parseFrontmatter(await readFile(filename, "utf8")) ?? {}) as Record<string, unknown>;
+    if (metadata.title !== undefined && typeof metadata.title !== "string")
+      throw new Error(`Credits title for ${owner} must be a string: ${filename}`);
+    return { filename, title: typeof metadata.title === "string" ? metadata.title : undefined };
+  };
+  const sharedCredits = config.slidesConfig.credits
+    ? await loadCredits(config.slidesConfig.credits, "project") : undefined;
+  for (const show of config.slidesConfig.slideshows) {
+    if (show.credits) credits[show.id] = await loadCredits(show.credits, show.id);
+  }
   for (const show of config.slidesConfig.slideshows) {
     const directory = path.resolve(config.sourceContentDir, show.path);
     within(config.sourceContentDir, directory);
@@ -35,6 +56,7 @@ export async function loadContent(config: RuntimeSlidesConfig) {
     within(config.sourceContentDir, await realpath(directory));
     for (const filename of await walk(directory)) {
       if (!/\.md$/i.test(filename)) continue;
+      if (creditPaths.has(await realpath(filename))) continue;
       try {
         const metadata = parseFrontmatter(await readFile(filename, "utf8"));
         const parsed = slideMetadataSchema.safeParse(metadata);
@@ -53,7 +75,9 @@ export async function loadContent(config: RuntimeSlidesConfig) {
     styles[`./${within(config.sourceContentDir, filename)}`] = JSON.parse(await readFile(filename, "utf8"));
   const { resolveAsset } = createContentAssets({ config, images, data });
   const project = buildProject(config.slidesConfig, slides, resolveAsset);
-  return { config, slides, images, data, styles, project,
+  project.creditsTitle = sharedCredits?.title;
+  for (const show of project.slideshows) show.creditsTitle = credits[show.id]?.title;
+  return { config, slides, credits, sharedCredits, images, data, styles, project,
     slideCount: Object.keys(slides).length, slideshowCount: config.slidesConfig.slideshows.length };
 }
 export type ContentSnapshot = Awaited<ReturnType<typeof loadContent>>;

@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { getInterfaceText } from "$lib/shared/interface-context";
+  const t = getInterfaceText();
   import { tick } from "svelte";
   import { List, Play } from "@lucide/svelte";
 
@@ -27,13 +29,13 @@
 
   let startButton: HTMLButtonElement | undefined = $state();
 
-  const startButtonLabel = $derived(text?.startButton ?? "Start");
-  const madeWithLabel = $derived(text?.madeWith ?? "Made with");
+  const startButtonLabel = $derived(text?.startButton ?? t("startButton"));
+  const madeWithLabel = $derived(text?.madeWith ?? t("madeWith"));
 
   const chapterLabel = $derived(
     (chapterCount === 1
-      ? text?.chapterCountSingular ?? "{count} chapter in this slideshow"
-      : text?.chapterCountPlural ?? "{count} chapters in this slideshow"
+      ? text?.chapterCountSingular ?? t("chapterCountSingular")
+      : text?.chapterCountPlural ?? t("chapterCountPlural")
     ).replaceAll("{count}", String(chapterCount)),
   );
 
@@ -84,7 +86,7 @@
     <p class="start-credit">
       <span>{madeWithLabel}</span>
       <AllmapsLogo inverted={isDarkMode} alt="" aria-hidden="true" />
-      <span>Allmaps Slides</span>
+      <span>{t("productName")}</span>
     </p>
   </div>
 </section>

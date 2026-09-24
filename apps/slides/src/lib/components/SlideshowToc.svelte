@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { getInterfaceText } from "$lib/shared/interface-context";
+  const t = getInterfaceText();
   import {
     ChevronDown,
     ChevronRight,
@@ -46,6 +48,11 @@
     class: className = "",
   }: Props = $props();
 
+  const alphabeticIndex = (index: number): string => {
+    let label = '';
+    for (let n = index + 1; n > 0; n = Math.floor((n - 1) / 26)) label = String.fromCharCode(97 + (n - 1) % 26) + label;
+    return label;
+  };
   const tocSlideshow = $derived(rootSlideshow ?? slideshow);
   const tocChapters = $derived(tocSlideshow.chapters);
 
@@ -267,11 +274,11 @@
 
 <PanelOverlay
   {open}
-  title="Chapters"
+  title={t("chapters")}
   {top}
   {bottomMargin}
   {tab}
-  closeLabel="Close table of contents"
+  closeLabel={t("closeChapters")}
   onClose={onClose}
   class={className}
 >
@@ -280,22 +287,22 @@
       <button
         type="button"
         class="toc-icon-button"
-        aria-label={allTocEntriesExpanded ? "Collapse all" : "Expand all"}
-        title={allTocEntriesExpanded ? "Collapse all" : "Expand all"}
+        aria-label={t(allTocEntriesExpanded ? "collapseAll" : "expandAll")}
+        title={t(allTocEntriesExpanded ? "collapseAll" : "expandAll")}
         onclick={toggleAllTocEntries}
       >
         {#if allTocEntriesExpanded}
-          <ListChevronsDownUp size={16} aria-hidden="true" />
+          <ListChevronsDownUp size={22} aria-hidden="true" />
         {:else}
-          <ListChevronsUpDown size={16} aria-hidden="true" />
+          <ListChevronsUpDown size={22} aria-hidden="true" />
         {/if}
       </button>
     {/if}
   {/snippet}
 
-  <nav aria-label="Chapters">
+  <nav aria-label={t("chapters")}>
     <ol class="space-y-0.5 text-[18px] leading-[1.35] font-normal">
-      {#each tocEntries as entry}
+      {#each tocEntries as entry, chapterIndex}
         {@const hasSubslideshows = entry.subslideshows.length > 0}
         {@const expanded = isTocEntryExpanded(entry.id)}
         {@const currentTocChapter = isCurrentTocChapter(entry.chapter)}
@@ -306,15 +313,15 @@
                 type="button"
                 class="toc-icon-button"
                 aria-label={expanded
-                  ? `Collapse ${entry.chapter.title}`
-                  : `Expand ${entry.chapter.title}`}
+                  ? t("collapseTitle", { title: entry.chapter.title })
+                  : t("expandTitle", { title: entry.chapter.title })}
                 aria-expanded={expanded}
                 onclick={() => toggleTocEntry(entry.id)}
               >
                 {#if expanded}
-                  <ChevronDown size={16} aria-hidden="true" />
+                  <ChevronDown size={22} aria-hidden="true" />
                 {:else}
-                  <ChevronRight size={16} aria-hidden="true" />
+                  <ChevronRight size={22} aria-hidden="true" />
                 {/if}
               </button>
             {:else if hasTocChevronColumn}
@@ -330,7 +337,7 @@
               onclick={(event) => selectChapter(event, tocSlideshow, entry.chapter)}
             >
               <span class="toc-text-label toc-text-label--truncate">
-                {entry.chapter.title}
+                <span class="toc-number">{chapterIndex + 1}.</span><span>{entry.chapter.title}</span>
               </span>
             </a>
           </div>
@@ -343,7 +350,7 @@
                   {@const subslideshowData = subslideshow.slideshow}
 
                   <ol class="py-0.5">
-                    {#each subslideshowData.chapters as subchapter}
+                    {#each subslideshowData.chapters as subchapter, subchapterIndex}
                       {@const subchapterHref = getChapterHref(
                         subslideshowData,
                         subchapter,
@@ -361,7 +368,7 @@
                           href={subchapterHref}
                           onclick={(event) => selectChapter(event, subslideshowData, subchapter)}
                         >
-                          <span class="toc-text-label">{subchapter.title}</span>
+                          <span class="toc-text-label"><span class="toc-number">{alphabeticIndex(subchapterIndex)}.</span><span>{subchapter.title}</span></span>
                         </a>
                       </li>
                     {/each}
@@ -386,16 +393,16 @@
                             type="button"
                             class="toc-icon-button"
                             aria-label={subslideshowExpanded
-                              ? `Collapse ${subslideshow.title}`
-                              : `Expand ${subslideshow.title}`}
+                              ? t("collapseTitle", { title: subslideshow.title })
+                              : t("expandTitle", { title: subslideshow.title })}
                             aria-expanded={subslideshowExpanded}
                             onclick={() =>
                               toggleTocSubslideshowEntry(subslideshowEntryId)}
                           >
                             {#if subslideshowExpanded}
-                              <ChevronDown size={16} aria-hidden="true" />
+                              <ChevronDown size={22} aria-hidden="true" />
                             {:else}
-                              <ChevronRight size={16} aria-hidden="true" />
+                              <ChevronRight size={22} aria-hidden="true" />
                             {/if}
                           </button>
 
@@ -414,7 +421,7 @@
                         </div>
 
                         <ol class="toc-children py-0.5" hidden={!subslideshowExpanded}>
-                          {#each subslideshowData.chapters as subchapter}
+                          {#each subslideshowData.chapters as subchapter, subchapterIndex}
                             {@const subchapterHref = getChapterHref(
                               subslideshowData,
                               subchapter,
@@ -435,7 +442,7 @@
                                 onclick={(event) => selectChapter(event, subslideshowData, subchapter)}
                               >
                                 <span class="toc-text-label">
-                                  {subchapter.title}
+                                  <span class="toc-number">{alphabeticIndex(subchapterIndex)}.</span><span>{subchapter.title}</span>
                                 </span>
                               </a>
                             </li>
@@ -463,8 +470,8 @@
 
   .toc-icon-button {
     display: inline-flex;
-    height: 1.5rem;
-    width: 1.5rem;
+    height: 2.5rem;
+    width: 2.5rem;
     flex-shrink: 0;
     cursor: pointer;
     align-items: center;
@@ -480,8 +487,8 @@
 
   .toc-icon-spacer {
     display: inline-flex;
-    height: 1.5rem;
-    width: 1.5rem;
+    height: 2.5rem;
+    width: 2.5rem;
     flex-shrink: 0;
   }
 
@@ -514,17 +521,21 @@
   }
 
   .toc-text-label {
-    display: block;
+    display: flex;
+    gap: 0.4rem;
     transform: translateY(0.07em);
   }
 
   .toc-text-label--truncate {
     overflow: hidden;
     text-overflow: ellipsis;
-    white-space: nowrap;
+    white-space: normal;
   }
 
   .toc-children {
-    margin-left: 1.5rem;
+    margin-left: 2.5rem;
+    padding-left: 0.75rem;
+    border-left: 1px solid color-mix(in srgb, currentColor 16%, transparent);
   }
+  .toc-number { flex: 0 0 1.4em; font-variant-numeric: tabular-nums; color: var(--app-overlay-icon); }
 </style>
