@@ -46,6 +46,8 @@
   }
 
   :root {
+    --app-edge-spacing: 12px;
+    --app-control-gap: 8px;
     --font-body: "Source Sans 3", ui-sans-serif, system-ui, sans-serif;
     --font-display: "League Spartan", ui-sans-serif, system-ui, sans-serif;
     --font-display-features: "ss01" 1, "liga" 1;
@@ -85,6 +87,13 @@
     --app-map-control-text: #fff;
     --highlight-fg: #64c18f;
     --highlight-bg: #dff3e7;
+  }
+
+  @media (min-width: 640px) {
+    :root { --app-edge-spacing: 16px; }
+  }
+  @media (min-width: 768px) {
+    :root { --app-edge-spacing: 20px; }
   }
 
   .dark {

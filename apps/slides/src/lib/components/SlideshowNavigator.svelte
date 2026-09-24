@@ -10,7 +10,7 @@
   import type { Slideshow } from "$lib/shared/types";
 
   let {
-    slideshow, index, panelVisible, isDarkMode, creditsOpen,
+    slideshow, index, panelVisible, isDarkMode, creditsOpen, chaptersOpen,
     backHref, backTitle, onNavigate, onLayers, onChapters, onTheme,
     onTogglePanel, onCredits, onMenuOpen,
   }: {
@@ -19,6 +19,7 @@
     panelVisible: boolean;
     isDarkMode: boolean;
     creditsOpen: boolean;
+    chaptersOpen: boolean;
     backHref?: string;
     backTitle?: string;
     onNavigate: (slug: string) => void;
@@ -66,7 +67,7 @@
   }}
 />
 
-<nav bind:this={element} class="slideshow-navigator" class:slideshow-navigator--collapsed={!panelVisible} aria-label={t("navigation")}>
+<nav bind:this={element} class="slideshow-navigator" aria-label={t("navigation")}>
   {#if menuOpen}
     <div class="navigator-menu" id={menuId} aria-label={t("options")}>
       {#if backHref}
@@ -113,11 +114,18 @@
     {:else}
       <button class="navigator-button" type="button" disabled aria-label={t("previousChapter")}><img class="previous-icon" src={previousIcon} width="25" height="25" alt="" /></button>
     {/if}
-    <span class="navigator-position"><span class="navigator-count" aria-live="polite" aria-atomic="true" aria-label={t("chapterPosition", { current: slideshow.chapters.length ? index + 1 : 0, total: slideshow.chapters.length })}>
+    <button
+      class="navigator-position"
+      type="button"
+      aria-label={`${t("chapters")}: ${t("chapterPosition", { current: slideshow.chapters.length ? index + 1 : 0, total: slideshow.chapters.length })}`}
+      aria-expanded={chaptersOpen}
+      title={t("chapters")}
+      onclick={() => { closeMenu(); onChapters(); }}
+    ><span class="navigator-count" aria-live="polite" aria-atomic="true">
       {t("chapterCounter", { current: slideshow.chapters.length ? index + 1 : 0, total: slideshow.chapters.length })}
     </span>
       <progress class="navigator-progress" max={Math.max(1, slideshow.chapters.length)} value={slideshow.chapters.length ? index + 1 : 0} aria-label={t("slideshowProgress")}></progress>
-    </span>
+    </button>
     {#if next}
       <a class="navigator-button" aria-keyshortcuts="ArrowRight" href={getChapterRouteHref(slideshow, next)} aria-label={t("nextChapterTitle", { title: next.title })} title={t("nextChapterTitle", { title: next.title })} onclick={(event) => navigate(event, next.slug)}>
         <img src={nextIcon} width="24" height="25" alt="" />
@@ -176,7 +184,7 @@
   .navigator-menu {
     position: absolute;
     left: 0;
-    bottom: calc(100% + 6px);
+    bottom: calc(100% + var(--app-edge-spacing));
     max-width: 100%;
     max-height: calc(100dvh - 110px);
     overflow-y: auto;
@@ -201,15 +209,17 @@
   }
   .navigator-menu span { padding-top: 0.15em; }
   .navigator-menu :global(svg) { flex-shrink: 0; }
-  .navigator-position { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+  .navigator-position { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 44px; flex-shrink: 0; gap: 3px; border-radius: 10px; cursor: pointer; }
+  .navigator-position:focus { outline: none; }
   .navigator-progress { appearance: none; display: block; width: 70px; height: 5px; border: 0; border-radius: 3px; overflow: hidden; background: color-mix(in srgb, var(--highlight-fg) 22%, transparent); color: var(--highlight-fg); }
   .navigator-progress::-webkit-progress-bar { background: color-mix(in srgb, var(--highlight-fg) 22%, transparent); border-radius: 3px; }
   .navigator-progress::-webkit-progress-value { background: var(--highlight-fg); border-radius: 3px; transition: width 180ms ease; }
   .navigator-progress::-moz-progress-bar { background: var(--highlight-fg); border-radius: 3px; }
   .navigator-button img { filter: brightness(0); opacity: .65; }
   :global(.dark) .navigator-button img { filter: brightness(0) invert(1); opacity: 1; }
-  @media (max-width: 767px) {
-    .slideshow-navigator--collapsed .navigator-progress { display: none; }
-    .slideshow-navigator--collapsed .navigator-position { transform: translateY(5px); }
+  @media (max-width: 359px) {
+    .navigator-pagination { gap: 8px; }
+    .navigator-count { min-width: 64px; }
+    .navigator-progress { width: 64px; }
   }
 </style>

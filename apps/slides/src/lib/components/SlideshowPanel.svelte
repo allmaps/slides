@@ -56,6 +56,7 @@
   };
 
   const SLIDE_CHANGE_DELAY_MS = 120;
+  const SCROLL_IDLE_MS = 180;
 
   let {
     project,
@@ -82,6 +83,10 @@
   let loaded: boolean = $state(false);
   let scrollContainer: HTMLDivElement | undefined = $state();
   let pendingHashScroll: string | undefined = $state();
+  let navigationId = 0;
+  let navigating = false;
+  let scrollIdleTimeout: ReturnType<typeof setTimeout> | undefined;
+  let indexUpdateTimeout: ReturnType<typeof setTimeout> | undefined;
 
   const currentChapter = $derived(chapters[index]);
   const currentSlug = $derived(currentChapter?.slug);
@@ -213,22 +218,57 @@
     scrollContainer.scrollTo({ top, behavior });
   };
 
+  const endNavigation = () => {
+    navigationId += 1;
+    navigating = false;
+    clearTimeout(scrollIdleTimeout);
+    clearTimeout(indexUpdateTimeout);
+  };
+
+  const waitForScrollIdle = () => {
+    if (!navigating) return;
+    clearTimeout(scrollIdleTimeout);
+    const request = navigationId;
+    scrollIdleTimeout = setTimeout(() => {
+      if (request === navigationId) endNavigation();
+    }, SCROLL_IDLE_MS);
+  };
+
+  const interruptNavigation = () => {
+    if (!navigating) return;
+    endNavigation();
+    // Cancel native smooth scrolling before giving control back to the reader.
+    scrollContainer?.scrollTo({ top: scrollContainer.scrollTop, behavior: "instant" });
+    if (!scrollContainer) return;
+    const center = scrollContainer.getBoundingClientRect().top + scrollContainer.clientHeight / 2;
+    const section = Array.from(scrollContainer.querySelectorAll<HTMLElement>("section"))
+      .findLast((element) => element.getBoundingClientRect().top <= center);
+    if (section) setIndex(Number(section.dataset.index));
+  };
+
   export const scrollToChapter = async (
     slug: string,
     behavior: ScrollBehavior = "smooth",
   ) => {
-    await tick();
-
     const nextIndex = chapters.findIndex((chapter) => chapter.slug === slug);
-    if (nextIndex >= 0) {
-      setIndex(nextIndex);
-    }
+    if (nextIndex < 0) return;
+
+    endNavigation();
+    const request = navigationId;
+    navigating = true;
+    // Publish the destination immediately so repeated navigation uses the
+    // newest target, not a chapter crossed by an earlier smooth scroll.
+    setIndex(nextIndex);
+    await tick();
+    if (request !== navigationId || !scrollContainer) return;
 
     scrollIntoView(slug, behavior);
+    waitForScrollIdle();
   };
 
   export const scrollToTop = (behavior: ScrollBehavior = "smooth") => {
-    scrollContainer?.scrollTo({ top: 0, behavior });
+    const firstSlug = chapters[0]?.slug;
+    if (firstSlug) void scrollToChapter(firstSlug, behavior);
   };
 
   const replaceHash = (hash?: string) => {
@@ -280,12 +320,26 @@
   });
 
   $effect(() => {
+    const element = scrollContainer;
+    if (!element) return;
+    // Observe native scrolling gestures without overriding their default action.
+    const onScrollKey = (event: KeyboardEvent) => {
+      if (["ArrowUp", "ArrowDown", "PageUp", "PageDown", "Home", "End", " "].includes(event.key)) interruptNavigation();
+    };
+    element.addEventListener("pointerdown", interruptNavigation, { passive: true });
+    element.addEventListener("keydown", onScrollKey);
+    return () => {
+      element.removeEventListener("pointerdown", interruptNavigation);
+      element.removeEventListener("keydown", onScrollKey);
+    };
+  });
+
+  $effect(() => {
     observerKey;
 
     if (!scrollContainer) return;
 
     let observer: IntersectionObserver | undefined;
-    let indexUpdateTimeout: number | undefined;
     let cancelled = false;
 
     setIndex(0);
@@ -320,19 +374,19 @@
         threshold: 0,
       };
       const callback = (entries: IntersectionObserverEntry[]) => {
-        if (suspended) return;
+        if (suspended || navigating) return;
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
             const elem = entry.target as HTMLElement;
             const nextIndex = Number(elem.dataset.index);
 
             if (indexUpdateTimeout !== undefined) {
-              window.clearTimeout(indexUpdateTimeout);
+              clearTimeout(indexUpdateTimeout);
             }
 
-            indexUpdateTimeout = window.setTimeout(() => {
+            indexUpdateTimeout = setTimeout(() => {
               indexUpdateTimeout = undefined;
-              if (!cancelled && !suspended) setIndex(nextIndex);
+              if (!cancelled && !suspended && !navigating) setIndex(nextIndex);
             }, SLIDE_CHANGE_DELAY_MS);
           }
         });
@@ -349,9 +403,7 @@
     return () => {
       cancelled = true;
       observer?.disconnect();
-      if (indexUpdateTimeout !== undefined) {
-        window.clearTimeout(indexUpdateTimeout);
-      }
+      endNavigation();
     };
   });
 </script>
@@ -363,6 +415,8 @@
   <div
     bind:this={scrollContainer}
     data-slideshow-scroll
+    onscroll={waitForScrollIdle}
+    onwheel={interruptNavigation}
     class="slideshow-scroll panel-scrollbar min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-3.5 transition-opacity duration-150 {loaded
       ? ''
       : 'invisible'} {overlayOpen
@@ -449,8 +503,8 @@
 
 <style>
   .slideshow-scroll {
-    /* Keep the viewport behind the floating navigator; only the end of the
-       content needs clearance so its final lines can be read above it. */
+    /* A mobile card can scroll behind the navigator. Leave enough room for
+       its footer to scroll into view; separated panels only need normal padding. */
     padding-bottom: var(--panel-scroll-clearance, calc(var(--navigator-height, 62px) + 16px));
     margin-inline: 6px;
     width: calc(100% - 12px);

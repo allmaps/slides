@@ -49,7 +49,7 @@
 </script>
 
 <div
-  class="panel-overlay-shell absolute inset-x-1 z-40 {tab
+  class="panel-overlay-shell absolute inset-x-0 z-40 {tab
     ? `panel-overlay-shell--tab panel-overlay-shell--${tab}`
     : ''} {className}"
   class:panel-overlay-shell--closed={!open}

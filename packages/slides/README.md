@@ -98,23 +98,35 @@ inside it. Frontmatter is optional; the configured interface label is the fallba
 title. Referenced credits files are excluded from chapter lists and update live.
 
 The navigator includes chapter links, a progress bar based on the current chapter,
-and menus for maps, chapters, theme and panel visibility. At 1536px, the reading
-panel widens from 480px to 600px and the navigator moves to its left at 480px wide.
+and menus for maps, chapters, theme and panel visibility. Clicking the chapter
+count opens the chapters overlay. The navigator floats
+over the bottom of the reading panel. At 1536px, the reading panel widens from
+480px to 600px and the navigator sits beside its left edge at 480px wide.
+Hiding the text centers the navigator across the full screen at this wide
+breakpoint; on smaller desktop screens it stays against the right edge. Position
+changes animate on resize and visibility changes.
 A subslideshow begins with its title and a back arrow above the first chapter,
 inside the scroll. Footer actions return to the main slideshow or, on the right,
 to the top. Chapter map badges
 open the map layers panel. On mobile, drag the handle between full, half-height
-and hidden positions; when hidden, the handle sits above the chapter count
-inside the navigator, and the progress bar is hidden. Tapping the handle also
-animates the text panel open.
-When the text panel is hidden or the navigator sits outside it, the maps,
-chapters and credits overlays open above the navigator. Opening these overlays
-does not change the map padding.
+and collapsed positions. The card always extends to the bottom of the screen,
+with square lower corners, behind the fixed navigator. When collapsed, only the card's handle
+and a border around the navigator remain visible. The progress bar stays visible
+in every position. The expanded card stops below the app title, with the same
+gap as between the zoom buttons. Tapping the handle also animates the card open.
+The maps, chapters and credits overlays open above the navigator. Opening them
+does not change the map padding. On mobile, they fit inside the current card,
+below its handle, without expanding it. With the card collapsed, overlays float
+above the navigator. On wide desktop layouts, overlays can use all the space
+between the top screen margin and navigator. Expanding the mobile card to its
+maximum height preserves the map's previous framing.
 
 Keyboard shortcuts: **Left / Right** for previous / next chapter, **B** to return
 to the main slideshow and **H** to hide / show the sidebar. Shortcuts leave text
 entry, modified browser shortcuts and image dialogs alone. The mobile handle also
 supports **Up / Down**, **Home** (hide) and **End** (expand).
+Rapid chapter navigation advances from the latest requested chapter while smooth
+scrolling settles; manual scrolling can interrupt it without snapping back.
 
 ## Interface text
 

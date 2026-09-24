@@ -49,10 +49,9 @@
   };
 
   const PANEL_TRANSITION_MS = 550;
-  const PANEL_OUTSET = 8;
   const NAVIGATOR_HEIGHT = 62;
   const PANEL_HANDLE_HEIGHT = 36;
-  const PANEL_NAVIGATOR_SPACE = `var(--panel-overlay-clearance, ${NAVIGATOR_HEIGHT + 6}px)`;
+  const PANEL_NAVIGATOR_SPACE = "calc(var(--navigator-height) + var(--app-control-gap))";
   const LAYER_HIGHLIGHT_ENABLED = false;
   const THEME_STORAGE_KEY = "slides-theme";
 
@@ -84,9 +83,14 @@
   let scrollToTopSignal: number = $state(0);
   let mapResetSignal: number = $state(0);
   let panelElement: HTMLDivElement | undefined = $state();
+  let readingPanelElement: HTMLDivElement | undefined = $state();
+  let titleHeight = $state(52);
   let mainPanel: SlideshowPanelHandle | undefined = $state();
   let subslideshowPanel: SlideshowPanelHandle | undefined = $state();
   let mapLayoutRevision: number = $state(0);
+  let lastMobileMapExtent: number | undefined;
+  let mapViewportWidth: number | undefined;
+  let mapViewportHeight: number | undefined;
   let mapPadding: PaddingOptions = $state({
     top: DEFAULT_PADDING,
     right: DEFAULT_PADDING,
@@ -242,7 +246,14 @@
     activePanelOverlay = "layers";
   };
 
-  const togglePanel = () => { closePanelOverlays(); panelVisible = !panelVisible; };
+  const togglePanel = () => {
+    if (!isWideLayout()) {
+      snapMobilePanel(panelVisible ? "collapsed" : "half");
+      return;
+    }
+    closePanelOverlays();
+    panelVisible = !panelVisible;
+  };
   const showChapterLayers = async (slug: string) => {
     await scrollActivePanelToChapter(slug);
     activePanelOverlay = "layers";
@@ -283,15 +294,8 @@
     }
   };
 
-  const waitForNextFrame = () =>
-    new Promise<void>((resolve) => {
-      requestAnimationFrame(() => resolve());
-    });
-
   const scrollActivePanelToChapter = async (slug: string) => {
     closePanelOverlays();
-    await tick();
-    await waitForNextFrame();
     await (isSubslideshowActive ? subslideshowPanel : mainPanel)
       ?.scrollToChapter(slug, panelVisible ? "smooth" : "auto");
   };
@@ -379,18 +383,35 @@
   };
 
   const updateMapLayout = () => {
-    if (!panelElement || mobileResizing) return;
+    if (!panelElement || !readingPanelElement || mobileResizing) return;
 
     const panelStyle = window.getComputedStyle(panelElement);
     const rightInset = Number.parseFloat(panelStyle.right) || 0;
-    const bottomInset = Number.parseFloat(panelStyle.bottom) || 0;
+    const viewportHeight = panelElement.parentElement?.clientHeight ?? window.innerHeight;
+    const viewportWidth = panelElement.parentElement?.clientWidth ?? window.innerWidth;
+    const wideLayout = isWideLayout();
+    let cardExtent = 0;
+    if (!wideLayout) {
+      // Keep the map's last framing while the full-height card covers it. Use
+      // the resting stops so overlay/handle animations never shift the map.
+      const bottomInset = Number.parseFloat(panelStyle.bottom) || 0;
+      const collapsedHeight = NAVIGATOR_HEIGHT + PANEL_HANDLE_HEIGHT + bottomInset;
+      const halfHeight = Math.min(Math.max(collapsedHeight, viewportHeight / 2),
+        Number.parseFloat(window.getComputedStyle(readingPanelElement).maxHeight));
+      cardExtent = mobilePanelSize === "full"
+        ? lastMobileMapExtent ?? halfHeight
+        : mobilePanelSize === "collapsed"
+          ? collapsedHeight
+          : halfHeight;
+      lastMobileMapExtent = cardExtent;
+    }
     const reservePanel = panelVisible;
-    const nextPadding = isWideLayout()
+    const nextPadding = wideLayout
       ? {
           top: DEFAULT_PADDING,
           right: Math.max(
             DEFAULT_PADDING,
-            reservePanel ? Math.ceil(panelElement.offsetWidth + PANEL_OUTSET + rightInset + DEFAULT_PADDING) : DEFAULT_PADDING,
+            reservePanel ? Math.ceil(panelElement.offsetWidth + rightInset + DEFAULT_PADDING) : DEFAULT_PADDING,
           ),
           bottom: DEFAULT_PADDING,
           left: DEFAULT_PADDING,
@@ -402,14 +423,19 @@
             DEFAULT_PADDING,
             // Keep a usable map viewport even when the reading panel is expanded.
             Math.min(
-              Math.ceil((reservePanel ? panelElement.offsetHeight + PANEL_OUTSET : NAVIGATOR_HEIGHT + 20) + bottomInset + DEFAULT_PADDING),
-              (panelElement.parentElement?.clientHeight ?? window.innerHeight) - DEFAULT_PADDING - 120,
+              Math.ceil(cardExtent + DEFAULT_PADDING),
+              viewportHeight - DEFAULT_PADDING - 120,
             ),
           ),
           left: DEFAULT_PADDING,
         };
 
-    if (!samePadding(mapPadding, nextPadding)) {
+    const paddingChanged = !samePadding(mapPadding, nextPadding);
+    const viewportChanged = mapViewportWidth !== viewportWidth || mapViewportHeight !== viewportHeight;
+    if (!paddingChanged && !viewportChanged) return;
+    mapViewportWidth = viewportWidth;
+    mapViewportHeight = viewportHeight;
+    if (paddingChanged) {
       mapPadding = nextPadding;
     }
 
@@ -516,7 +542,7 @@
       }, PANEL_TRANSITION_MS);
     };
     const handlePanelTransitionEnd = (event: TransitionEvent) => {
-      if (event.target !== panelElement) return;
+      if (event.target !== panelElement && event.target !== readingPanelElement) return;
       if (
         !["width", "height", "right", "bottom"].includes(event.propertyName)
       ) {
@@ -547,6 +573,7 @@
     if (panelElement) {
       panelObserver = new ResizeObserver(queueSettledMapLayoutUpdate);
       panelObserver.observe(panelElement);
+      if (readingPanelElement) panelObserver.observe(readingPanelElement);
       panelElement.addEventListener("transitionend", handlePanelTransitionEnd);
     }
 
@@ -635,7 +662,8 @@
   >
     {#if isSubslideshowActive}
       <a
-        class="story-title pointer-events-auto absolute top-3 left-3 flex min-h-[52px] max-w-[calc(100vw-12rem)] items-center rounded-lg bg-[var(--app-map-control-bg)] px-4 py-2 text-left text-[28px] leading-[1.1] font-normal text-[var(--app-map-control-text)] shadow-2xl backdrop-blur-md sm:top-4 sm:left-4 md:top-5 md:left-5 md:max-w-[28rem]"
+        bind:clientHeight={titleHeight}
+        class="story-title pointer-events-auto absolute flex min-h-[52px] max-w-[calc(100vw-12rem)] items-center rounded-lg bg-[var(--app-map-control-bg)] px-4 py-2 text-left text-[28px] leading-[1.1] font-normal text-[var(--app-map-control-text)] shadow-2xl backdrop-blur-md md:max-w-[28rem]"
         class:story-title--hidden={startScreenVisible}
         href={mainHref}
         title={rootSlideshow.title}
@@ -645,8 +673,9 @@
       </a>
     {:else}
       <button
+        bind:clientHeight={titleHeight}
         type="button"
-        class="story-title pointer-events-auto absolute top-3 left-3 flex min-h-[52px] max-w-[calc(100vw-12rem)] cursor-pointer items-center rounded-lg bg-[var(--app-map-control-bg)] px-4 py-2 text-left text-[28px] leading-[1.1] font-normal text-[var(--app-map-control-text)] shadow-2xl backdrop-blur-md sm:top-4 sm:left-4 md:top-5 md:left-5 md:max-w-[28rem]"
+        class="story-title pointer-events-auto absolute flex min-h-[52px] max-w-[calc(100vw-12rem)] cursor-pointer items-center rounded-lg bg-[var(--app-map-control-bg)] px-4 py-2 text-left text-[28px] leading-[1.1] font-normal text-[var(--app-map-control-text)] shadow-2xl backdrop-blur-md md:max-w-[28rem]"
         class:story-title--hidden={startScreenVisible}
         title={rootSlideshow.title}
         onclick={jumpToMainStart}
@@ -657,25 +686,31 @@
 
     <div
       bind:this={panelElement}
-      class="story-panel pointer-events-none absolute right-3 bottom-3 flex h-[calc((100dvh-1.5rem)/2)] max-h-full min-h-0 w-[calc(100vw-1.5rem)] flex-col text-[var(--app-text)] sm:right-4 sm:bottom-4 sm:h-[calc((100dvh-2rem)/2)] sm:w-[calc(100vw-2rem)] md:right-5 md:bottom-5 md:h-[calc(100dvh-2.5rem)] md:w-[480px] 2xl:w-[600px]"
+      class="story-panel pointer-events-none absolute min-h-0 text-[var(--app-text)]"
       class:story-panel--hidden={startScreenVisible}
       class:story-panel--text-hidden={!panelVisible}
       class:story-panel--expanded={mobilePanelExpanded}
       class:story-panel--dragging={mobileDragging}
       data-panel-size={mobilePanelSize}
-      style={`--panel-outset: ${PANEL_OUTSET}px; --navigator-height: ${NAVIGATOR_HEIGHT}px; --panel-handle-height: ${PANEL_HANDLE_HEIGHT}px;`}
+      style={`--navigator-height: ${NAVIGATOR_HEIGHT}px; --panel-handle-height: ${PANEL_HANDLE_HEIGHT}px;`}
+      style:--app-title-height={`${titleHeight}px`}
       style:--mobile-panel-drag-height={mobileDragHeight === undefined ? undefined : `${mobileDragHeight}px`}
     >
       <div
-        id="slideshow-reading-panel"
+        bind:this={readingPanelElement}
         class="reading-panel min-h-0 overflow-hidden rounded-[24px] bg-[var(--app-panel-bg)] shadow-2xl backdrop-blur-md"
         class:reading-panel--hidden={!panelVisible}
-        aria-hidden={!panelVisible}
-        inert={!panelVisible}
       >
+        <MobilePanelHandle
+          panel={readingPanelElement}
+          size={mobilePanelSize}
+          onDragStart={startMobileResize}
+          onDrag={(height) => { mobileDragHeight = height; panelVisible = true; }}
+          onSnap={snapMobilePanel}
+        />
         <!-- Anchor navigation must not scroll this viewport horizontally while
              the track translates. Only each panel's inner content should scroll. -->
-        <div class="h-full min-h-0 overflow-clip">
+        <div id="slideshow-reading-panel" class="reading-panel-content h-full min-h-0 overflow-clip" aria-hidden={!panelVisible} inert={!panelVisible}>
           <div
             class="flex h-full w-[200%] transition-transform duration-500 ease-in-out motion-reduce:transition-none"
             style={`transform: translateX(${isSubslideshowActive ? "-50%" : "0"});`}
@@ -728,14 +763,6 @@
         </div>
       </div>
 
-      <MobilePanelHandle
-        panel={panelElement}
-        size={mobilePanelSize}
-        onDragStart={startMobileResize}
-        onDrag={(height) => { mobileDragHeight = height; panelVisible = true; }}
-        onSnap={snapMobilePanel}
-      />
-
       <div class="navigator-positioner">
         <SlideshowNavigator
           slideshow={activeSlideshow}
@@ -743,6 +770,7 @@
           {panelVisible}
           isDarkMode={isDarkMode ?? false}
           {creditsOpen}
+          chaptersOpen={tocOpen}
           backHref={isSubslideshowActive ? mainBreadcrumbHref : undefined}
           backTitle={rootSlideshow.title}
           onNavigate={scrollActivePanelToChapter}
@@ -759,7 +787,7 @@
         />
       </div>
 
-      <div class="panel-overlays" class:panel-overlays--at-navigator={!panelVisible}>
+      <div class="panel-overlays">
         {#if panelOverlayOpen}
           <button
             type="button"
@@ -777,7 +805,7 @@
           slideshow={activeSlideshow}
           {rootSlideshow}
           currentSlug={activeChapter?.slug}
-          top="var(--reading-overlay-top, 8px)"
+          top="0px"
           bottomMargin={PANEL_NAVIGATOR_SPACE}
           onClose={closeToc}
           onSelectLocalChapter={scrollActivePanelToChapter}
@@ -789,7 +817,7 @@
             {hiddenWarpedMapUrls}
             {highlightedWarpedMapUrl}
             highlightEnabled={LAYER_HIGHLIGHT_ENABLED}
-            top="var(--reading-overlay-top, 8px)"
+            top="0px"
             bottomMargin={PANEL_NAVIGATOR_SPACE}
             onClose={closePanelOverlays}
             onToggleVisibility={toggleWarpedMapVisibility}
@@ -798,7 +826,7 @@
           />
         {/if}
         {#if creditsOpen}
-          <PanelOverlay title={creditsTitle} top="var(--reading-overlay-top, 8px)" bottomMargin={PANEL_NAVIGATOR_SPACE} closeLabel={t("closeCredits")} onClose={closePanelOverlays}>
+          <PanelOverlay title={creditsTitle} top="0px" bottomMargin={PANEL_NAVIGATOR_SPACE} closeLabel={t("closeCredits")} onClose={closePanelOverlays}>
             {#if SharedCredits}<SharedCredits hideTitle />{/if}
             {#if CreditsComponent && activeSlideshow.credits !== project.credits}
               {#if SharedCredits}<h3 class="mt-6 mb-3 text-[24px]">{activeSlideshow.creditsTitle ?? activeSlideshow.title}</h3>{/if}
@@ -816,9 +844,23 @@
 </div>
 
 <style>
+  .story-title {
+    top: var(--app-edge-spacing);
+    left: var(--app-edge-spacing);
+  }
+  .story-panel {
+    --navigator-offset: 8px;
+    --navigator-bottom: 8px;
+    --navigator-width: calc(100% - 16px);
+    --panel-scroll-clearance: calc(var(--navigator-height) + 16px);
+    right: var(--app-edge-spacing);
+    bottom: var(--app-edge-spacing);
+    width: calc(100% - 2 * var(--app-edge-spacing));
+    height: calc(100% - 2 * var(--app-edge-spacing));
+  }
   .reading-panel {
     position: absolute;
-    inset: calc(-1 * var(--panel-outset));
+    inset: 0;
     pointer-events: auto;
     padding-block: 12px;
   }
@@ -827,98 +869,115 @@
     visibility: hidden;
     pointer-events: none;
   }
+  .reading-panel-content {
+    transition: opacity 180ms ease;
+  }
+  .reading-panel-content[aria-hidden="true"] {
+    opacity: 0;
+    visibility: hidden;
+  }
 
   .navigator-positioner,
   .panel-overlays {
     position: absolute;
-    right: 0;
-    bottom: 0;
-    width: 100%;
-    transition: right 500ms ease-in-out, width 500ms ease-in-out;
+    right: var(--navigator-offset);
+    bottom: var(--navigator-bottom);
+    width: var(--navigator-width);
+    transition: right 500ms ease-in-out, bottom 500ms ease-in-out, width 500ms ease-in-out;
   }
-  .navigator-positioner {
-    right: var(--navigator-offset, 0px);
-    width: var(--navigator-width, 100%);
-    height: var(--navigator-height);
-  }
-  .panel-overlays { top: 0; }
-  .panel-overlays--at-navigator {
-    right: var(--navigator-offset, 0px);
-    width: var(--navigator-width, 100%);
-    --panel-overlay-clearance: calc(var(--navigator-height) + 6px);
-  }
+  .navigator-positioner { height: var(--navigator-height); }
+  .panel-overlays { top: var(--app-control-gap); }
 
   .story-title,
   .story-panel {
     opacity: 1;
     transform: translate(0, 0);
     transition-duration: 500ms;
-    transition-property: opacity, transform, right, bottom, width, height;
+    transition-property: opacity, transform, top, left, right, bottom, width, height;
     transition-timing-function: ease-in-out;
   }
-
   .story-title--hidden {
     opacity: 0;
-    transform: translateX(calc(-100% - 1.25rem));
+    transform: translateX(calc(-100% - var(--app-edge-spacing)));
   }
-
   .story-panel--hidden {
     opacity: 0;
-    transform: translateY(calc(100% + 1.25rem));
+    transform: translateY(calc(100% + var(--app-edge-spacing)));
   }
 
   @media (max-width: 767px) {
     .story-panel {
-      --panel-inset: 12px;
-      transition-duration: 550ms;
-      transition-timing-function: cubic-bezier(.22, 1.3, .36, 1);
-      --reading-overlay-top: var(--panel-handle-height);
-      height: var(--mobile-panel-drag-height, var(--mobile-panel-rest-height, calc((100dvh - 2 * var(--panel-inset)) / 2)));
+      --mobile-panel-top: calc(var(--app-edge-spacing) + var(--app-title-height) + var(--app-control-gap));
+      --mobile-panel-full-height: calc(100dvh - var(--mobile-panel-top));
+      --mobile-panel-collapsed-height: calc(var(--navigator-height) + var(--panel-handle-height) + var(--app-edge-spacing));
+      --mobile-panel-half-height: clamp(var(--mobile-panel-collapsed-height), 50dvh, var(--mobile-panel-full-height));
+      --mobile-panel-rest-height: var(--mobile-panel-half-height);
+      --mobile-panel-height: var(--mobile-panel-drag-height, var(--mobile-panel-rest-height));
+      --navigator-bottom: 0px;
+      --panel-scroll-clearance: calc(var(--navigator-height) + var(--app-edge-spacing) + 16px);
+      /* Keep the navigator fixed while the reading card changes height. */
+      height: calc(var(--mobile-panel-full-height) - var(--app-edge-spacing));
     }
     .story-panel--expanded {
-      --mobile-panel-rest-height: calc(100dvh - 2 * var(--panel-inset));
+      --mobile-panel-rest-height: var(--mobile-panel-full-height);
     }
-    .story-panel--dragging { transition: none; }
+    .story-panel--text-hidden {
+      --mobile-panel-rest-height: var(--mobile-panel-collapsed-height);
+    }
     .reading-panel {
+      top: auto;
+      bottom: calc(-1 * var(--app-edge-spacing));
+      height: var(--mobile-panel-height);
+      max-height: var(--mobile-panel-full-height);
+      border-bottom-left-radius: 0;
+      border-bottom-right-radius: 0;
       padding-top: var(--panel-handle-height);
-      transform: translateY(0);
-      transition: transform 550ms cubic-bezier(.22, 1.3, .36, 1), opacity 180ms ease, visibility 0s;
+      padding-bottom: 0;
+      transition: height 550ms cubic-bezier(.22, 1.3, .36, 1);
     }
     .reading-panel--hidden {
-      transform: translateY(calc(100% - var(--navigator-height)));
-      transition-delay: 0s, 0s, 550ms;
+      opacity: 1;
+      visibility: visible;
+      pointer-events: auto;
     }
     .story-panel--dragging .reading-panel { transition: none; }
-  }
-
-  @media (min-width: 640px) and (max-width: 767px) {
-    .story-panel { --panel-inset: 16px; }
+    .panel-overlays {
+      top: calc(100% + var(--app-edge-spacing) - min(var(--mobile-panel-height), var(--mobile-panel-full-height)) + var(--panel-handle-height));
+    }
+    /* A collapsed card has no content area; its overlays float above the navigator. */
+    .story-panel--text-hidden .panel-overlays { top: 0; }
   }
 
   @media (min-width: 768px) {
-    .story-panel { --navigator-width: 480px; }
+    .story-panel { width: 480px; }
+    .story-panel.story-panel--text-hidden {
+      --navigator-offset: 0px;
+      --navigator-bottom: 0px;
+      --navigator-width: 480px;
+    }
     .story-panel--hidden {
-      transform: translateX(calc(100% + 1.25rem));
+      transform: translateX(calc(100% + var(--app-edge-spacing)));
     }
   }
-
   @media (min-width: 1536px) {
     .story-panel {
-      --navigator-offset: calc(100% + 24px);
-      --panel-overlay-clearance: 8px;
+      width: 600px;
+      --navigator-offset: calc(100% + var(--app-edge-spacing));
+      --navigator-bottom: 0px;
+      --navigator-width: 480px;
       --panel-scroll-clearance: 16px;
     }
-    .panel-overlays {
-      right: var(--navigator-offset);
-      width: var(--navigator-width);
-      --panel-overlay-clearance: calc(var(--navigator-height) + 6px);
+    .story-panel.story-panel--text-hidden {
+      --navigator-offset: calc(50vw - var(--app-edge-spacing) - var(--navigator-width) / 2);
     }
+    .panel-overlays { top: 0; }
   }
 
   @media (prefers-reduced-motion: reduce) {
     .story-title,
     .story-panel,
     .reading-panel,
+    .reading-panel-content,
     .navigator-positioner,
     .panel-overlays {
       transition: none;

@@ -31,18 +31,22 @@
   const startDrag = (event: PointerEvent) => {
     if (!panel || !event.isPrimary || event.button !== 0 || gesture) return;
     const button = event.currentTarget as HTMLButtonElement;
+    // Keep native dragging from cancelling the captured handle gesture.
+    event.preventDefault();
+    button.focus({ preventScroll: true });
     const style = getComputedStyle(panel);
-    const inset = parseFloat(style.bottom) || 0;
-    const full = (panel.parentElement?.clientHeight ?? window.innerHeight) - 2 * inset;
+    const inset = parseFloat(style.getPropertyValue("--app-edge-spacing"));
+    const full = parseFloat(style.maxHeight);
     const collapsed = parseFloat(style.getPropertyValue("--navigator-height"))
-      - parseFloat(style.getPropertyValue("--panel-outset"));
-    const heights = { collapsed, half: Math.max(collapsed, full / 2), full };
+      + parseFloat(style.getPropertyValue("--panel-handle-height")) + inset;
+    const heights = { collapsed, half: Math.min(full, Math.max(collapsed, window.innerHeight / 2)), full };
+    const startHeight = panel.offsetHeight;
     ignoreClick = false;
     gesture = {
       pointerId: event.pointerId, button, start: size, heights,
-      startY: event.clientY, startHeight: size === "collapsed" ? collapsed : panel.offsetHeight,
+      startY: event.clientY, startHeight,
       lastY: event.clientY, lastTime: event.timeStamp,
-      velocity: 0, height: size === "collapsed" ? collapsed : panel.offsetHeight,
+      velocity: 0, height: startHeight,
       dragging: false,
     };
     button.setPointerCapture(event.pointerId);
@@ -94,7 +98,6 @@
 <button
   type="button"
   class="panel-handle"
-  class:panel-handle--collapsed={size === "collapsed"}
   aria-label={label}
   aria-expanded={size !== "collapsed"}
   aria-controls="slideshow-reading-panel"
@@ -120,13 +123,13 @@
   @media (max-width: 767px) {
     .panel-handle {
       position: absolute;
-      bottom: calc(100% + var(--panel-outset) - var(--panel-handle-height));
-      left: calc(-1 * var(--panel-outset));
+      top: 0;
+      left: 0;
       z-index: 30;
       display: flex;
       align-items: center;
       justify-content: center;
-      width: calc(100% + 2 * var(--panel-outset));
+      width: 100%;
       height: var(--panel-handle-height);
       border-radius: 24px 24px 0 0;
       color: var(--app-text);
@@ -135,21 +138,9 @@
       touch-action: none;
       user-select: none;
       -webkit-user-select: none;
-      transition: bottom 550ms cubic-bezier(.22, 1.3, .36, 1), left 550ms cubic-bezier(.22, 1.3, .36, 1), width 550ms cubic-bezier(.22, 1.3, .36, 1), height 550ms cubic-bezier(.22, 1.3, .36, 1);
     }
     .panel-handle:active { cursor: grabbing; }
     .panel-handle:focus-visible { outline: 2px solid var(--highlight-fg); outline-offset: -3px; }
-    .panel-handle--collapsed {
-      z-index: 51;
-      bottom: calc((var(--navigator-height) - 44px) / 2);
-      left: calc(50% - 35px);
-      width: 70px;
-      height: 44px;
-      align-items: flex-start;
-      padding-top: 5px;
-      border-radius: 10px;
-      color: var(--app-text);
-    }
     .panel-handle__grip {
       width: 40px;
       height: 4px;
@@ -157,9 +148,5 @@
       background: currentColor;
       opacity: 0.5;
     }
-    :global(.story-panel--dragging) .panel-handle { transition: none; }
-  }
-  @media (prefers-reduced-motion: reduce) {
-    .panel-handle { transition: none; }
   }
 </style>

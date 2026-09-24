@@ -28,8 +28,10 @@ test('quick flicks snap directionally and the end stops never overflow', () => {
   assert.equal(snapMobilePanel(heights, 'collapsed', -20, -1), 'collapsed');
 });
 
-test('compact integrated handle still snaps through all mobile positions', () => {
-  const compact = { collapsed: 54, half: 410, full: 820 };
-  assert.equal(snapMobilePanel(compact, 'half', 100), 'collapsed');
-  assert.equal(snapMobilePanel(compact, 'collapsed', 380), 'half');
+test('card behind the navigator snaps through collapsed, half and full positions', () => {
+  const card = { collapsed: 110, half: 422, full: 772 };
+  assert.equal(snapMobilePanel(card, 'half', 155), 'collapsed');
+  assert.equal(snapMobilePanel(card, 'collapsed', 390), 'half');
+  assert.equal(snapMobilePanel(card, 'half', 750), 'full');
+  assert.equal(snapMobilePanel(card, 'full', 480), 'half');
 });

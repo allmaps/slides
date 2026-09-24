@@ -1211,7 +1211,7 @@
   <div class="h-full min-h-0 w-full min-w-0" bind:this={container}></div>
 
   <div
-    class="map-controls pointer-events-none absolute top-3 right-3 z-10 flex flex-col gap-2 sm:top-4 sm:right-4 md:top-auto md:right-auto md:bottom-5 md:left-5 md:flex-row"
+    class="map-controls pointer-events-none absolute z-10 flex flex-col md:flex-row"
     class:map-controls--hidden={!controlsVisible}
     aria-hidden={!controlsVisible}
     inert={!controlsVisible}
@@ -1258,6 +1258,9 @@
 
 <style>
   .map-controls {
+    gap: var(--app-control-gap);
+    top: var(--app-edge-spacing);
+    right: var(--app-edge-spacing);
     opacity: 1;
     transform: translateY(0);
     transition:
@@ -1271,6 +1274,12 @@
   }
 
   @media (min-width: 768px) {
+    .map-controls {
+      top: auto;
+      right: auto;
+      bottom: var(--app-edge-spacing);
+      left: var(--app-edge-spacing);
+    }
     .map-controls--hidden {
       transform: translateY(calc(100% + 1.25rem));
     }
