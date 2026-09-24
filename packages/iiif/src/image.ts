@@ -60,7 +60,7 @@ export async function renderLocalIiifRequest(
   request: string,
   serviceId: string,
 ) {
-  const size = getImageSize(await sharp(filename).metadata());
+  const size = getImageSize(await createImagePipeline(filename).metadata());
   if (request === "info.json")
     return {
       type: "application/json",

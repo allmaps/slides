@@ -690,6 +690,8 @@ async function writeRawDerivativeImage(
   await mkdir(path.dirname(outputPath), { recursive: true });
 
   let pipeline = sharp(image.data, {
+    // The decoded source may exceed Sharp's default limit, even for a small tile.
+    limitInputPixels: false,
     raw: {
       width: image.width,
       height: image.height,
