@@ -28,7 +28,7 @@ before(async () => {
   await writeFile(`${fixtureDirectory}/paths.mjs`, `
     export const getContentIiifImage = path => path === 'assets/images/photo.jpg'
       ? { servicePath: 'photo', width: 1200, height: 800 } : undefined;
-    export const getContentAssetUrl = () => undefined;
+    export const getContentAssetUrl = path => path?.startsWith('assets/logos/') ? '/demo/_app/' + path.split('/').at(-1) : undefined;
     export const isExternalUrl = url => /^https?:/.test(url);
     export const joinUrl = (...parts) => parts.join('/');
     export const withBaseUrl = path => '/demo/' + path;
@@ -56,8 +56,40 @@ test('external image URLs never opt into IIIF without explicit figure attributes
 
 test('inline local derivatives remain visible ordinary images', () => {
   const html = renderImage({ src: 'assets/images/photo.jpg', alt: 'Icon', 'data-inline': true });
-  assert.match(html, /<img src="\/demo\/iiif\/photo\/full\/max\/0\/default.jpg"/);
+  assert.match(html, /<img\b[^>]*src="\/demo\/iiif\/photo\/full\/max\/0\/default.jpg"/);
   assert.doesNotMatch(html, /data-iiif-image|srcset=/);
+});
+
+test('theme alternatives preserve SVG URLs, alt text, dimensions and author classes', () => {
+  const html = renderImage({ src: 'assets/logos/mark.svg', 'data-dark-src': 'assets/logos/mark-dark.svg', alt: 'Institution', width: 200, height: 60, class: 'brand' });
+  assert.match(html, /src="\/demo\/_app\/mark.svg"/);
+  assert.match(html, /src="\/demo\/_app\/mark-dark.svg"/);
+  assert.equal((html.match(/alt="Institution"/g) ?? []).length, 2);
+  assert.equal((html.match(/width="200"/g) ?? []).length, 2);
+  assert.match(html, /themed-image__light brand/);
+  assert.match(html, /themed-image__dark brand/);
+  assert.doesNotMatch(html, /data-dark-src=|data-iiif-image|\/iiif\//);
+});
+
+test('ordinary SVG Markdown images remain vectors without an IIIF viewer', () => {
+  const html = renderImage({ src: 'assets/logos/mark.svg', alt: 'Institution' });
+  assert.match(html, /src="\/demo\/_app\/mark.svg"/);
+  assert.doesNotMatch(html, /data-iiif-image|\/iiif\//);
+});
+
+test('plain HTML images support theme alternatives without component imports', async () => {
+  const code = await compileMarkdown('<div class="logo-grid">\n<a href="https://example.org"><img src="assets/logos/mark.svg" data-dark-src="assets/logos/mark-dark.svg" alt="Institution > name" /></a>\n</div>');
+  assert.match(code, /<Components\.img data-inline src="assets\/logos\/mark.svg" data-dark-src="assets\/logos\/mark-dark.svg"/);
+  assert.match(code, /alt="Institution > name"/);
+  assert.doesNotMatch(code, /<figure|<figcaption|import Image/);
+});
+
+test('authored HTML image enhancement preserves other tags and comments', async () => {
+  const code = await compileMarkdown('<!-- <img src="comment.svg"> -->\n\n<img src="mark.svg" alt="First">\n\n<span title="<img fake>">Text</span>');
+  assert.match(code, /<!-- <img src="comment.svg"> -->/);
+  assert.match(code, /<Components\.img data-inline src="mark.svg" alt="First" \/>/);
+  assert.match(code, /<span title="<img fake>">Text<\/span>/);
+  assert.equal((code.match(/<Components\.img /g) ?? []).length, 1);
 });
 
 test("manifest figures need no image or component imports and retain rich captions", async () => {
@@ -104,4 +136,3 @@ test("Markdown compilation never fetches remote IIIF resources", async () => {
     await compileMarkdown('<figure data-manifest="https://offline.invalid/manifest.json">\n\n<figcaption>Offline source</figcaption>\n</figure>\n\n![Legacy](https://offline.invalid/iiif/info.json)');
   } finally { globalThis.fetch = previous; }
 });
-

@@ -162,3 +162,38 @@ export function validateProjectReferences(
       }
     }
 }
+
+export const getChapterCount = (slideshow: Slideshow) =>
+  slideshow.chapters.length;
+
+export const getChapterNumber = (slideshow: Slideshow, slug: string): number | undefined => {
+  const index = slideshow.chapters.findIndex(chapter => chapter.slug === slug);
+  return index < 0 ? undefined : index + 1;
+};
+
+const referenceId = (reference: NonNullable<MapChapter["subslideshows"]>[number]) =>
+  typeof reference === "string" ? reference : reference.id;
+
+/** A single subslideshow uses its parent chapter's number; multiple ones add a level. */
+export const getSubslideshowNumber = (slideshow: Slideshow, chapter: MapChapter, id: string): string | undefined => {
+  const number = getChapterNumber(slideshow, chapter.slug);
+  const references = chapter.subslideshows ?? [];
+  const index = references.findIndex(reference => referenceId(reference) === id);
+  if (number === undefined || index < 0) return undefined;
+  return references.length > 1 ? `${number}.${index + 1}` : String(number);
+};
+
+export const getSlideshowNumber = (project: Project, slideshow: Slideshow): string | undefined => {
+  const main = project.slideshows.find(show => show.id === project.main);
+  if (!main || main.id === slideshow.id) return undefined;
+  const parents = main.chapters.filter(chapter => chapter.subslideshows?.some(reference => referenceId(reference) === slideshow.id));
+  const parent = parents.find(chapter => chapter.subslideshows?.length === 1) ?? parents[0];
+  return parent && getSubslideshowNumber(main, parent, slideshow.id);
+};
+
+export const getChapterLabel = (project: Project, slideshow: Slideshow, slug: string): string | undefined => {
+  const number = getChapterNumber(slideshow, slug);
+  if (number === undefined) return undefined;
+  const prefix = getSlideshowNumber(project, slideshow);
+  return prefix ? `${prefix}.${number}` : String(number);
+};

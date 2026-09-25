@@ -6,7 +6,7 @@ import { slideshowShortcut } from '../src/lib/shared/keyboard.ts';
 test('interface overrides interpolate repeated placeholders and preserve missing defaults', () => {
   const t = createInterfaceText(() => ({ text: { chapterPosition: '{current} van {total} ({current})' } }));
   assert.equal(t('chapterPosition', { current: 3, total: 6 }), '3 van 6 (3)');
-  assert.equal(t('closeMenu'), 'Close menu');
+  assert.equal(t('close'), 'Close');
   assert.equal(t('backToTitle', { title: '<My story>' }), 'Back to <My story>');
 });
 

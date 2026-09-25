@@ -152,7 +152,7 @@
   {top}
   {bottomMargin}
   {tab}
-  closeLabel={t("closeLayers")}
+  closeLabel={t("close")}
   {onClose}
   class={className}
 >
@@ -172,7 +172,7 @@
           <div
             role="button"
             tabindex="0"
-            aria-label={t(hidden ? "showTitle" : "hideTitle", { title })}
+            aria-label={`${t(hidden ? "show" : "hide")}: ${title}`}
             aria-pressed={!hidden}
             class="layer-row {hidden ? 'layer-row--hidden' : ''} {highlighted
               ? 'layer-row--highlighted'
@@ -227,9 +227,9 @@
               <button
                 type="button"
                 class="layer-icon-button"
-                aria-label={t(hidden ? "showMapLayer" : "hideMapLayer")}
+                aria-label={t(hidden ? "show" : "hide")}
                 aria-pressed={!hidden}
-                title={t(hidden ? "showMapLayer" : "hideMapLayer")}
+                title={t(hidden ? "show" : "hide")}
                 onfocus={() => setLayerHighlight(warpedMap.url)}
                 onblur={() => setLayerHighlight(undefined)}
                 onclick={(event) => {

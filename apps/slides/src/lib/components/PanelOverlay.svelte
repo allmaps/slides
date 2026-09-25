@@ -24,7 +24,7 @@
     top = "0",
     bottomMargin = "0.25rem",
     tab,
-    closeLabel = t("closeOverlay"),
+    closeLabel = t("close"),
     onClose,
     actions,
     children,

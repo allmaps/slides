@@ -14,7 +14,7 @@
 {/snippet}
 
 <CanvasPanel {...source} {label} embedded caption={captionHtml ? captionContent : undefined}
-  text={Object.fromEntries(["image", "enlargeImage", "openImage", "imageZoom", "zoomIn", "zoomOut", "closeImage", "loadingImage", "imageLoadError", "tryAgain", "downloadPreview", "downloadView", "previewDownloadError", "viewDownloadError"].map(key => [key, t(key as Parameters<InterfaceText>[0])]))}
+  text={Object.fromEntries(["image", "enlargeImage", "openImage", "imageZoom", "zoomIn", "zoomOut", "closeImage", "loadingImage", "imageLoadError", "tryAgain", "downloadPreview", "downloadView", "previewDownloadError", "viewDownloadError"].map(key => [key, t(key === "openImage" ? "open" : key === "closeImage" ? "close" : key as Parameters<InterfaceText>[0])]))}
   loadImage={$loadImage} enableDownloads={false} enableViewTransitions={false}
   --canvas-panel-control-bg="var(--app-map-control-bg)"
   --canvas-panel-control-color="var(--app-map-control-text)"

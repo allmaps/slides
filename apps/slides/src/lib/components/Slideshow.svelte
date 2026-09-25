@@ -25,6 +25,7 @@
     getSlideshowRouteHref,
   } from "$lib/shared/project";
   import { DEFAULT_DURATION, DEFAULT_PADDING } from "$lib/shared/settings";
+  import { getChapterCount } from "@allmaps/slides/model/project";
   import type {
     MapChapter,
     MapChapterProps,
@@ -651,7 +652,7 @@
     <StartScreen
       title={activeSlideshow.title}
       description={startDescription}
-      chapterCount={chapters.length}
+      chapterCount={getChapterCount(activeSlideshow)}
       visible={startScreenVisible}
       {isDarkMode}
       onStart={startSlideshow}
@@ -730,6 +731,7 @@
               overlayOpen={panelOverlayOpen && !isSubslideshowActive}
               {hiddenWarpedMapUrls}
               onShowLayers={showChapterLayers}
+              onShowChapters={toggleToc}
               {scrollToTopSignal}
               onTocClose={closeToc}
               onIndexChange={(index) => (mainIndex = index)}
@@ -752,6 +754,7 @@
                     backHref={mainBreadcrumbHref}
                     backTitle={rootSlideshow.title}
                     onShowLayers={showChapterLayers}
+                    onShowChapters={toggleToc}
                     {scrollToTopSignal}
                     onTocClose={closeToc}
                     onIndexChange={(index) => {
@@ -796,7 +799,7 @@
             type="button"
             class="pointer-events-auto absolute inset-x-0 top-0 z-20 cursor-default rounded-t-[24px] bg-transparent p-0 focus:outline-none"
             style={`bottom: ${PANEL_NAVIGATOR_SPACE};`}
-            aria-label={t("closePanelOverlay")}
+            aria-label={t("close")}
             tabindex="-1"
             onclick={closePanelOverlays}
           ></button>
@@ -830,7 +833,7 @@
           />
         {/if}
         {#if creditsOpen}
-          <PanelOverlay title={creditsTitle} top="0px" bottomMargin={PANEL_NAVIGATOR_SPACE} closeLabel={t("closeCredits")} onClose={closePanelOverlays}>
+          <PanelOverlay title={creditsTitle} top="0px" bottomMargin={PANEL_NAVIGATOR_SPACE} closeLabel={t("close")} onClose={closePanelOverlays}>
             {#if SharedCredits}<SharedCredits hideTitle />{/if}
             {#if CreditsComponent && activeSlideshow.credits !== project.credits}
               {#if SharedCredits}<h3 class="mt-6 mb-3 text-[24px]">{activeSlideshow.creditsTitle ?? activeSlideshow.title}</h3>{/if}
@@ -849,18 +852,19 @@
 
 <style>
   .story-title {
-    top: var(--app-edge-spacing);
-    left: var(--app-edge-spacing);
+    max-width: min(28rem, calc(100vw - 12rem - var(--app-safe-left) - var(--app-safe-right)));
+    top: var(--app-inset-top);
+    left: var(--app-inset-left);
   }
   .story-panel {
     --navigator-offset: 8px;
     --navigator-bottom: 8px;
     --navigator-width: calc(100% - 16px);
     --panel-scroll-clearance: calc(var(--navigator-height) + 16px);
-    right: var(--app-edge-spacing);
-    bottom: var(--app-edge-spacing);
-    width: calc(100% - 2 * var(--app-edge-spacing));
-    height: calc(100% - 2 * var(--app-edge-spacing));
+    right: var(--app-inset-right);
+    bottom: var(--app-inset-bottom);
+    width: calc(100% - var(--app-inset-left) - var(--app-inset-right));
+    height: calc(100% - var(--app-inset-top) - var(--app-inset-bottom));
   }
   .reading-panel {
     position: absolute;
@@ -911,8 +915,8 @@
 
   @media (max-width: 767px) {
     .story-panel {
-      --mobile-panel-top: calc(var(--app-title-height) + 2 * var(--app-edge-spacing));
-      --mobile-panel-full-height: calc(100dvh - var(--mobile-panel-top) - var(--app-edge-spacing));
+      --mobile-panel-top: calc(var(--app-title-height) + var(--app-inset-top) + var(--app-edge-spacing));
+      --mobile-panel-full-height: calc(100dvh - var(--mobile-panel-top) - var(--app-inset-bottom));
       --mobile-panel-collapsed-height: calc(var(--navigator-height) + var(--panel-handle-height) + var(--navigator-bottom));
       --mobile-panel-half-height: clamp(var(--mobile-panel-collapsed-height), 50dvh, var(--mobile-panel-full-height));
       --mobile-panel-rest-height: var(--mobile-panel-half-height);
@@ -972,7 +976,7 @@
       --panel-scroll-clearance: 16px;
     }
     .story-panel.story-panel--text-hidden {
-      --navigator-offset: calc(50vw - var(--app-edge-spacing) - var(--navigator-width) / 2);
+      --navigator-offset: calc(50vw - var(--app-inset-right) - var(--navigator-width) / 2);
     }
     .panel-overlays { top: 0; }
   }

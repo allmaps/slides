@@ -259,7 +259,7 @@
   .status { position: absolute; inset: 0; margin: 0; display: grid; place-items: center; font-size: 0.85em; }
   .load-error { font-size: 0.85em; }
   .load-error button { border: 0; padding: 0; background: none; color: inherit; text-decoration: underline; cursor: pointer; }
-  .image-dialog { box-sizing: border-box; position: fixed; inset: 0; margin: auto; width: calc(100vw - 2rem); max-width: none; height: calc(100dvh - 2rem); max-height: none; padding: 0; border: 1px solid rgb(255 255 255 / 0.2); border-radius: 0.5rem; outline: none; overflow: hidden; color: #fff; background: var(--canvas-panel-modal-bg, #24292d); }
+  .image-dialog { box-sizing: border-box; position: fixed; inset: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px); margin: auto; width: calc(100vw - 2rem - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)); max-width: none; height: calc(100dvh - 2rem - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)); max-height: none; padding: 0; border: 1px solid rgb(255 255 255 / 0.2); border-radius: 0.5rem; outline: none; overflow: hidden; color: #fff; background: var(--canvas-panel-modal-bg, #24292d); }
   .image-dialog::backdrop { background: rgb(18 26 28 / 0.55); backdrop-filter: blur(4px); }
   .zoom-panel { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0; }
   .toolbar { position: absolute; top: 1rem; left: 1rem; right: 1rem; display: flex; align-items: start; justify-content: space-between; pointer-events: none; z-index: 2; }
@@ -271,9 +271,10 @@
   .modal-caption :global(a) { color: #fff; text-decoration: underline; text-underline-offset: 0.15em; }
   .modal-status { position: absolute; top: 5rem; left: 1rem; right: 1rem; text-align: center; pointer-events: none; }
   @media (max-width: 640px) {
-    .image-dialog { width: 100vw; height: 100dvh; border: 0; border-radius: 0; }
-    .toolbar { top: max(0.75rem, env(safe-area-inset-top)); left: 0.75rem; right: 0.75rem; }
-    .caption-overlay { padding: 2.5rem 1rem max(1rem, env(safe-area-inset-bottom)); }
+    .image-dialog { inset: 0; width: 100vw; height: 100dvh; border: 0; border-radius: 0; }
+    .toolbar { top: calc(0.75rem + env(safe-area-inset-top, 0px)); left: calc(0.75rem + env(safe-area-inset-left, 0px)); right: calc(0.75rem + env(safe-area-inset-right, 0px)); }
+    .caption-overlay { padding: 2.5rem calc(1rem + env(safe-area-inset-right, 0px)) calc(1rem + env(safe-area-inset-bottom, 0px)) calc(1rem + env(safe-area-inset-left, 0px)); }
+    .modal-status { top: calc(5rem + env(safe-area-inset-top, 0px)); }
     .modal-caption { font-size: 0.9rem; }
   }
 </style>

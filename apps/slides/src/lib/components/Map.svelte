@@ -212,6 +212,7 @@
   let pmtilesProtocolLoaded = false;
   let destroyed = false;
 
+  const SHOW_DEBUG_BOUNDS = false
   const DEBUG_BOUNDS_SOURCE_ID = "slides-debug-bounds";
   const DEBUG_BOUNDS_LAYER_ID = "slides-debug-bounds-layer";
   const BASEMAP_STYLE_FADE_DURATION = 450;
@@ -1193,7 +1194,7 @@
         loadLayers(layers);
       }
 
-      if (debug) {
+      if (debug && SHOW_DEBUG_BOUNDS) {
         // Debug layer to show bounds
         map.addSource(DEBUG_BOUNDS_SOURCE_ID, {
           type: "geojson",
@@ -1283,8 +1284,8 @@
 <style>
   .map-controls {
     gap: var(--app-control-gap);
-    top: var(--app-edge-spacing);
-    right: var(--app-edge-spacing);
+    top: var(--app-inset-top);
+    right: var(--app-inset-right);
     opacity: 1;
     transform: translateY(0);
     transition:
@@ -1301,8 +1302,8 @@
     .map-controls {
       top: auto;
       right: auto;
-      bottom: var(--app-edge-spacing);
-      left: var(--app-edge-spacing);
+      bottom: var(--app-inset-bottom);
+      left: var(--app-inset-left);
     }
     .map-controls--hidden {
       transform: translateY(calc(100% + 1.25rem));

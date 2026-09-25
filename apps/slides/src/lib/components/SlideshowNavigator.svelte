@@ -6,6 +6,7 @@
   import previousIcon from "$lib/assets/navigator/previous.svg";
   import nextIcon from "$lib/assets/navigator/next.svg";
   import infoIcon from "$lib/assets/navigator/info.svg";
+  import { getChapterCount, getChapterNumber } from "@allmaps/slides/model/project";
   import { getChapterRouteHref } from "$lib/shared/project";
   import type { Slideshow } from "$lib/shared/types";
 
@@ -36,6 +37,8 @@
   let menuButton: HTMLButtonElement;
   const id = $props.id();
   const menuId = `${id}-menu`;
+  const chapterCount = $derived(getChapterCount(slideshow));
+  const chapterNumber = $derived(getChapterNumber(slideshow, slideshow.chapters[index]?.slug ?? "") ?? 0);
   const previous = $derived(slideshow.chapters[index - 1]);
   const next = $derived(slideshow.chapters[index + 1]);
 
@@ -96,8 +99,8 @@
     type="button"
     class="navigator-button"
     class:active={menuOpen}
-    aria-label={t(menuOpen ? "closeMenu" : "openMenu")}
-    title={t(menuOpen ? "closeMenu" : "openMenu")}
+    aria-label={t(menuOpen ? "close" : "open")}
+    title={t(menuOpen ? "close" : "open")}
     aria-expanded={menuOpen}
     aria-controls={menuId}
     onclick={() => {
@@ -117,14 +120,14 @@
     <button
       class="navigator-position"
       type="button"
-      aria-label={`${t("chapters")}: ${t("chapterPosition", { current: slideshow.chapters.length ? index + 1 : 0, total: slideshow.chapters.length })}`}
+      aria-label={`${t("chapters")}: ${t("chapterPosition", { current: chapterNumber, total: chapterCount })}`}
       aria-expanded={chaptersOpen}
       title={t("chapters")}
       onclick={() => { closeMenu(); onChapters(); }}
     ><span class="navigator-count" aria-live="polite" aria-atomic="true">
-      {t("chapterCounter", { current: slideshow.chapters.length ? index + 1 : 0, total: slideshow.chapters.length })}
+      {t("chapterCounter", { current: chapterNumber, total: chapterCount })}
     </span>
-      <progress class="navigator-progress" max={Math.max(1, slideshow.chapters.length)} value={slideshow.chapters.length ? index + 1 : 0} aria-label={t("slideshowProgress")}></progress>
+      <progress class="navigator-progress" max={Math.max(1, chapterCount)} value={chapterNumber} aria-label={t("slideshowProgress")}></progress>
     </button>
     {#if next}
       <a class="navigator-button" aria-keyshortcuts="ArrowRight" href={getChapterRouteHref(slideshow, next)} aria-label={t("nextChapterTitle", { title: next.title })} title={t("nextChapterTitle", { title: next.title })} onclick={(event) => navigate(event, next.slug)}>
@@ -135,7 +138,7 @@
     {/if}
   </div>
 
-  <button class="navigator-button" class:active={creditsOpen} type="button" aria-label={t(creditsOpen ? "closeCredits" : "openCredits")} title={t("credits")} aria-expanded={creditsOpen} onclick={() => { closeMenu(); onCredits(); }}>
+  <button class="navigator-button" class:active={creditsOpen} type="button" aria-label={t(creditsOpen ? "close" : "open")} title={t("credits")} aria-expanded={creditsOpen} onclick={() => { closeMenu(); onCredits(); }}>
     <img src={infoIcon} width="22" height="22" alt="" />
   </button>
 </nav>
@@ -186,7 +189,7 @@
     left: 0;
     bottom: calc(100% + var(--app-edge-spacing));
     max-width: 100%;
-    max-height: calc(100dvh - 110px);
+    max-height: calc(100dvh - 110px - var(--app-inset-top) - var(--app-inset-bottom));
     overflow-y: auto;
     width: max-content;
     border-radius: 17px;
@@ -209,7 +212,7 @@
   }
   .navigator-menu span { padding-top: 0.15em; }
   .navigator-menu :global(svg) { flex-shrink: 0; }
-  .navigator-position { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 44px; flex-shrink: 0; gap: 3px; border-radius: 10px; cursor: pointer; }
+  .navigator-position { -webkit-user-select: none; user-select: none; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 44px; flex-shrink: 0; gap: 3px; border-radius: 10px; cursor: pointer; }
   .navigator-position:focus { outline: none; }
   .navigator-progress { appearance: none; display: block; width: 70px; height: 5px; border: 0; border-radius: 3px; overflow: hidden; background: color-mix(in srgb, var(--highlight-fg) 22%, transparent); color: var(--highlight-fg); }
   .navigator-progress::-webkit-progress-bar { background: color-mix(in srgb, var(--highlight-fg) 22%, transparent); border-radius: 3px; }

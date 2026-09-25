@@ -68,6 +68,10 @@ Vite options such as `--port 5174` pass through to `dev`/`preview`.
 
 ## Credits and navigation
 
+All slides are included in chapter numbering and totals, including the start
+screen count. Chapters start at 1. Sections in one subslideshow use `1.1`, `1.2`,
+and so on; multiple subslideshows under a chapter add a level: `1.1.1`, `1.2.1`.
+
 Configure one shared Markdown credits document at the top level. A slideshow can
 also specify its own document, which is appended after the shared credits:
 
@@ -107,13 +111,16 @@ breakpoint; on smaller desktop screens it stays against the right edge. Position
 changes animate on resize and visibility changes.
 A subslideshow begins with its title and a back arrow above the first chapter,
 inside the scroll. Footer actions return to the main slideshow or, on the right,
-to the top. Chapter map badges
-open the map layers panel. On mobile, drag the handle between full, half-height
-and collapsed positions. The card always extends to the bottom of the screen,
-with square lower corners, behind the fixed navigator. When collapsed, only the card's handle
+to the top. The numbered chapter button beneath each title opens the chapters
+overlay. The map button beside it shows the map count and opens the map layers
+panel; its singular/plural labels can be translated with `mapCountSingular` and
+`mapCountPlural`. The navigator count also opens the chapters overlay.
+On mobile, drag the handle between full, half-height
+and collapsed positions. The rounded card keeps a margin above the bottom edge and moves behind the
+fixed navigator. When collapsed, only the card's handle
 and a border around the navigator remain visible. The progress bar stays visible
 in every position. The expanded card stops below the app title, with the same
-gap as between the zoom buttons. Tapping the handle also animates the card open.
+margin as around the edges. Tapping the handle also animates the card open.
 The maps, chapters and credits overlays open above the navigator. Opening them
 does not change the map padding. On mobile, they fit inside the current card,
 below its handle, without expanding it. With the card collapsed, overlays float
@@ -127,6 +134,39 @@ entry, modified browser shortcuts and image dialogs alone. The mobile handle als
 supports **Up / Down**, **Home** (hide) and **End** (expand).
 Rapid chapter navigation advances from the latest requested chapter while smooth
 scrolling settles; manual scrolling can interrupt it without snapping back.
+
+## Logos and theme-aware images
+
+Store logos and other interface artwork in `assets/logos/`, outside the IIIF
+input directory (`assets/images/` by default). SVGs anywhere under `assets/`
+are served directly as vectors and never converted to IIIF. Raster images
+outside the IIIF input are also ordinary assets. Vite includes these files in
+production builds and resolves the site's base path automatically.
+
+Ordinary Markdown image syntax works for a single version. For light/dark
+alternatives, use an ordinary HTML image with `data-dark-src`:
+
+```html
+<img src="assets/logos/institution-light.svg"
+       data-dark-src="assets/logos/institution-dark.svg"
+       alt="Institution name" height="60" />
+```
+
+`src` is the light version and `data-dark-src` is optional. The alternative follows
+the slideshow's theme switch, with the system preference as the initial fallback.
+This works in credits and slide Markdown without component imports,
+content-specific code, or a filename convention. Both versions should have the same viewBox
+and aspect ratio.
+Specify just `height` or just `width` (in pixels) to size the image while keeping
+its original proportions. Images also fit within the available panel width
+without stretching.
+
+For linked credits logos, wrap images in ordinary HTML links inside a
+`<div class="logo-grid">`. This reusable two-column layout removes text-link
+decoration; HTML links do not add external-link arrows. Use `class="logo-wide"`
+on a link to span both columns. Include meaningful image alt text and, when
+opening a new tab, `target="_blank" rel="noreferrer"`. Kattenburg's `CREDITS.md`
+contains a complete example.
 
 ## Interface text
 
@@ -209,3 +249,6 @@ pnpm --filter @allmaps/slides test:package
 The dev smoke runs two independent sites and observes actual HTTP/WebSocket
 updates. The package smoke installs archives in a fresh content-only repository
 and builds a self-contained local map/image fixture, including native rendering.
+
+The app keeps controls inside iOS safe-area insets in portrait and landscape.
+An Apple touch icon derived from the favicon is included for Home Screen installs.

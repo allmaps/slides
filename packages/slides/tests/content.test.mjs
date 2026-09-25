@@ -23,7 +23,7 @@ test('directory content works without package.json, exports, or an entry point',
   assert.equal(content.slideCount, 1);
   assert.equal(content.project.title, 'Directory only');
   assert.equal(content.project.slideshows[0].chapters[0].sourcePath, 'chapters/01-start.md');
-  assert.match(contentModule(content), /chapters\/01-start.md/);
+  assert.match(markdownModule(content), /chapters\/01-start.md/);
 });
 
 test('an explicit config is the same config exposed to the app', async t => {
@@ -35,6 +35,28 @@ test('an explicit config is the same config exposed to the app', async t => {
   const module = contentModule(content);
   assert.match(module, /Selected configuration/);
   assert.doesNotMatch(module, /Directory only|slidesConfigFiles/);
+});
+
+test('SVGs and images outside the IIIF input are published as ordinary assets', async t => {
+  const root = await fixture(t);
+  await mkdir(path.join(root, 'assets/logos'), { recursive: true });
+  await mkdir(path.join(root, 'assets/images'), { recursive: true });
+  const svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><circle cx="5" cy="5" r="4"/></svg>';
+  await writeFile(path.join(root, 'assets/logos/mark.svg'), svg);
+  await writeFile(path.join(root, 'assets/logos/mark-dark.svg'), svg);
+  await writeFile(path.join(root, 'assets/images/diagram.svg'), svg);
+  await writeFile(path.join(root, 'assets/logos/bitmap.png'), 'bitmap');
+  await writeFile(path.join(root, 'assets/images/photo.jpg'), 'photo');
+  const content = await loadContent(await loadSlidesConfig({ content: root }));
+  assert.deepEqual(content.images.map(file => path.basename(file)), ['photo.jpg']);
+  assert.equal(content.staticImages.length, 4);
+  const module = contentModule(content);
+  assert.match(module, /photo\.jpg\?url&iiif/);
+  assert.match(module, /mark\.svg\?url"/);
+  assert.match(module, /mark-dark\.svg\?url"/);
+  assert.match(module, /diagram\.svg\?url"/);
+  assert.match(module, /bitmap\.png\?url"/);
+  assert.doesNotMatch(module, /\.svg\?url&iiif|bitmap\.png\?url&iiif/);
 });
 
 test('invalid references fail before rendering and content paths cannot escape the root', async t => {

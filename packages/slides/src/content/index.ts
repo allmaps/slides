@@ -69,6 +69,9 @@ export async function loadContent(config: RuntimeSlidesConfig) {
   const imageFiles = config.iiif.enabled ? await walk(config.iiif.inputRoot) : assets;
   const images = imageFiles.filter(f => /\.(avif|gif|jpeg|jpg|png|tif|tiff|webp)$/i.test(f));
   for (const filename of images) within(config.sourceContentDir, filename);
+  // SVGs, plus raster artwork outside the IIIF input, are ordinary Vite assets.
+  const iiifImages = new Set(images);
+  const staticImages = assets.filter(f => /\.(svg|avif|gif|jpeg|jpg|png|tif|tiff|webp)$/i.test(f) && !iiifImages.has(f));
   const data = assets.filter(f => /\.(geojson|json)$/i.test(f));
   const styles: Record<string, unknown> = {};
   for (const filename of data.filter(f => /^assets\/(map-styles|styles)\/.*\.json$/i.test(within(config.sourceContentDir, f))))
@@ -77,7 +80,7 @@ export async function loadContent(config: RuntimeSlidesConfig) {
   const project = buildProject(config.slidesConfig, slides, resolveAsset);
   project.creditsTitle = sharedCredits?.title;
   for (const show of project.slideshows) show.creditsTitle = credits[show.id]?.title;
-  return { config, slides, credits, sharedCredits, images, data, styles, project,
+  return { config, slides, credits, sharedCredits, images, staticImages, data, styles, project,
     slideCount: Object.keys(slides).length, slideshowCount: config.slidesConfig.slideshows.length };
 }
 export type ContentSnapshot = Awaited<ReturnType<typeof loadContent>>;

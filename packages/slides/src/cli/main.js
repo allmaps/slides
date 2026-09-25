@@ -2,6 +2,7 @@
 
 import { Command, Option } from "commander";
 
+import { CommandInterruptedError } from "../build/process.ts";
 import { runBuildIiifCommand } from "./commands/build-iiif.ts";
 import { runAppCommand } from "./commands/run-app.ts";
 import { runValidateCommand } from "./commands/validate.ts";
@@ -93,6 +94,10 @@ addConfigOption(
 );
 
 program.parseAsync().catch((error) => {
+  if (error instanceof CommandInterruptedError) {
+    process.exitCode = error.exitCode;
+    return;
+  }
   console.error(error);
   process.exit(1);
 });

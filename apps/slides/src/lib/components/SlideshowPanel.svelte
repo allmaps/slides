@@ -6,6 +6,7 @@
   import { withBaseUrl } from "$lib/shared/paths";
   import { emptyThumbnails, slidePreviewKey, type ThumbnailManifest } from "$lib/shared/thumbnails";
   import ChapterContent from "$lib/components/ChapterContent.svelte";
+  import { getChapterCount, getChapterLabel, getSlideshowNumber } from "@allmaps/slides/model/project";
   import { getInterfaceText } from "$lib/shared/interface-context";
   const t = getInterfaceText();
   import { ArrowLeft, ArrowUp, BookOpen, Presentation } from "@lucide/svelte";
@@ -34,6 +35,7 @@
     onIndexChange?: (index: number) => void;
     hiddenWarpedMapUrls?: string[];
     onShowLayers?: (slug: string) => void;
+    onShowChapters?: () => void;
     backHref?: string;
     backTitle?: string;
     class?: string;
@@ -72,6 +74,7 @@
     onIndexChange,
     hiddenWarpedMapUrls = [],
     onShowLayers,
+    onShowChapters,
     backHref,
     backTitle,
     class: className = "",
@@ -79,6 +82,7 @@
 
   const chapters = $derived(slideshow.chapters);
   const firstChapter = $derived(chapters[0]);
+  const slideshowNumber = $derived(getSlideshowNumber(project, slideshow));
 
   let index: number = $state(0);
   let loaded: boolean = $state(false);
@@ -128,7 +132,7 @@
               id,
               href: getSubslideshowHref(subslideshow),
               title: getSubslideshowTitle(reference, subslideshow),
-              slideCount: subslideshow.chapters.length,
+              slideCount: getChapterCount(subslideshow),
               slideshow: subslideshow,
             };
           })
@@ -146,14 +150,14 @@
       subslideshows[0].slideshow.chapters.length > 0
     ) {
       const subslideshow = subslideshows[0].slideshow;
-      const slideCount = subslideshow.chapters.length;
+      const slideCount = getChapterCount(subslideshow);
 
       return subslideshow.chapters.map((chapter, index) => ({
         id: `${subslideshow.id}:${chapter.slug}`,
         previewKey: slidePreviewKey(subslideshow.id, chapter.slug),
         href: getChapterRouteHref(subslideshow, chapter),
         title: chapter.title,
-        badge: `${index + 1} / ${slideCount}`,
+        badge: getChapterLabel(project, subslideshow, chapter.slug) ?? String(index + 1),
         ariaLabel: t("slideCard", { title: chapter.title, current: index + 1, total: slideCount }),
       }));
     }
@@ -445,15 +449,15 @@
         {#if index === 0 && backHref}
           <a class="panel-link slideshow-heading" data-subslideshow-title href={backHref}
             title={t('backToTitle', { title: backTitle ?? '' })} aria-label={t('backToTitle', { title: backTitle ?? '' })}>
-            <ArrowLeft size={20} aria-hidden="true" /><span>{slideshow.title}</span>
+            <ArrowLeft size={20} aria-hidden="true" /><span>{slideshowNumber ? `${slideshowNumber}${slideshowNumber.includes('.') ? '' : '.'} ` : ''}{slideshow.title}</span>
           </a>
         {/if}
-        <ChapterContent {chapter} hiddenMapUrls={hiddenWarpedMapUrls} onShowMaps={() => onShowLayers?.(chapter.slug)} />
+        <ChapterContent {chapter} number={getChapterLabel(project, slideshow, chapter.slug)} hiddenMapUrls={hiddenWarpedMapUrls} onShowMaps={() => onShowLayers?.(chapter.slug)} onShowChapters={() => onShowChapters?.()} />
         {#if subslideshows.length}
-          <aside class="read-more" aria-label={t("readMore")}>
+          <aside class="read-more" aria-label={t("sections")}>
             <div class="read-more__heading">
               <BookOpen size={20} strokeWidth={1.8} aria-hidden="true" />
-              <h2>{t("readMore")}</h2>
+              <h2>{t("sections")}</h2>
             </div>
             <div
               class="read-more__list"

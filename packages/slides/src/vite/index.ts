@@ -15,10 +15,10 @@ const markdownId = "virtual:slides/markdown";
 const catalogId = "virtual:slides/iiif-server";
 export function contentModule(content: ContentSnapshot) {
   const lines = [`export const slidesConfig = ${JSON.stringify(content.config.slidesConfig)};`, `export const project = ${JSON.stringify(content.project)};`];
-  const record = (name: string, files: string[], query: string, eager = true) => {
+  const record = (name: string, files: string[], query: string | ((filename: string) => string), eager = true) => {
     const entries = files.map((filename, index) => {
       const key = `./${within(content.config.sourceContentDir, filename)}`;
-      const specifier = JSON.stringify(slash(filename) + query);
+      const specifier = JSON.stringify(slash(filename) + (typeof query === "function" ? query(filename) : query));
       const local = `${name}_${index}`;
       if (eager) lines.push(`import ${local} from ${specifier};`);
       return `${JSON.stringify(key)}: ${eager ? local : `() => import(${specifier}).then(m => m.default)`}`;
@@ -26,7 +26,8 @@ export function contentModule(content: ContentSnapshot) {
     lines.push(`export const ${name} = {${entries.join(",")}};`);
   };
   record("dataAssetFiles", content.data, "?raw", false);
-  record("imageAssetUrls", content.images, content.config.iiif.enabled ? "?url&iiif" : "?url");
+  const iiifImages = new Set(content.images);
+  record("imageAssetUrls", [...content.images, ...content.staticImages], filename => content.config.iiif.enabled && iiifImages.has(filename) ? "?url&iiif" : "?url");
   lines.push(`export const mapStyleFiles = ${JSON.stringify(content.styles)};`);
   return lines.join("\n");
 }
@@ -73,7 +74,7 @@ export function slidesContent(): Plugin {
       if (source !== id && source !== `\0${markdownId}`) return;
       const content = await loadContent(runtime);
       this.addWatchFile(content.config.configPath);
-      for (const file of [...Object.values(content.slides).map(s => s.filename), ...Object.values(content.credits).map(c => c.filename), ...(content.sharedCredits ? [content.sharedCredits.filename] : []), ...content.images, ...content.data]) this.addWatchFile(file);
+      for (const file of [...Object.values(content.slides).map(s => s.filename), ...Object.values(content.credits).map(c => c.filename), ...(content.sharedCredits ? [content.sharedCredits.filename] : []), ...content.images, ...content.staticImages, ...content.data]) this.addWatchFile(file);
       return source === id ? contentModule(content) : markdownModule(content);
     },
     async configureServer(server) {

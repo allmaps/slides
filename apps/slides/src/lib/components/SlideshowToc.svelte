@@ -2,12 +2,12 @@
   import { getInterfaceText } from "$lib/shared/interface-context";
   const t = getInterfaceText();
   import {
-    ChevronDown,
     ChevronRight,
     ListChevronsDownUp,
     ListChevronsUpDown,
   } from "@lucide/svelte";
 
+  import { getChapterNumber, getSubslideshowNumber } from "@allmaps/slides/model/project";
   import PanelOverlay from "$lib/components/PanelOverlay.svelte";
   import {
     getChapterAnchorHref,
@@ -48,11 +48,6 @@
     class: className = "",
   }: Props = $props();
 
-  const alphabeticIndex = (index: number): string => {
-    let label = '';
-    for (let n = index + 1; n > 0; n = Math.floor((n - 1) / 26)) label = String.fromCharCode(97 + (n - 1) % 26) + label;
-    return label;
-  };
   const tocSlideshow = $derived(rootSlideshow ?? slideshow);
   const tocChapters = $derived(tocSlideshow.chapters);
 
@@ -278,7 +273,7 @@
   {top}
   {bottomMargin}
   {tab}
-  closeLabel={t("closeChapters")}
+  closeLabel={t("close")}
   onClose={onClose}
   class={className}
 >
@@ -302,32 +297,13 @@
 
   <nav aria-label={t("chapters")}>
     <ol class="space-y-0.5 text-[18px] leading-[1.35] font-normal">
-      {#each tocEntries as entry, chapterIndex}
+      {#each tocEntries as entry}
+        {@const chapterNumber = getChapterNumber(tocSlideshow, entry.chapter.slug)}
         {@const hasSubslideshows = entry.subslideshows.length > 0}
         {@const expanded = isTocEntryExpanded(entry.id)}
         {@const currentTocChapter = isCurrentTocChapter(entry.chapter)}
         <li>
           <div class="toc-row">
-            {#if hasSubslideshows}
-              <button
-                type="button"
-                class="toc-icon-button"
-                aria-label={expanded
-                  ? t("collapseTitle", { title: entry.chapter.title })
-                  : t("expandTitle", { title: entry.chapter.title })}
-                aria-expanded={expanded}
-                onclick={() => toggleTocEntry(entry.id)}
-              >
-                {#if expanded}
-                  <ChevronDown size={22} aria-hidden="true" />
-                {:else}
-                  <ChevronRight size={22} aria-hidden="true" />
-                {/if}
-              </button>
-            {:else if hasTocChevronColumn}
-              <span class="toc-icon-spacer" aria-hidden="true"></span>
-            {/if}
-
             <a
               class="toc-text-button {currentTocChapter
                 ? 'toc-text-button-active'
@@ -337,122 +313,145 @@
               onclick={(event) => selectChapter(event, tocSlideshow, entry.chapter)}
             >
               <span class="toc-text-label toc-text-label--truncate">
-                <span class="toc-number">{chapterIndex + 1}.</span><span>{entry.chapter.title}</span>
+                <span class="toc-number">{chapterNumber === undefined ? "" : `${chapterNumber}.`}</span><span class="toc-title">{entry.chapter.title}</span>
               </span>
             </a>
+            {#if hasSubslideshows}
+              <button
+                type="button"
+                class="toc-icon-button"
+                aria-label={expanded
+                  ? t("collapse")
+                  : t("expand")}
+                aria-expanded={expanded}
+                onclick={() => toggleTocEntry(entry.id)}
+              >
+                <span class="toc-chevron" class:toc-chevron--expanded={expanded}>
+                  <ChevronRight size={22} aria-hidden="true" />
+                </span>
+              </button>
+            {:else if hasTocChevronColumn}
+              <span class="toc-icon-spacer" aria-hidden="true"></span>
+            {/if}
           </div>
 
           {#if hasSubslideshows}
-            <div class="toc-children" hidden={!expanded}>
-              {#if entry.subslideshows.length === 1}
-                {@const subslideshow = entry.subslideshows[0]}
-                {#if subslideshow.slideshow}
-                  {@const subslideshowData = subslideshow.slideshow}
+            <div class="toc-disclosure" class:toc-disclosure--expanded={expanded} aria-hidden={!expanded} inert={!expanded}>
+              <div class="toc-children">
+                {#if entry.subslideshows.length === 1}
+                  {@const subslideshow = entry.subslideshows[0]}
+                  {#if subslideshow.slideshow}
+                    {@const subslideshowData = subslideshow.slideshow}
 
+                    <ol class="py-0.5">
+                      {#each subslideshowData.chapters as subchapter}
+                        {@const sectionNumber = getChapterNumber(subslideshowData, subchapter.slug)}
+                        {@const subchapterHref = getChapterHref(
+                          subslideshowData,
+                          subchapter,
+                        )}
+                        {@const currentSubchapter = isCurrentSubchapter(
+                          subslideshowData,
+                          subchapter,
+                        )}
+                        <li>
+                          <a
+                            class="toc-text-button toc-text-button--block {currentSubchapter
+                              ? 'toc-text-button-active'
+                              : ''}"
+                            aria-current={currentSubchapter ? "true" : undefined}
+                            href={subchapterHref}
+                            onclick={(event) => selectChapter(event, subslideshowData, subchapter)}
+                          >
+                            <span class="toc-text-label"><span class="toc-number">{sectionNumber === undefined ? "" : [chapterNumber, sectionNumber].filter(number => number !== undefined).join(".")}</span><span class="toc-title">{subchapter.title}</span></span>
+                          </a>
+                        </li>
+                      {/each}
+                    </ol>
+                  {/if}
+                {:else}
                   <ol class="py-0.5">
-                    {#each subslideshowData.chapters as subchapter, subchapterIndex}
-                      {@const subchapterHref = getChapterHref(
-                        subslideshowData,
-                        subchapter,
-                      )}
-                      {@const currentSubchapter = isCurrentSubchapter(
-                        subslideshowData,
-                        subchapter,
-                      )}
-                      <li>
-                        <a
-                          class="toc-text-button toc-text-button--block {currentSubchapter
-                            ? 'toc-text-button-active'
-                            : ''}"
-                          aria-current={currentSubchapter ? "true" : undefined}
-                          href={subchapterHref}
-                          onclick={(event) => selectChapter(event, subslideshowData, subchapter)}
-                        >
-                          <span class="toc-text-label"><span class="toc-number">{alphabeticIndex(subchapterIndex)}.</span><span>{subchapter.title}</span></span>
-                        </a>
-                      </li>
+                    {#each entry.subslideshows as subslideshow}
+                      {@const slideshowNumber = getSubslideshowNumber(tocSlideshow, entry.chapter, subslideshow.id)}
+                      {#if subslideshow.slideshow}
+                        {@const subslideshowData = subslideshow.slideshow}
+                        {@const subslideshowEntryId = getTocSubslideshowEntryId(
+                          entry.id,
+                          subslideshow.id,
+                        )}
+                        {@const currentSubslideshow =
+                          subslideshowData.id === slideshow.id}
+                        {@const subslideshowExpanded =
+                          isTocSubslideshowExpanded(subslideshowEntryId)}
+                        <li>
+                          <div class="toc-row">
+                            <a
+                              class="toc-text-button {currentSubslideshow
+                                ? 'toc-text-button-active'
+                                : ''}"
+                              href={subslideshow.href}
+                              onclick={(event) =>
+                                selectSubslideshowHeading(event, subslideshowData)}
+                            >
+                              <span class="toc-text-label toc-text-label--truncate">
+                                <span class="toc-number">{slideshowNumber ?? ""}</span><span class="toc-title">{subslideshow.title}</span>
+                              </span>
+                            </a>
+                            <button
+                              type="button"
+                              class="toc-icon-button"
+                              aria-label={subslideshowExpanded
+                                ? t("collapse")
+                                : t("expand")}
+                              aria-expanded={subslideshowExpanded}
+                              onclick={() =>
+                                toggleTocSubslideshowEntry(subslideshowEntryId)}
+                            >
+                              <span class="toc-chevron" class:toc-chevron--expanded={subslideshowExpanded}>
+                                <ChevronRight size={22} aria-hidden="true" />
+                              </span>
+                            </button>
+                          </div>
+
+                          <div class="toc-disclosure" class:toc-disclosure--expanded={subslideshowExpanded} aria-hidden={!subslideshowExpanded} inert={!subslideshowExpanded}>
+                            <div class="toc-children">
+                              <ol class="py-0.5">
+                                {#each subslideshowData.chapters as subchapter}
+                                  {@const sectionNumber = getChapterNumber(subslideshowData, subchapter.slug)}
+                                  {@const subchapterHref = getChapterHref(
+                                    subslideshowData,
+                                    subchapter,
+                                  )}
+                                  {@const currentSubchapter = isCurrentSubchapter(
+                                    subslideshowData,
+                                    subchapter,
+                                  )}
+                                  <li>
+                                    <a
+                                      class="toc-text-button toc-text-button--block {currentSubchapter
+                                        ? 'toc-text-button-active'
+                                        : ''}"
+                                      aria-current={currentSubchapter
+                                        ? "true"
+                                        : undefined}
+                                      href={subchapterHref}
+                                      onclick={(event) => selectChapter(event, subslideshowData, subchapter)}
+                                    >
+                                      <span class="toc-text-label">
+                                        <span class="toc-number">{sectionNumber === undefined ? "" : [slideshowNumber, sectionNumber].filter(number => number !== undefined).join(".")}</span><span class="toc-title">{subchapter.title}</span>
+                                      </span>
+                                    </a>
+                                  </li>
+                                {/each}
+                              </ol>
+                            </div>
+                          </div>
+                        </li>
+                      {/if}
                     {/each}
                   </ol>
                 {/if}
-              {:else}
-                <ol class="py-0.5">
-                  {#each entry.subslideshows as subslideshow}
-                    {#if subslideshow.slideshow}
-                      {@const subslideshowData = subslideshow.slideshow}
-                      {@const subslideshowEntryId = getTocSubslideshowEntryId(
-                        entry.id,
-                        subslideshow.id,
-                      )}
-                      {@const currentSubslideshow =
-                        subslideshowData.id === slideshow.id}
-                      {@const subslideshowExpanded =
-                        isTocSubslideshowExpanded(subslideshowEntryId)}
-                      <li>
-                        <div class="toc-row">
-                          <button
-                            type="button"
-                            class="toc-icon-button"
-                            aria-label={subslideshowExpanded
-                              ? t("collapseTitle", { title: subslideshow.title })
-                              : t("expandTitle", { title: subslideshow.title })}
-                            aria-expanded={subslideshowExpanded}
-                            onclick={() =>
-                              toggleTocSubslideshowEntry(subslideshowEntryId)}
-                          >
-                            {#if subslideshowExpanded}
-                              <ChevronDown size={22} aria-hidden="true" />
-                            {:else}
-                              <ChevronRight size={22} aria-hidden="true" />
-                            {/if}
-                          </button>
-
-                          <a
-                            class="toc-text-button {currentSubslideshow
-                              ? 'toc-text-button-active'
-                              : ''}"
-                            href={subslideshow.href}
-                            onclick={(event) =>
-                              selectSubslideshowHeading(event, subslideshowData)}
-                          >
-                            <span class="toc-text-label toc-text-label--truncate">
-                              {subslideshow.title}
-                            </span>
-                          </a>
-                        </div>
-
-                        <ol class="toc-children py-0.5" hidden={!subslideshowExpanded}>
-                          {#each subslideshowData.chapters as subchapter, subchapterIndex}
-                            {@const subchapterHref = getChapterHref(
-                              subslideshowData,
-                              subchapter,
-                            )}
-                            {@const currentSubchapter = isCurrentSubchapter(
-                              subslideshowData,
-                              subchapter,
-                            )}
-                            <li>
-                              <a
-                                class="toc-text-button toc-text-button--block {currentSubchapter
-                                  ? 'toc-text-button-active'
-                                  : ''}"
-                                aria-current={currentSubchapter
-                                  ? "true"
-                                  : undefined}
-                                href={subchapterHref}
-                                onclick={(event) => selectChapter(event, subslideshowData, subchapter)}
-                              >
-                                <span class="toc-text-label">
-                                  <span class="toc-number">{alphabeticIndex(subchapterIndex)}.</span><span>{subchapter.title}</span>
-                                </span>
-                              </a>
-                            </li>
-                          {/each}
-                        </ol>
-                      </li>
-                    {/if}
-                  {/each}
-                </ol>
-              {/if}
+              </div>
             </div>
           {/if}
         </li>
@@ -464,7 +463,7 @@
 <style>
   .toc-row {
     display: flex;
-    align-items: center;
+    align-items: stretch;
     gap: 0;
   }
 
@@ -492,7 +491,12 @@
     flex-shrink: 0;
   }
 
+  .toc-row > .toc-icon-button { height: auto; min-height: 2.5rem; }
+
   .toc-text-button {
+    display: flex;
+    align-items: center;
+    min-height: 2.5rem;
     min-width: 0;
     flex: 1 1 0%;
     cursor: pointer;
@@ -501,9 +505,7 @@
     text-align: left;
     font-weight: 400;
     line-height: 1.35;
-    text-decoration-color: currentColor;
-    text-decoration-thickness: 1px;
-    text-underline-offset: 0.08em;
+    text-decoration: none;
     transition: background-color 150ms ease;
   }
 
@@ -511,12 +513,13 @@
     background: var(--app-overlay-selected-bg);
   }
 
-  .toc-text-button-active {
-    text-decoration-line: underline;
+  .toc-text-button-active .toc-title {
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 0.08em;
   }
 
   .toc-text-button--block {
-    display: block;
     width: 100%;
   }
 
@@ -532,10 +535,25 @@
     white-space: normal;
   }
 
+  /* Keep links rendered for SSR while animating their intrinsic height. */
+  .toc-disclosure {
+    display: grid;
+    grid-template-rows: 0fr;
+    transition: grid-template-rows 240ms ease;
+  }
+  .toc-disclosure--expanded { grid-template-rows: 1fr; }
+  .toc-chevron { display: inline-flex; transition: transform 240ms ease; }
+  .toc-chevron--expanded { transform: rotate(90deg); }
+
   .toc-children {
-    margin-left: 2.5rem;
+    min-height: 0;
+    overflow: hidden;
+    margin-left: 0.75rem;
     padding-left: 0.75rem;
     border-left: 1px solid color-mix(in srgb, currentColor 16%, transparent);
   }
-  .toc-number { flex: 0 0 1.4em; font-variant-numeric: tabular-nums; color: var(--app-overlay-icon); }
+  .toc-number { flex: 0 0 auto; min-width: 1.4em; white-space: nowrap; font-variant-numeric: tabular-nums; color: var(--app-overlay-icon); }
+  @media (prefers-reduced-motion: reduce) {
+    .toc-disclosure, .toc-chevron { transition: none; }
+  }
 </style>

@@ -84,11 +84,19 @@ try {
   await until(async () => { const response = await a.get('/atlas/'); return response.ok && (await response.text()).includes('Updated configuration'); }, 'base path restart');
   await until(async () => (await (await a.get('/atlas/iiif/shared/info.json')).json()).id === a.origin + '/atlas/iiif/shared', 'IIIF after base path restart');
   assert.ok((await (await b.get('/')).text()).includes('Beta first'));
-  console.log('PASS: two sites, stable IIIF URLs, isolated pixels, add/rename/delete, data assets, image updates, HMR, thumbnails and config/base-path restart.');
+  sockets.forEach(socket => socket.close());
+  for (const [site, signal, expectedCode] of [[a, 'SIGINT', 130], [b, 'SIGTERM', 143]]) {
+    const stopped = new Promise(resolve => site.child.once('close', (code, signal) => resolve({ code, signal })));
+    site.child.kill(signal);
+    assert.deepEqual(await stopped, { code: expectedCode, signal: null });
+    assert.doesNotMatch(children.find(entry => entry.child === site.child).log, /Command failed|CommandInterruptedError/);
+    await assert.rejects(() => site.get('/'));
+  }
+  console.log('PASS: two sites, stable IIIF URLs, isolated pixels, add/rename/delete, data assets, image updates, HMR, thumbnails, config/base-path restart and clean SIGINT/SIGTERM shutdown.');
 } finally {
   sockets.forEach(socket => socket.close());
   await Promise.all(children.map(({ child }) => new Promise(resolve => {
-    if (child.exitCode !== null) return resolve();
+    if (child.exitCode !== null || child.signalCode !== null) return resolve();
     child.once('exit', resolve); child.kill('SIGTERM');
   })));
   await rm(root, { recursive: true, force: true });

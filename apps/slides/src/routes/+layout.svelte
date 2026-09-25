@@ -3,6 +3,7 @@
   import { getSlideshowPageTitle } from "$lib/shared/seo";
 
   import favicon from "$lib/assets/favicon.svg";
+  import appIcon from "$lib/assets/apple-touch-icon.png";
   import Slideshow from "$lib/components/Slideshow.svelte";
   import {
     getProject,
@@ -23,6 +24,9 @@
 <svelte:head>
   <title>{pageTitle}</title>
   <link rel="icon" href={favicon} />
+  <link rel="apple-touch-icon" sizes="180x180" href={appIcon} />
+  <meta name="apple-mobile-web-app-title" content={mainSlideshow?.title ?? project.title} />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
 </svelte:head>
 
 {#if slideshow && mainSlideshow}

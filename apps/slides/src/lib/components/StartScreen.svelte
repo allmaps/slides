@@ -99,7 +99,7 @@
     z-index: 30;
     display: grid;
     place-items: center;
-    padding: 1rem;
+    padding: var(--app-inset-top) var(--app-inset-right) var(--app-inset-bottom) var(--app-inset-left);
     opacity: 1;
     transform: scale(1);
     transition:

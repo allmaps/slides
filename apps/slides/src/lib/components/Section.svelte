@@ -4,7 +4,7 @@
 </script>
 
 <script lang="ts">
-  import MapCountBadge from "$lib/components/MapCountBadge.svelte";
+  import ChapterIndicators from "$lib/components/ChapterIndicators.svelte";
   import { getInterfaceText } from "$lib/shared/interface-context";
   import { enhanceFigures } from "$lib/shared/enhance-figures";
   let {
@@ -22,7 +22,9 @@
 </script>
 
 <div class="slide-content clear-both" use:enhanceFigures={t}>
-  {#if title && !hideTitle}<h1>{title}<MapCountBadge /></h1>{/if}
+  {#if title && !hideTitle}
+    <h1>{title}<ChapterIndicators /></h1>
+  {/if}
   {#if description}<p class="slide-description">{description}</p>{/if}
   {@render children?.()}
 </div>
@@ -192,6 +194,28 @@
 
   :global(.slide-content img) {
     height: auto;
+  }
+
+  :global(.slide-content .logo-grid) {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: center;
+    gap: 28px 24px;
+    margin-block: 32px 8px;
+  }
+
+  :global(.slide-content .logo-grid a) {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 0;
+    color: inherit;
+    font-weight: inherit;
+    text-decoration: none;
+  }
+
+  :global(.slide-content .logo-grid .logo-wide) {
+    grid-column: 1 / -1;
   }
 
   :global(.slide-content figcaption > :first-child) {

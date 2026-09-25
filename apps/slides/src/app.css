@@ -48,6 +48,14 @@
   :root {
     --app-edge-spacing: 12px;
     --app-control-gap: 8px;
+    --app-safe-top: env(safe-area-inset-top, 0px);
+    --app-safe-right: env(safe-area-inset-right, 0px);
+    --app-safe-bottom: env(safe-area-inset-bottom, 0px);
+    --app-safe-left: env(safe-area-inset-left, 0px);
+    --app-inset-top: calc(var(--app-edge-spacing) + var(--app-safe-top));
+    --app-inset-right: calc(var(--app-edge-spacing) + var(--app-safe-right));
+    --app-inset-bottom: calc(var(--app-edge-spacing) + var(--app-safe-bottom));
+    --app-inset-left: calc(var(--app-edge-spacing) + var(--app-safe-left));
     --font-body: "Source Sans 3", ui-sans-serif, system-ui, sans-serif;
     --font-display: "League Spartan", ui-sans-serif, system-ui, sans-serif;
     --font-display-features: "ss01" 1, "liga" 1;

@@ -22,6 +22,15 @@ export default function rehypeImages() {
           for (const tag of html.matchAll(/<\/?figure\b[^>]*>/gi)) {
             figureDepth = Math.max(0, figureDepth + (tag[0].startsWith("</") ? -1 : 1));
           }
+          // Explicit HTML images use the same asset URLs and theme alternatives
+          // as Markdown images. Preserve comments and quoted attributes; raw
+          // HTML images remain inline and do not gain a generated caption.
+          child.value = (child.value ?? "").replace(
+            /<!--[\s\S]*?-->|<\/?[a-zA-Z][a-zA-Z0-9:.-]*(?:[^>"']|"[^"]*"|'[^']*')*>/g,
+            (tag) => /^<img\b/i.test(tag)
+              ? tag.replace(/^<img\b/i, "<Components.img data-inline").replace(/\s*\/?\s*>$/, " />")
+              : tag,
+          );
           return child;
         }
         if (child.type !== "element") return child;
