@@ -55,10 +55,12 @@ interface:
     madeWith: Gemaakt met
 ```
 
-Use Node 24 and pnpm 10. Install dependencies with `pnpm install`, then select a
-site by directory:
+Gravity at Sea and Kattenburg Atlas are Git submodules. Use Node 24 and pnpm 10,
+initialize the content repositories, then install dependencies and select a site:
 
 ```sh
+git submodule update --init --recursive
+pnpm install
 pnpm exec slides dev ./content/gravity-at-sea
 pnpm exec slides dev ./content/kattenburg-atlas --port 5174
 pnpm exec slides dev ./content/basemap-fixtures --port 5175

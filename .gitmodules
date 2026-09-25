@@ -1,3 +1,7 @@
 [submodule "content/kattenburg-atlas"]
 	path = content/kattenburg-atlas
 	url = https://github.com/amsterdamtimemachine/kattenburg-atlas.git
+[submodule "content/gravity-at-sea"]
+	path = content/gravity-at-sea
+	url = https://github.com/tu-delft-heritage/gravity-expeditions-app.git
+	branch = codex/content-repository
