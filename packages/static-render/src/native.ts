@@ -1,6 +1,35 @@
 import type { Camera } from "./camera.ts";
-import type { StyleSpecification } from "maplibre-gl";
+import type { GeoJSONSourceSpecification, StyleSpecification } from "maplibre-gl";
 import type { Sources } from "./sources.ts";
+
+type GeoJson = Exclude<GeoJSONSourceSpecification["data"], string>;
+
+function normalizeGeoJson(data: GeoJson): GeoJson {
+  if (data.type === "FeatureCollection")
+    return { ...data, features: data.features.map(feature => {
+      if (feature.id !== null) return feature;
+      const { id, ...withoutId } = feature;
+      return withoutId;
+    }) };
+  if (data.type === "Feature" && data.id === null) {
+    const { id, ...withoutId } = data;
+    return withoutId;
+  }
+  return data;
+}
+
+/** Native silently omits features with null IDs; treat those as absent like GL JS. */
+export function normalizeGeoJsonSources(style: StyleSpecification): StyleSpecification {
+  return {
+    ...style,
+    sources: Object.fromEntries(Object.entries(style.sources).map(([id, source]) => [
+      id,
+      source.type === "geojson" && typeof source.data === "object"
+        ? { ...source, data: normalizeGeoJson(source.data) }
+        : source,
+    ])),
+  };
+}
 
 /** Call from the renderer CLI's main thread, outside SvelteKit/Vite workers. */
 export class NativeRenderer {
@@ -18,7 +47,7 @@ export class NativeRenderer {
     const { getRenderedCameraBuffer, ChiitilerCache } = await import("chiitiler");
     const fallback = ChiitilerCache.fileCache({ dir: this.cacheDir, ttl: 0 });
     return getRenderedCameraBuffer({
-      stylejson: style as Parameters<
+      stylejson: normalizeGeoJsonSources(style) as Parameters<
         typeof getRenderedCameraBuffer
       >[0]["stylejson"],
       ...camera,

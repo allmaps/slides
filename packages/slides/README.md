@@ -67,6 +67,24 @@ Configuration paths and assets are relative to the content directory.
 relative to the invoking working directory. Output defaults to `<content>/dist`.
 Vite options such as `--port 5174` pass through to `dev`/`preview`.
 
+## Shared GeoJSON overlays
+
+Declare GeoJSON sources in the content configuration to show them throughout
+the project, in both the interactive map and slide/social thumbnails:
+
+```yaml
+sources:
+  route:
+    type: geojson
+    path: assets/geojson/route.geojson
+```
+
+Feature properties control the appearance using SimpleStyle: `stroke`,
+`stroke-width`, `stroke-opacity`, `fill`, `fill-opacity`, `marker-color` and
+`marker-size`. Omitted properties use the shared default style. For example,
+`{"stroke":"#64c18f","stroke-width":8}` draws a green route. Regenerate
+thumbnails after changing the geometry or style with `slides thumbnails .`.
+
 ## Credits and navigation
 
 All slides are included in chapter numbering and totals, including the start

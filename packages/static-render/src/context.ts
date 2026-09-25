@@ -31,12 +31,14 @@ export async function createSourceContext(options: {
     fetch: async (input, init) => {
       const url = new URL(input instanceof Request ? input.url : String(input));
       const headers = new Headers(init?.headers);
-      if (
-        url.hostname === "api.protomaps.com" &&
-        options.publicUrl?.startsWith("https://")
-      ) {
-        headers.set("Origin", new URL(options.publicUrl).origin);
-        headers.set("Referer", options.publicUrl);
+      if (url.hostname === "api.protomaps.com") {
+        // Local batches have no browser to supply Protomaps' required Origin.
+        // Resolve empty/relative deployment URLs as localhost, just like dev.
+        const publicUrl = new URL(options.publicUrl || "/", "http://localhost/");
+        if (["http:", "https:"].includes(publicUrl.protocol)) {
+          headers.set("Origin", publicUrl.origin);
+          headers.set("Referer", publicUrl.href);
+        }
       }
       return fetch(input, { ...init, headers });
     },

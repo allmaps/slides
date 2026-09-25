@@ -11,7 +11,7 @@ import { unitsPerPixel } from "../src/camera.ts";
 
 // Opt in on a machine with graphics libraries (Linux: run under xvfb-run).
 test(
-  "Native and Allmaps cameras align at nonzero bearing without DOM access",
+  "Native GeoJSON points and route overlays align with Allmaps, including null feature IDs",
   {
     skip: process.env.SLIDES_TEST_NATIVE !== "true",
     timeout: 30_000,
@@ -32,6 +32,7 @@ test(
             type: "FeatureCollection",
             features: points.map((coordinates) => ({
               type: "Feature",
+              id: null,
               properties: {},
               geometry: { type: "Point", coordinates },
             })),
@@ -46,6 +47,17 @@ test(
           paint: { "circle-color": "#ff0000", "circle-radius": 5 },
         },
       ],
+    };
+    const routeCenter = [4.915, 52.3755];
+    const upper = {
+      version: 8,
+      sources: { route: { type: "geojson", data: {
+        type: "Feature", id: null, properties: { stroke: "#0000ff" },
+        geometry: { type: "LineString", coordinates: [[4.910, routeCenter[1]], [4.920, routeCenter[1]]] },
+      } } },
+      layers: [{ id: "route", type: "line", source: "route", paint: {
+        "line-color": ["get", "stroke"], "line-width": 8,
+      } }],
     };
     const planPath = path.join(cacheDir, "plan.json");
     await writeFile(
@@ -65,7 +77,7 @@ test(
             format: "webp",
             styles: {
               lower: style,
-              upper: { version: 8, sources: {}, layers: [] },
+              upper,
             },
           },
         ],
@@ -120,5 +132,10 @@ test(
         `Control point not aligned at ${px},${py}: ${[...data.subarray(offset, offset + 4)]}`,
       );
     }
+    const [x, y] = lonLatToWebMercator(routeCenter);
+    const px = Math.round(a * x + c * y + e), py = Math.round(b * x + d * y + f);
+    const offset = (py * info.width + px) * 4;
+    assert(data[offset + 2] > 240 && data[offset] < 10 && data[offset + 3] > 240,
+      `GeoJSON route missing from upper pass at ${px},${py}`);
   },
 );

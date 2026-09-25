@@ -1,5 +1,8 @@
 <script lang="ts">
+  import { tick } from "svelte";
   import { getInterfaceText } from "$lib/shared/interface-context";
+  import { emptyThumbnails, slidePreviewKey, type ThumbnailManifest } from "$lib/shared/thumbnails";
+  import { withBaseUrl } from "$lib/shared/paths";
   const t = getInterfaceText();
   import {
     ChevronRight,
@@ -26,6 +29,8 @@
     slideshow: Slideshow;
     rootSlideshow?: Slideshow;
     currentSlug?: string;
+    thumbnails?: ThumbnailManifest;
+    isDarkMode?: boolean;
     top?: string;
     bottomMargin?: string;
     tab?: "toc" | "layers";
@@ -40,6 +45,8 @@
     slideshow,
     rootSlideshow,
     currentSlug,
+    thumbnails = emptyThumbnails(),
+    isDarkMode = false,
     top,
     bottomMargin,
     tab,
@@ -53,6 +60,150 @@
 
   let expandedTocEntryIds: string[] = $state([]);
   let expandedTocSubslideshowIds: string[] = $state([]);
+
+  const previewId = $props.id();
+  let previewTarget = $state<{ element: HTMLAnchorElement; key: string }>();
+  let previewElement = $state<HTMLDivElement>();
+  let previewTimer: ReturnType<typeof setTimeout> | undefined;
+  let previewPointer: { x: number; y: number } | undefined;
+  let previewPlacement: { popup: HTMLDivElement; left: boolean; above: boolean } | undefined;
+  let previewAnimation: Animation | undefined;
+  const previewThumbnail = $derived(open && previewTarget
+    ? thumbnails.slides[previewTarget.key]?.[isDarkMode ? "dark" : "light"]
+    : undefined);
+
+  function keepPreview() {
+    clearTimeout(previewTimer);
+  }
+
+  function hidePreview() {
+    keepPreview();
+    previewAnimation?.cancel();
+    previewAnimation = undefined;
+    previewPlacement = undefined;
+    previewTarget = undefined;
+    previewPointer = undefined;
+  }
+
+  function leavePreview() {
+    keepPreview();
+    previewTimer = setTimeout(hidePreview, 150);
+  }
+
+  function positionPreview(popup: HTMLDivElement, element: HTMLAnchorElement) {
+    const row = previewPointer ? undefined : element.getBoundingClientRect();
+    const point = previewPointer ?? { x: row!.right, y: row!.bottom };
+    const previousBounds = popup.getBoundingClientRect();
+    const { width, height } = previousBounds;
+    const gap = 16;
+    const margin = 12;
+    let left = point.x + gap;
+    let top = point.y + gap;
+    const flipLeft = left + width > window.innerWidth - margin;
+    const flipAbove = top + height > window.innerHeight - margin;
+    if (flipLeft) left = point.x - width - gap;
+    if (flipAbove) top = point.y - height - gap;
+    left = Math.max(margin, Math.min(left, window.innerWidth - width - margin));
+    top = Math.max(margin, Math.min(top, window.innerHeight - height - margin));
+    popup.style.left = `${left}px`;
+    popup.style.top = `${top}px`;
+
+    if (previewPlacement?.popup === popup &&
+        (previewPlacement.left !== flipLeft || previewPlacement.above !== flipAbove)) {
+      previewAnimation?.cancel();
+      // Animate only the corner offset; left/top keep tracking the cursor directly.
+      // Start from the visible position so another flip can interrupt smoothly.
+      if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        previewAnimation = popup.animate([
+          { transform: `translate(${previousBounds.left - left}px, ${previousBounds.top - top}px)` },
+          { transform: "translate(0, 0)" },
+        ], { duration: 220, easing: "cubic-bezier(0.22, 1, 0.36, 1)" });
+      }
+    }
+    previewPlacement = { popup, left: flipLeft, above: flipAbove };
+  }
+
+  // One preview shared by all chapter links, including nested slideshows.
+  function chapterPreview(element: HTMLAnchorElement, key: string) {
+    const show = () => {
+      keepPreview();
+      if (!open || !thumbnails.slides[key]) {
+        hidePreview();
+        return;
+      }
+      // Delay the first preview only; moving between chapters reuses it immediately.
+      if (previewTarget) previewTarget = { element, key };
+      else previewTimer = setTimeout(() => { previewTarget = { element, key }; }, 180);
+    };
+    const move = (event: PointerEvent) => {
+      if (event.pointerType !== "mouse") return;
+      previewPointer = { x: event.clientX, y: event.clientY };
+      if (previewTarget?.element === element && previewElement?.matches(":popover-open"))
+        positionPreview(previewElement, element);
+    };
+    const enter = (event: PointerEvent) => {
+      if (event.pointerType !== "mouse") return;
+      move(event);
+      show();
+    };
+    const focus = () => {
+      if (!element.matches(":focus-visible")) return;
+      previewPointer = undefined;
+      show();
+    };
+    element.addEventListener("pointerenter", enter);
+    element.addEventListener("pointermove", move);
+    element.addEventListener("pointerleave", leavePreview);
+    element.addEventListener("focus", focus);
+    element.addEventListener("blur", leavePreview);
+    element.addEventListener("click", hidePreview);
+    return {
+      update(nextKey: string) { key = nextKey; },
+      destroy() {
+        element.removeEventListener("pointerenter", enter);
+        element.removeEventListener("pointermove", move);
+        element.removeEventListener("pointerleave", leavePreview);
+        element.removeEventListener("focus", focus);
+        element.removeEventListener("blur", leavePreview);
+        element.removeEventListener("click", hidePreview);
+        if (previewTarget?.element === element) hidePreview();
+      },
+    };
+  }
+
+  $effect(() => {
+    if (!open) hidePreview();
+  });
+
+  $effect(() => {
+    const target = previewTarget;
+    const popup = previewElement;
+    if (!previewThumbnail || !target || !popup) return;
+    let cancelled = false;
+    tick().then(() => {
+      if (cancelled) return;
+      // The top layer escapes the card's overflow and animated transforms.
+      popup.showPopover();
+      positionPreview(popup, target.element);
+      target.element.setAttribute("aria-describedby", previewId);
+    });
+    const keydown = (event: KeyboardEvent) => { if (event.key === "Escape") hidePreview(); };
+    window.addEventListener("scroll", hidePreview, true);
+    window.addEventListener("resize", hidePreview);
+    window.addEventListener("keydown", keydown);
+    return () => {
+      cancelled = true;
+      target.element.removeAttribute("aria-describedby");
+      window.removeEventListener("scroll", hidePreview, true);
+      window.removeEventListener("resize", hidePreview);
+      window.removeEventListener("keydown", keydown);
+    };
+  });
+
+  $effect(() => () => {
+    keepPreview();
+    previewAnimation?.cancel();
+  });
 
   const getSubslideshowId = (reference: SubslideshowReference) =>
     typeof reference === "string" ? reference : reference.id;
@@ -296,7 +447,7 @@
   {/snippet}
 
   <nav aria-label={t("chapters")}>
-    <ol class="space-y-0.5 text-[18px] leading-[1.35] font-normal">
+    <ol class="text-[18px] leading-[1.35] font-normal">
       {#each tocEntries as entry}
         {@const chapterNumber = getChapterNumber(tocSlideshow, entry.chapter.slug)}
         {@const hasSubslideshows = entry.subslideshows.length > 0}
@@ -310,6 +461,7 @@
                 : ''}"
               aria-current={currentTocChapter ? "true" : undefined}
               href={getChapterHref(tocSlideshow, entry.chapter)}
+              use:chapterPreview={slidePreviewKey(tocSlideshow.id, entry.chapter.slug)}
               onclick={(event) => selectChapter(event, tocSlideshow, entry.chapter)}
             >
               <span class="toc-text-label toc-text-label--truncate">
@@ -343,7 +495,7 @@
                   {#if subslideshow.slideshow}
                     {@const subslideshowData = subslideshow.slideshow}
 
-                    <ol class="py-0.5">
+                    <ol>
                       {#each subslideshowData.chapters as subchapter}
                         {@const sectionNumber = getChapterNumber(subslideshowData, subchapter.slug)}
                         {@const subchapterHref = getChapterHref(
@@ -361,6 +513,7 @@
                               : ''}"
                             aria-current={currentSubchapter ? "true" : undefined}
                             href={subchapterHref}
+                            use:chapterPreview={slidePreviewKey(subslideshowData.id, subchapter.slug)}
                             onclick={(event) => selectChapter(event, subslideshowData, subchapter)}
                           >
                             <span class="toc-text-label"><span class="toc-number">{sectionNumber === undefined ? "" : [chapterNumber, sectionNumber].filter(number => number !== undefined).join(".")}</span><span class="toc-title">{subchapter.title}</span></span>
@@ -370,7 +523,7 @@
                     </ol>
                   {/if}
                 {:else}
-                  <ol class="py-0.5">
+                  <ol>
                     {#each entry.subslideshows as subslideshow}
                       {@const slideshowNumber = getSubslideshowNumber(tocSlideshow, entry.chapter, subslideshow.id)}
                       {#if subslideshow.slideshow}
@@ -390,6 +543,7 @@
                                 ? 'toc-text-button-active'
                                 : ''}"
                               href={subslideshow.href}
+                              use:chapterPreview={slidePreviewKey(subslideshowData.id, subslideshowData.chapters[0]?.slug ?? "")}
                               onclick={(event) =>
                                 selectSubslideshowHeading(event, subslideshowData)}
                             >
@@ -415,7 +569,7 @@
 
                           <div class="toc-disclosure" class:toc-disclosure--expanded={subslideshowExpanded} aria-hidden={!subslideshowExpanded} inert={!subslideshowExpanded}>
                             <div class="toc-children">
-                              <ol class="py-0.5">
+                              <ol>
                                 {#each subslideshowData.chapters as subchapter}
                                   {@const sectionNumber = getChapterNumber(subslideshowData, subchapter.slug)}
                                   {@const subchapterHref = getChapterHref(
@@ -435,6 +589,7 @@
                                         ? "true"
                                         : undefined}
                                       href={subchapterHref}
+                                      use:chapterPreview={slidePreviewKey(subslideshowData.id, subchapter.slug)}
                                       onclick={(event) => selectChapter(event, subslideshowData, subchapter)}
                                     >
                                       <span class="toc-text-label">
@@ -460,7 +615,41 @@
   </nav>
 </PanelOverlay>
 
+{#if previewThumbnail}
+  <div
+    bind:this={previewElement}
+    id={previewId}
+    popover="manual"
+    role="tooltip"
+    class="toc-preview"
+    onpointerenter={keepPreview}
+    onpointerleave={leavePreview}
+  >
+    <img
+      src={withBaseUrl(previewThumbnail.path)}
+      alt={previewTarget?.element.textContent?.trim() ?? ""}
+      width={previewThumbnail.width}
+      height={previewThumbnail.height}
+      onerror={hidePreview}
+    />
+  </div>
+{/if}
+
 <style>
+  .toc-preview {
+    position: fixed;
+    inset: auto;
+    margin: 0;
+    width: 200px;
+    max-width: calc(100vw - 24px);
+    padding: 1px;
+    border: 1px solid color-mix(in srgb, var(--app-overlay-icon) 25%, transparent);
+    border-radius: 10px;
+    background: var(--app-overlay-bg);
+    box-shadow: 0 6px 24px #0003;
+  }
+  .toc-preview img { display: block; width: 100%; height: auto; border-radius: 8px; }
+
   .toc-row {
     display: flex;
     align-items: stretch;

@@ -5,6 +5,7 @@ import { pathToFileURL } from "node:url";
 import { compile } from "svelte/compiler";
 import { render } from "svelte/server";
 import { absolutePublicUrl, createSlideshowSeo } from "../src/lib/shared/seo.ts";
+import { createInterfaceText } from "../src/lib/shared/interface-settings.ts";
 
 const main = {
   id: "main", slug: "", title: "Atlas", sources: {},
@@ -45,6 +46,7 @@ before(async () => {
       .replaceAll('"$env/dynamic/public"', '"./environment.mjs"')
       .replaceAll('"$lib/shared/interface-context"', JSON.stringify(new URL("../src/lib/shared/interface-context.ts", import.meta.url).href))
       .replaceAll('"$lib/shared/paths"', '"./environment.mjs"')
+      .replaceAll('"$lib/shared/thumbnails"', '"@allmaps/slides/model/thumbnails"')
       .replaceAll('"$lib/shared/project"', '"./environment.mjs"')
       .replaceAll('"$lib/shared/seo"', JSON.stringify(new URL("../src/lib/shared/seo.ts", import.meta.url).href))
       .replaceAll('"$lib/components/PanelOverlay.svelte"', '"./PanelOverlay.mjs"')
@@ -151,7 +153,7 @@ test("JSON-LD escapes script terminators without changing authored titles", () =
 test("closed contents menu renders real chapter links, including collapsed subslideshows", () => {
   deployment.base = "/atlas";
   const { body } = render(Toc, { props: { project, slideshow: history, rootSlideshow: main, open: false } });
-  assert.match(body, /<nav aria-label="Chapters">/);
+  assert.ok(body.includes(`<nav aria-label="${createInterfaceText()("chapters")}">`));
   assert.match(body, /panel-overlay-shell--closed/);
   assert.match(body, /\binert\b/);
   for (const slideshow of project.slideshows) {

@@ -46,7 +46,9 @@ for that batch. Its cache epoch is not advanced; a later source request can
 revalidate it. Annotation fetching and forced refresh remain strict, as do
 authentication errors, missing resources and cold-cache failures. The public
 URL in the plan supplies Protomaps' Origin/Referer headers; CI runner hostnames
-are not used as the deployment origin.
+are not used as the deployment origin. Local batches without an absolute public
+URL use `http://localhost/`; explicit HTTP development URLs are also supported.
+A rejected configured origin remains an error and does not fall back to localhost.
 
 Workspace imports use TypeScript source; packed releases contain JavaScript
 and type declarations.

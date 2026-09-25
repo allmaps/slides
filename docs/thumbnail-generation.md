@@ -7,7 +7,7 @@ thumbnails without a browser, DOM, or a running web server.
 
 | Consumer         | Output                               | Appearance                                              |
 | ---------------- | ------------------------------------ | ------------------------------------------------------- |
-| Read more cards  | 540 × 400 WebP per slide and theme   | Complete map scene in light and dark styles             |
+| Section cards and TOC hover previews | 540 × 400 WebP per slide and theme | Complete map scene in light and dark styles             |
 | Map layers panel | 256 × 256 WebP per map-entry variant | Transparent, north-up, fitted to the mask; no basemap   |
 | Social metadata  | 1200 × 630 JPEG per slideshow route  | First slide, reframed at this aspect ratio, light theme |
 
@@ -57,6 +57,11 @@ remote inputs through a persistent source cache. Allmaps `IntArrayRenderer`
 renders warped overlays; Chiitiler renders the lower and upper style passes.
 Sharp composites lower basemap, warped maps and upper labels/overlays before
 final encoding. Slide and social images have no attribution banner.
+
+GeoJSON sources declared in the content configuration use the same SimpleStyle
+layers in the live map and upper thumbnail pass. The native adapter removes
+null feature IDs (leaving properties and valid IDs intact), since those features
+would otherwise be silently omitted. The render caches include this correction.
 
 The renderer has a JSON batch CLI, a Node API and a Docker image. Plans contain
 relative local asset paths and can be moved with their content/source caches.
@@ -138,7 +143,11 @@ PUBLIC_BASE_PATH=kattenburg-atlas pnpm exec slides preview kattenburg-atlas
 Use the same base-path setting for build and preview. Kattenburg's workflow sets
 it to the repository name. `PUBLIC_URL` comes from its content configuration.
 For Protomaps requests, the builder supplies that configured site's Origin and
-Referer: Kattenburg's existing key rejects requests without its allowed origin.
+Referer. With an empty or relative public URL, local thumbnail batches use
+`http://localhost/`; an explicit HTTP development URL works too. Protomaps
+[requires an Origin header and supports localhost for development](https://protomaps.com/api#cors).
+If a configured deployment origin is rejected, allow it for that key in the
+Protomaps dashboard; the renderer does not substitute a different origin.
 
 | Environment variable              | Behavior                                                             |
 | --------------------------------- | -------------------------------------------------------------------- |

@@ -11,7 +11,7 @@ export async function renderBasemap(
   epoch: number,
 ) {
   return cache.get(
-    { version: 1, renderer: "chiitiler-1.24.2", style, camera, size, epoch },
+    { version: 2, renderer: "chiitiler-1.24.2", style, camera, size, epoch },
     () => native.render(style, camera, size),
   );
 }

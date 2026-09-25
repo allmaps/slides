@@ -650,7 +650,7 @@
 
   {#if isDarkMode !== undefined && activeSlideshow.id === project.main}
     <StartScreen
-      title={activeSlideshow.title}
+      title={project.title}
       description={startDescription}
       chapterCount={getChapterCount(activeSlideshow)}
       visible={startScreenVisible}
@@ -670,10 +670,10 @@
         class="story-title pointer-events-auto absolute flex min-h-[52px] max-w-[calc(100vw-12rem)] items-center rounded-lg bg-[var(--app-map-control-bg)] px-4 py-2 text-left text-[28px] leading-[1.1] font-normal text-[var(--app-map-control-text)] shadow-2xl backdrop-blur-md md:max-w-[28rem]"
         class:story-title--hidden={startScreenVisible}
         href={mainHref}
-        title={rootSlideshow.title}
+        title={project.title}
         onclick={jumpToMainStart}
       >
-        <span class="block translate-y-[0.06em] truncate">{rootSlideshow.title}</span>
+        <span class="block translate-y-[0.06em] truncate">{project.title}</span>
       </a>
     {:else}
       <button
@@ -681,10 +681,10 @@
         type="button"
         class="story-title pointer-events-auto absolute flex min-h-[52px] max-w-[calc(100vw-12rem)] cursor-pointer items-center rounded-lg bg-[var(--app-map-control-bg)] px-4 py-2 text-left text-[28px] leading-[1.1] font-normal text-[var(--app-map-control-text)] shadow-2xl backdrop-blur-md md:max-w-[28rem]"
         class:story-title--hidden={startScreenVisible}
-        title={rootSlideshow.title}
+        title={project.title}
         onclick={jumpToMainStart}
       >
-        <span class="block translate-y-[0.06em] truncate">{rootSlideshow.title}</span>
+        <span class="block translate-y-[0.06em] truncate">{project.title}</span>
       </button>
     {/if}
 
@@ -808,6 +808,8 @@
         <SlideshowToc
           open={tocOpen}
           {project}
+          {thumbnails}
+          {isDarkMode}
           slideshow={activeSlideshow}
           {rootSlideshow}
           currentSlug={activeChapter?.slug}

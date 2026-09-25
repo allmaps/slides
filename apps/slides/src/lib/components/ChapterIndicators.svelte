@@ -16,10 +16,12 @@
         <span class="chapter-indicator__icon"><ListTree size={18} aria-hidden="true" /></span><span class="chapter-indicator__number">{number}{number.includes('.') ? '' : '.'}</span>
       </button>
     {/if}
-    <button type="button" class="chapter-indicator" aria-label={t('mapCount', { count: mapCount })}
-      title={t('mapLayers')} onclick={chapter.showMaps}>
-      <span class="chapter-indicator__icon"><img src={icon} alt="" /></span><span class="chapter-indicator__number">{t(mapCount === 1 ? 'mapCountSingular' : 'mapCountPlural', { count: mapCount })}</span>
-    </button>
+    {#if mapCount > 0}
+      <button type="button" class="chapter-indicator" aria-label={t('mapCount', { count: mapCount })}
+        title={t('mapLayers')} onclick={chapter.showMaps}>
+        <span class="chapter-indicator__icon"><img src={icon} alt="" /></span><span class="chapter-indicator__number">{t(mapCount === 1 ? 'mapCountSingular' : 'mapCountPlural', { count: mapCount })}</span>
+      </button>
+    {/if}
   </span>
 {/if}
 <style>

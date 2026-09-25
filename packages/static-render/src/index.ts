@@ -95,7 +95,7 @@ export async function renderBatch(
       const png = await cache.get(
         {
           version: 2,
-          renderer: "static-render-1",
+          renderer: "static-render-2",
           job: { ...job, id: undefined },
           revisions: selected.map((l) => l.revision),
           epoch: plan.epoch,
