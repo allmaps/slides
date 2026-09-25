@@ -35,4 +35,5 @@ vite.config.ts.timestamp-*
 # Generated release application and content-site exports
 packages/slides/app
 content/*/dist
+/content/tests/
 /artifacts

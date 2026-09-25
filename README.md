@@ -63,10 +63,12 @@ git submodule update --init --recursive
 pnpm install
 pnpm exec slides dev ./content/gravity-at-sea
 pnpm exec slides dev ./content/kattenburg-atlas --port 5174
-pnpm exec slides dev ./content/basemap-fixtures --port 5175
 pnpm exec slides check ./content/kattenburg-atlas
 pnpm exec slides validate ./content/gravity-at-sea
 ```
+
+Local test content can live in the ignored `content/tests/` directory. If present,
+run it with `pnpm exec slides dev ./content/tests --port 5175`.
 
 Each server reads its original content files. Vite watches configuration,
 Markdown and assets, including additions, renames and removals. Separate sites

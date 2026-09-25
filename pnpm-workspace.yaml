@@ -1,6 +1,7 @@
 packages:
   - apps/*
   - content/*
+  - '!content/tests'
   - packages/*
 
 allowBuilds:

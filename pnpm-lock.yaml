@@ -88,8 +88,6 @@ importers:
         specifier: ^7.3.1
         version: 7.3.1(@types/node@25.9.1)(jiti@2.6.1)(lightningcss@1.31.1)(yaml@2.9.0)
 
-  content/basemap-fixtures: {}
-
   content/gravity-at-sea: {}
 
   content/kattenburg-atlas: {}

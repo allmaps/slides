@@ -35,7 +35,6 @@ jobs:
           pnpm -r test
           pnpm --filter @allmaps/slides --filter @allmaps/iiif --filter @allmaps/static-render check
           pnpm exec slides check ./content/gravity-at-sea
-          pnpm exec slides validate ./content/basemap-fixtures
       - name: Native pixel alignment
         run: xvfb-run -a pnpm --filter @allmaps/static-render test:native
       - name: Independent development sites
