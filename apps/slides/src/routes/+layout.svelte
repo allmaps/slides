@@ -1,5 +1,6 @@
 <script lang="ts">
   import { page } from "$app/state";
+  import { base } from "$app/paths";
   import { getSlideshowPageTitle } from "$lib/shared/seo";
 
   import favicon from "$lib/assets/favicon.svg";
@@ -25,6 +26,7 @@
   <title>{pageTitle}</title>
   <link rel="icon" href={favicon} />
   <link rel="apple-touch-icon" sizes="180x180" href={appIcon} />
+  <link rel="manifest" href={`${base}/manifest.webmanifest`} />
   <meta name="apple-mobile-web-app-title" content={mainSlideshow?.title ?? project.title} />
   <meta name="apple-mobile-web-app-capable" content="yes" />
 </svelte:head>

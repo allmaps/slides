@@ -252,3 +252,9 @@ and builds a self-contained local map/image fixture, including native rendering.
 
 The app keeps controls inside iOS safe-area insets in portrait and landscape.
 An Apple touch icon derived from the favicon is included for Home Screen installs.
+The generated `manifest.webmanifest` uses the main slideshow title and scopes
+navigation to the deployment's base path, including every subslideshow. It opens
+the main slideshow in standalone mode. Installed apps fill the viewport while
+only the reading panels scroll. After deploying changes to installation metadata,
+remove and re-add the Home Screen shortcut to test with fresh settings. Links to
+external sites can still open an iOS browser sheet.

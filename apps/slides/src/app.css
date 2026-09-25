@@ -170,6 +170,26 @@
   }
 }
 
+/* An installed app has no collapsing browser toolbar. Fill its viewport without
+   making the document itself scroll; the reading panels own their scrolling.
+   Controls still use the safe-area insets above, while the map fills the edges. */
+@media (display-mode: standalone), (display-mode: fullscreen) {
+  html,
+  body {
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
+
+  .h-app-screen {
+    position: fixed;
+    inset: 0;
+    width: auto;
+    height: auto;
+  }
+}
+
 /* Keep scrollbar geometry stable, reveal the thumb only on hover or focus.
    Scroll containers are inset from rounded shells so the track stays inside. */
 .panel-scrollbar {

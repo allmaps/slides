@@ -48,7 +48,9 @@ export const withBaseUrl = (path: string) => {
   const cleanPath = path.replace(/^\/+/, "");
 
   if (!cleanBase) return `/${cleanPath}`;
-  if (!cleanPath) return cleanBase;
+  // The root route has a trailing slash, including when deployed under a path.
+  // Stay inside that directory's installed-app scope before any redirect.
+  if (!cleanPath) return `${cleanBase}/`;
 
   return `${cleanBase}/${cleanPath}`;
 };
