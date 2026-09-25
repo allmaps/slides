@@ -32,6 +32,13 @@ const catalog = readIiifCatalog('./node_modules/.vite/my-iiif/catalog.json');
 const response = await catalog.get('ship/info.json');
 ```
 
+For development, `readIiifCatalog(filename, { allowMissing: true })` returns an
+empty catalog and 404 responses until a batch has been published. It reads the
+latest completed catalog on each request; publishing a new batch does not
+require recreating the reader. `catalog.get(request, { publicUrl })` can rebase
+default IIIF identifiers to a development origin without modifying the files
+or regenerating pixels. Explicit custom ID bases are preserved.
+
 Run generation before serving or prerendering. `catalog.entries()` supplies
 the list of `{ request }` route parameters. Serving a prepared catalog never
 starts image processing. A caller can instead copy the returned `assets` into

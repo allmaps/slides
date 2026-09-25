@@ -86,3 +86,47 @@ test('a partial cache entry is regenerated and duplicate public IDs fail clearly
   await sharp(f.source).jpeg().toFile(path.join(f.input, 'ship.jpg'));
   await assert.rejects(() => buildStaticIiif(f.options(output)), /same IIIF id/);
 });
+
+test('development can serve an empty catalog without starting generation', async t => {
+  const f = await fixture(t), filename = path.join(f.root, 'catalog.json');
+  await f.image('#ff0000');
+  const catalog = readIiifCatalog(filename, { allowMissing: true });
+  assert.deepEqual(await catalog.entries(), []);
+  assert.equal((await catalog.get('ship/info.json')).status, 404);
+  await assert.rejects(() => stat(filename), { code: 'ENOENT' });
+  await assert.rejects(() => readIiifCatalog(filename).entries(), { code: 'ENOENT' });
+  await writeFile(filename, 'invalid json');
+  await assert.rejects(() => catalog.entries(), SyntaxError);
+});
+
+test('prepared metadata follows the dev origin without rewriting pixels or published files', async t => {
+  const f = await fixture(t), filename = path.join(f.root, 'catalog.json');
+  await f.image('#ff0000');
+  const result = await buildStaticIiif(f.options(path.join(f.root, 'public')));
+  await writeIiifCatalog(filename, result);
+  const catalog = readIiifCatalog(filename);
+  const publicUrl = 'http://localhost:5174/atlas';
+  for (const request of Object.keys(result.assets).filter(request => request.endsWith('.json'))) {
+    const original = await (await catalog.get(request)).text();
+    const local = await (await catalog.get(request, { publicUrl })).text();
+    assert.ok(local.includes(publicUrl + '/iiif/'), request);
+    assert.ok(!local.includes('https://one.example.org/iiif/'), request);
+    assert.deepEqual(JSON.parse(await (await catalog.get(request)).text()), JSON.parse(original));
+  }
+  const request = 'ship/full/max/0/default.jpg';
+  assert.deepEqual(Buffer.from(await (await catalog.get(request, { publicUrl })).arrayBuffer()), await readFile(result.assets[request].filename));
+  const before = await readFile(filename, 'utf8');
+  assert.equal(JSON.parse(before).publicUrl, 'https://one.example.org');
+  await rm(result.assets[request].filename);
+  assert.equal((await readIiifCatalog(filename, { allowMissing: true }).get(request)).status, 404);
+  await assert.rejects(() => catalog.get(request), { code: 'ENOENT' });
+});
+
+test('custom IIIF ID bases are preserved when serving on a dev origin', async t => {
+  const f = await fixture(t), filename = path.join(f.root, 'catalog.json');
+  await f.image('#ff0000');
+  const options = { ...f.options(path.join(f.root, 'public')), idBase: 'https://images.example.org/custom' };
+  await writeIiifCatalog(filename, await buildStaticIiif(options));
+  const response = await readIiifCatalog(filename).get('ship/info.json', { publicUrl: 'http://localhost:5174/atlas' });
+  assert.equal((await response.json()).id, 'https://images.example.org/custom/ship');
+});

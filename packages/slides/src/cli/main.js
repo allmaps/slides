@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { Command, Option } from "commander";
+import { Command } from "commander";
 
 import { CommandInterruptedError } from "../build/process.ts";
 import { runBuildIiifCommand } from "./commands/build-iiif.ts";
@@ -60,22 +60,20 @@ addConfigOption(
 addConfigOption(
   program
     .command("iiif")
-    .description("Create static IIIF derivatives")
+    .description("Prepare an IIIF image batch for development and builds")
     .argument("[content]", "Content directory or package")
     .option("-f, --force", "Recreate existing image derivatives")
     .option("--id <uri>", "Public IIIF base URI")
     .option("--collection-label <label>", "IIIF collection label")
     .option("--input <path>", "Source image folder")
     .option("--output <path>", "IIIF output folder")
+    .option("--cacheDir <path>", "Vite cache directory (same as dev/build)")
     .option("--sizes", "Generate fixed-size full-image derivatives")
     .option("--no-sizes", "Skip fixed-size full-image derivatives")
     .option("--tiles", "Generate tile pyramid derivatives")
     .option("--no-tiles", "Skip tile pyramid derivatives")
     .option("--tile-size <pixels>", "Tile size passed to sharp")
-    .addOption(
-      new Option("--webp", "Generate WebP derivatives alongside JPEG")
-        .default(true),
-    )
+    .option("--webp", "Generate WebP derivatives alongside JPEG")
     .option("--no-webp", "Generate JPEG derivatives only"),
 ).action((contentPackage, options) =>
   runBuildIiifCommand({
@@ -86,6 +84,7 @@ addConfigOption(
     collectionLabel: options.collectionLabel,
     input: options.input,
     output: options.output,
+    cacheDir: options.cacheDir,
     sizes: options.sizes,
     tiles: options.tiles,
     tileSize: options.tileSize,

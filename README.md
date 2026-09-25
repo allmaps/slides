@@ -79,12 +79,17 @@ content/my-story/
   assets/
 ```
 
-Map previews use the last completed thumbnail batch. Refresh them explicitly;
-a running dev server notices the completed manifest:
+Map previews and local IIIF images use their last completed batches. Refresh
+them explicitly; a running dev server reloads when each batch completes:
 
 ```sh
 pnpm exec slides thumbnails ./content/kattenburg-atlas
+pnpm exec slides iiif ./content/kattenburg-atlas
 ```
+
+Page requests never generate images. Run the IIIF command before viewing local
+images for the first time, and again after adding, replacing or deleting source
+images. Unchanged derivatives are reused from the cache.
 
 ## Building
 

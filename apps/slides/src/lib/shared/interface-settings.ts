@@ -27,7 +27,7 @@ export const interfaceDefaults = {
   slideshowProgress: 'Slideshow progress',
   mapLayers: 'Map layers',
   backgroundMap: 'Background map',
-  chapters: 'Chapters',
+  chapters: 'Table of contents',
   lightMode: 'Light mode',
   darkMode: 'Dark mode',
   hideSidePanel: 'Hide side panel',

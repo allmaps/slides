@@ -14,6 +14,7 @@ pnpm exec slides dev .
 pnpm exec slides validate .
 pnpm exec slides check .
 pnpm exec slides thumbnails .
+pnpm exec slides iiif .
 pnpm exec slides build .
 pnpm exec slides preview .
 ```
@@ -195,16 +196,29 @@ renames and deletions refresh the site. Configuration edits restart Vite;
 invalid content appears in its error overlay. Content is never synchronized
 into another source folder.
 
-Dev generates local IIIF derivatives when requested. Map thumbnails use the
-last successful batch. Run `slides thumbnails .` explicitly to refresh them;
-the dev server reloads when that batch completes. Production builds prepare
-thumbnails and IIIF before exporting the application.
+Local IIIF images and map thumbnails use their last successful batches. Run
+`slides iiif .` and `slides thumbnails .` explicitly to refresh them; the dev
+server reloads when each batch completes. Page requests never start generation
+or wait for a running batch. Until the first IIIF batch is ready, missing local
+images return 404 promptly and the rest of the page remains usable.
+
+Run `slides iiif .` after adding, replacing or deleting source images. Existing
+images stay available during generation, and a failed batch leaves the previous
+catalog intact. Unchanged derivatives are reused from the cache. Use the same
+content directory, `--config`, `--cacheDir` and deployment settings as the dev
+server. Local IIIF metadata follows the dev server's origin and base path without
+regenerating pixels; an explicitly configured `iiif.id` is preserved.
+
+The IIIF command publishes to the private cache by default. To also export a
+standalone directory, use `slides iiif . --output ./iiif` or configure
+`iiif.output`. Production builds still prepare thumbnails and IIIF automatically
+before exporting the application.
 
 The Vite cache defaults to `node_modules/.vite`. Derivatives and remote inputs
 live under its `slides` directory. Each real content root, selected config and
 deployment URL has its own application workspace and catalogs. Development and
-production have separate SvelteKit output. Completed thumbnail manifests are
-shared between those modes. All generated runner files and symlinks live in the
+production have separate SvelteKit output. Completed thumbnail manifests and
+IIIF catalogs are shared between those modes. All generated runner files and symlinks live in the
 consumer's cache, never in the installed application.
 
 Linux thumbnail generation requires graphics libraries and Xvfb; see the

@@ -17,6 +17,9 @@ export async function runSite(command: "dev" | "build" | "preview" | "check" | "
   const content = await loadContent(config);
   console.log(`Loaded ${content.slideCount} slides in ${content.slideshowCount} slideshows from ${config.sourceContentDir}.`);
   if (command === "thumbnails") return buildThumbnails(config);
+  if (command === "dev" && config.iiif.enabled && content.images.length) {
+    console.log(`IIIF uses the last completed batch. Refresh with: slides iiif ${JSON.stringify(config.sourceContentDir)}`);
+  }
   const env = getAppEnvironment(config);
   const thumbnails = thumbnailPaths(config);
   Object.assign(env, { SLIDES_THUMBNAILS_MANIFEST: thumbnails.manifestPath, SLIDES_THUMBNAILS_ASSETS: thumbnails.outputRoot });

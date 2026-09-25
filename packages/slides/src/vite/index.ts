@@ -1,13 +1,12 @@
 import path from "node:path";
-import { watch } from "node:fs";
+import { watch, type FSWatcher } from "node:fs";
 import { mkdir } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import type { Plugin, ViteDevServer } from "vite";
-import { prepareIiif, iiifCatalogPath } from "../build/iiif.ts";
+import { iiifCatalogPath } from "../build/iiif.ts";
 import { thumbnailPaths } from "../build/thumbnails.ts";
 import { getAppEnvironment, loadRuntimeConfig, type RuntimeSlidesConfig } from "../content/config.ts";
 import { loadContent, slash, within, type ContentSnapshot } from "../content/index.ts";
-import { normalizeBasePath } from "../content/assets.ts";
 
 export const CONTENT_MODULE = "virtual:slides/content";
 const id = `\0${CONTENT_MODULE}`;
@@ -46,7 +45,6 @@ export function markdownModule(content: ContentSnapshot) {
 
 export function slidesContent(): Plugin {
   let runtime: RuntimeSlidesConfig;
-  let prepared: Promise<string> | undefined;
   let cleanup = () => {};
   const invalidate = (server: ViteDevServer) => {
     server.moduleGraph.invalidateAll();
@@ -69,7 +67,7 @@ export function slidesContent(): Plugin {
     },
     async load(source) {
       if (source === `\0${catalogId}`) {
-        return `import { readIiifCatalog } from ${JSON.stringify(fileURLToPath(import.meta.resolve("@allmaps/iiif/catalog")))}; export default readIiifCatalog(${JSON.stringify(iiifCatalogPath(runtime))});`;
+        return `import { readIiifCatalog } from ${JSON.stringify(fileURLToPath(import.meta.resolve("@allmaps/iiif/catalog")))}; export default readIiifCatalog(${JSON.stringify(iiifCatalogPath(runtime))}, { allowMissing: ${runtime.options.mode === "development"} });`;
       }
       if (source !== id && source !== `\0${markdownId}`) return;
       const content = await loadContent(runtime);
@@ -80,17 +78,6 @@ export function slidesContent(): Plugin {
     async configureServer(server) {
       const root = runtime.sourceContentDir;
       server.watcher.add([root, runtime.configPath]);
-      server.middlewares.use(async (req, _res, next) => {
-        const base = normalizeBasePath(runtime.publicBasePath);
-        const prefix = `/${base ? base + "/" : ""}iiif/`;
-        if (!req.url?.split("?")[0].startsWith(prefix)) return next();
-        try {
-          const origin = `${server.config.server.https ? "https" : "http"}://${req.headers.host ?? "localhost"}`;
-          prepared ??= prepareIiif(runtime, origin + (base ? "/" + base : "")).catch(error => { prepared = undefined; throw error; });
-          await prepared;
-          next();
-        } catch (error) { next(error as Error); }
-      });
       const changed = new Set<string>();
       let timer: ReturnType<typeof setTimeout> | undefined;
       let closed = false;
@@ -98,7 +85,6 @@ export function slidesContent(): Plugin {
       const flush = async () => {
         if (closed) return;
         const files = [...changed]; changed.clear();
-        prepared = undefined;
         try {
           const next = await loadRuntimeConfig();
           await loadContent(next);
@@ -123,16 +109,19 @@ export function slidesContent(): Plugin {
         timer = setTimeout(() => { running = running.then(flush); }, 60);
       };
       server.watcher.on("all", onChange);
-      // Vite ignores its cache. Observe only the completed thumbnail manifest,
+      // Vite ignores its cache. Observe only the completed batch manifests,
       // so an explicit external command can refresh the view without a sync loop.
-      const thumbnails = thumbnailPaths(runtime);
-      await mkdir(thumbnails.work, { recursive: true });
-      const manifestWatcher = watch(thumbnails.work, { persistent: false }, (_event, filename) => {
-        if (filename === "manifest.json" && !closed) invalidate(server);
-      });
+      const manifestWatchers: FSWatcher[] = [];
+      for (const manifest of [thumbnailPaths(runtime).manifestPath, iiifCatalogPath(runtime)]) {
+        await mkdir(path.dirname(manifest), { recursive: true });
+        manifestWatchers.push(watch(path.dirname(manifest), { persistent: false }, (_event, filename) => {
+          // Catalog readers already read the latest file on every request.
+          if (filename === path.basename(manifest) && !closed) server.ws.send({ type: "full-reload" });
+        }));
+      }
       cleanup = () => {
         closed = true; clearTimeout(timer);
-        server.watcher.off("all", onChange); manifestWatcher.close();
+        server.watcher.off("all", onChange); manifestWatchers.forEach(watcher => watcher.close());
       };
       server.httpServer?.once("close", () => cleanup());
     },
