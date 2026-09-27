@@ -449,6 +449,15 @@
     tick().then(updateMapLayout);
   });
 
+  $effect.pre(() => {
+    // Visibility overrides belong to this visit to a slide, including when
+    // consecutive slides reuse the same maps or slideshows share a slug.
+    activeSlideshow.id;
+    activeChapter?.slug;
+    resetWarpedMapVisibility();
+    clearWarpedMapHighlight();
+  });
+
   $effect(() => {
     const slideshowId = activeSlideshow.id;
     // Changing chapters updates the hash too. Reset the subslideshow only
@@ -729,7 +738,6 @@
               active={!isSubslideshowActive}
               suspended={!panelVisible || mobileResizing}
               overlayOpen={panelOverlayOpen && !isSubslideshowActive}
-              {hiddenWarpedMapUrls}
               onShowLayers={showChapterLayers}
               onShowChapters={toggleToc}
               {scrollToTopSignal}
@@ -750,7 +758,6 @@
                     active={isSubslideshowActive}
                     suspended={!panelVisible || mobileResizing}
                     overlayOpen={panelOverlayOpen && isSubslideshowActive}
-                    {hiddenWarpedMapUrls}
                     backHref={mainBreadcrumbHref}
                     backTitle={rootSlideshow.title}
                     onShowLayers={showChapterLayers}
@@ -805,19 +812,20 @@
           ></button>
         {/if}
 
-        <SlideshowToc
-          open={tocOpen}
-          {project}
-          {thumbnails}
-          {isDarkMode}
-          slideshow={activeSlideshow}
-          {rootSlideshow}
-          currentSlug={activeChapter?.slug}
-          top="0px"
-          bottomMargin={PANEL_NAVIGATOR_SPACE}
-          onClose={closeToc}
-          onSelectLocalChapter={scrollActivePanelToChapter}
-        />
+        {#if tocOpen}
+          <SlideshowToc
+            {project}
+            {thumbnails}
+            {isDarkMode}
+            slideshow={activeSlideshow}
+            {rootSlideshow}
+            currentSlug={activeChapter?.slug}
+            top="0px"
+            bottomMargin={PANEL_NAVIGATOR_SPACE}
+            onClose={closeToc}
+            onSelectLocalChapter={scrollActivePanelToChapter}
+          />
+        {/if}
         {#if layersOpen}
           <SlideshowLayers
             {thumbnails}

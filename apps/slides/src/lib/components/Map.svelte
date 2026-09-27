@@ -833,6 +833,10 @@
                 ...DEFAULT_WARPED_MAP_OPTIONS,
                 ...options,
                 visible: !hiddenUrlSet.has(url),
+                anticipateVisibility:
+                  !hiddenUrlSet.has(url) &&
+                  (options?.anticipateVisibility ??
+                    warpedMapLayerOptions.anticipateVisibility),
               });
             });
           }
@@ -914,6 +918,13 @@
 
       return {
         visible: !hiddenUrlSet.has(url),
+        // Hidden maps must leave the renderer's anticipated tile set as well,
+        // so showing them again rebuilds buffers cleared when they were hidden.
+        anticipateVisibility:
+          !hiddenUrlSet.has(url) &&
+          (currentWarpedMaps?.find((annotation) => annotation.url === url)
+            ?.options?.anticipateVisibility ??
+            warpedMapLayerOptions.anticipateVisibility),
       };
     });
   }

@@ -33,7 +33,6 @@
     scrollToTopSignal?: number;
     onTocClose?: () => void;
     onIndexChange?: (index: number) => void;
-    hiddenWarpedMapUrls?: string[];
     onShowLayers?: (slug: string) => void;
     onShowChapters?: () => void;
     backHref?: string;
@@ -72,7 +71,6 @@
     scrollToTopSignal = 0,
     onTocClose,
     onIndexChange,
-    hiddenWarpedMapUrls = [],
     onShowLayers,
     onShowChapters,
     backHref,
@@ -452,7 +450,7 @@
             <ArrowLeft size={20} aria-hidden="true" /><span>{slideshowNumber ? `${slideshowNumber}${slideshowNumber.includes('.') ? '' : '.'} ` : ''}{slideshow.title}</span>
           </a>
         {/if}
-        <ChapterContent {chapter} number={getChapterLabel(project, slideshow, chapter.slug)} hiddenMapUrls={hiddenWarpedMapUrls} onShowMaps={() => onShowLayers?.(chapter.slug)} onShowChapters={() => onShowChapters?.()} />
+        <ChapterContent {chapter} number={getChapterLabel(project, slideshow, chapter.slug)} onShowMaps={() => onShowLayers?.(chapter.slug)} onShowChapters={() => onShowChapters?.()} />
         {#if subslideshows.length}
           <aside class="read-more" aria-label={t("sections")}>
             <div class="read-more__heading">

@@ -8,6 +8,7 @@
   import infoIcon from "$lib/assets/navigator/info.svg";
   import { getChapterCount, getChapterNumber } from "@allmaps/slides/model/project";
   import { getChapterRouteHref } from "$lib/shared/project";
+  import { navigatorSwipe } from "$lib/shared/navigator-swipe";
   import type { Slideshow } from "$lib/shared/types";
 
   let {
@@ -109,7 +110,10 @@
     }}
   ><img src={menuIcon} width="32" height="32" alt="" /></button>
 
-  <div class="navigator-pagination">
+  <div class="navigator-pagination" use:navigatorSwipe={(direction) => {
+    const chapter = direction === "next" ? next : previous;
+    if (chapter) { closeMenu(); onNavigate(chapter.slug); }
+  }}>
     {#if previous}
       <a class="navigator-button" aria-keyshortcuts="ArrowLeft" href={getChapterRouteHref(slideshow, previous)} aria-label={t("previousChapterTitle", { title: previous.title })} title={t("previousChapterTitle", { title: previous.title })} onclick={(event) => navigate(event, previous.slug)}>
         <img class="previous-icon" src={previousIcon} width="25" height="25" alt="" />
@@ -220,6 +224,9 @@
   .navigator-progress::-moz-progress-bar { background: var(--highlight-fg); border-radius: 3px; }
   .navigator-button img { filter: brightness(0); opacity: .65; }
   :global(.dark) .navigator-button img { filter: brightness(0) invert(1); opacity: 1; }
+  @media (max-width: 767px) {
+    .navigator-pagination { touch-action: pan-y pinch-zoom; user-select: none; -webkit-user-select: none; }
+  }
   @media (max-width: 359px) {
     .navigator-pagination { gap: 8px; }
     .navigator-count { min-width: 64px; }

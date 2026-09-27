@@ -203,7 +203,13 @@ to the top. The numbered chapter button beneath each title opens the chapters
 overlay. The map button beside it shows the map count and opens the map layers
 panel; its singular/plural labels can be translated with `mapCountSingular` and
 `mapCountPlural`. The navigator count also opens the chapters overlay.
-On mobile, drag the handle between full, half-height
+Closing the chapters overlay resets its scroll position and expanded branches;
+reopening it expands only the current chapter's branch.
+The map button always counts all maps configured for its chapter, including
+temporarily hidden maps. Visibility toggles in the layers panel reset when the
+active chapter or slideshow changes.
+On mobile, swipe left or right across the navigator's arrows and counter to move
+to the next or previous chapter. Drag the handle between full, half-height
 and collapsed positions. The rounded card keeps a margin above the bottom edge and moves behind the
 fixed navigator. When collapsed, only the card's handle
 and a border around the navigator remain visible. The progress bar stays visible
