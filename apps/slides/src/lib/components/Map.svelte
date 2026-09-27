@@ -219,13 +219,8 @@
   const DEBUG_BOUNDS_LAYER_ID = "slides-debug-bounds-layer";
   const BASEMAP_STYLE_FADE_DURATION = 450;
 
-  const warpedMapLayerOptions: Partial<MapLibreWarpedMapLayerOptions> = {
-    visible: false,
-    anticipateVisibility: anticipate ? true : false,
-    overviewTilesSelection: "lowest",
-    overviewTilesMaxResolution: DEFAULT_OVERVIEW_TILES_RESOLUTION,
-  };
-  const warpedMapLayer = new WarpedMapLayer(warpedMapLayerOptions);
+  let warpedMapLayerOptions: Partial<MapLibreWarpedMapLayerOptions>;
+  let warpedMapLayer: WarpedMapLayer;
 
   const areAnnotationsLoaded = (annotations: WarpedMapProps[]) =>
     annotations.every(({ url }) => mapIdsByAnnotationUrl.has(url));
@@ -1164,6 +1159,14 @@
   $effect(setLocation);
 
   onMount(() => {
+    // Read initialization options when the client-side layer is created.
+    warpedMapLayerOptions = {
+      visible: false,
+      anticipateVisibility: anticipate ?? false,
+      overviewTilesSelection: "lowest",
+      overviewTilesMaxResolution: DEFAULT_OVERVIEW_TILES_RESOLUTION,
+    };
+    warpedMapLayer = new WarpedMapLayer(warpedMapLayerOptions);
     maplibregl.setWorkerUrl(mapWorkerUrl);
     map = new maplibregl.Map({
       container,
