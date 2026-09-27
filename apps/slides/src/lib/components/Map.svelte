@@ -2,7 +2,7 @@
   import { getInterfaceText } from "$lib/shared/interface-context";
   const t = getInterfaceText();
   import { dev } from "$app/environment";
-  import { onMount } from "svelte";
+  import { onMount, untrack } from "svelte";
   import { Minus, Plus } from "@lucide/svelte";
 
   import * as maplibregl from "maplibre-gl";
@@ -27,6 +27,7 @@
     getAnnotationsFromChapters,
     getUniqueAnnotations,
     hidesBasemap,
+    getWarpedMapOptions,
   } from "$lib/shared/map/annotations";
   import {
     resolveChapterCamera,
@@ -53,10 +54,10 @@
   } from "$lib/shared/basemap";
   import {
     DEFAULT_PADDING,
-    DEFAULT_WARPED_MAP_OPTIONS,
     DEFAULT_DURATION,
     DEFAULT_COLORS,
     DEFAULT_OVERVIEW_TILES_RESOLUTION,
+    DEFAULT_WARPED_MAP_OPTIONS,
   } from "$lib/shared/settings";
 
   import type {
@@ -81,8 +82,7 @@
     slideshowMapConfig?: MapConfig;
     highlight?: string;
     hiddenWarpedMapUrls?: string[];
-    zoomToWarpedMapUrl?: string;
-    zoomToWarpedMapSignal?: number;
+    focusedWarpedMapUrl?: string;
     showLabels?: boolean;
     anticipate?: boolean;
     layoutRevision?: number;
@@ -105,8 +105,7 @@
     slideshowMapConfig,
     highlight,
     hiddenWarpedMapUrls = [],
-    zoomToWarpedMapUrl,
-    zoomToWarpedMapSignal = 0,
+    focusedWarpedMapUrl,
     showLabels,
     anticipate,
     layoutRevision = 0,
@@ -129,7 +128,9 @@
     currentWarpedMaps?.some((warpedMaps) => warpedMaps.type === "Image") ||
       false,
   );
-  let currentHideBasemap = $derived(hidesBasemap(currentChapter ?? {}));
+  const focusedMapUrl = $derived(currentWarpedMaps?.some(({ url }) => url === focusedWarpedMapUrl)
+    ? focusedWarpedMapUrl : undefined);
+  let currentHideBasemap = $derived(!!focusedMapUrl || hidesBasemap(currentChapter ?? {}));
   let currentPadding = $derived.by(() => {
     if (typeof padding === "number" || padding === undefined) {
       return padding ?? DEFAULT_PADDING;
@@ -194,19 +195,13 @@
   let currentBearing = $state(0);
   let currentSlideResourcesRevision = $state(0);
   let mapIdsByAnnotationUrl: Map<string, string[]> = new Map();
-  let annotationUrlByMapId: Map<string, string> = new Map();
   let annotationLoadPromisesByUrl: Map<string, Promise<void>> = new Map();
   let spriteLoadPromisesByKey: Map<string, Promise<void>> = new Map();
   let spriteKeysByMapId: Map<string, Set<string>> = new Map();
-  let visibleMaps: string[] = new Array();
-  let currentVisibleMaps: string[] = [];
-  let appliedWarpedMapStateKey: string | undefined;
-  let latestHiddenWarpedMapUrls: string[] = [];
+  let appliedMapOrder = "";
   let imagesAdded: Set<string> = new Set();
-  let highlightedMaps: string[] = [];
-  let handledZoomToWarpedMapSignal = 0;
   let loadedBasemapStyle: ResolvedBasemapStyle | undefined;
-  let loadedBasemapStyleKey: string | undefined;
+  let loadedBasemapStyleKey = $state<string>();
   let basemapLoadSequence = 0;
   let basemapStyleSwapInProgress = false;
   let initialForegroundOpacityApplied = false;
@@ -218,6 +213,8 @@
   const DEBUG_BOUNDS_SOURCE_ID = "slides-debug-bounds";
   const DEBUG_BOUNDS_LAYER_ID = "slides-debug-bounds-layer";
   const BASEMAP_STYLE_FADE_DURATION = 450;
+  // Disable opacity/visibility fades while investigating visibility flicker.
+  const ANIMATE_WARPED_MAP_OPACITY = false;
 
   let warpedMapLayerOptions: Partial<MapLibreWarpedMapLayerOptions>;
   let warpedMapLayer: WarpedMapLayer;
@@ -231,20 +228,8 @@
   const getMapIdsForAnnotations = (annotations: WarpedMapProps[]) =>
     annotations.flatMap(({ url }) => getMapIdsForAnnotationUrl(url));
 
-  const getWarpedMapStateKey = (annotations: WarpedMapProps[]) =>
-    JSON.stringify(
-      annotations.map(({ url, options }) => ({
-        url,
-        mapIds: getMapIdsForAnnotationUrl(url),
-        options,
-      })),
-    );
-
   const rememberMapIdsForAnnotation = (url: string, ids: string[]) => {
     mapIdsByAnnotationUrl.set(url, ids);
-    ids.forEach((id) => {
-      annotationUrlByMapId.set(id, url);
-    });
   };
 
   const getEmptyFeatureCollection = () => ({
@@ -524,7 +509,6 @@
     const styleKey = basemapStyleKey;
 
     if (styleKey === loadedBasemapStyleKey) {
-      applyBasemapLayerState();
       return;
     }
 
@@ -567,10 +551,6 @@
     loadedBasemapStyle = nextBasemapStyle;
     loadedBasemapStyleKey = styleKey;
     publishBasemapAttribution();
-
-    if (mapLoaded) {
-      applyBasemapLayerState();
-    }
 
     if (fadeStyleSwap) {
       basemapStyleSwapInProgress = false;
@@ -692,9 +672,12 @@
 
           if (destroyed) return;
 
-          const id = warpedMapLayer.addGeoreferencedMap(georeferencedMap, {
+          const options = {
+            ...getWarpedMapOptions(annotation, theme),
             visible: false,
-          });
+            anticipateVisibility: false,
+          };
+          const id = warpedMapLayer.addGeoreferencedMap(georeferencedMap, options);
           rememberMapIdsForAnnotation(url, [id]);
         } else {
           const snapshotUrl = annotationUrls[url];
@@ -704,9 +687,12 @@
 
           if (destroyed) return;
 
-          const results = warpedMapLayer.addGeoreferenceAnnotation(georeferenceAnnotation, {
+          const options = {
+            ...getWarpedMapOptions(annotation, theme),
             visible: false,
-          });
+            anticipateVisibility: false,
+          };
+          const results = warpedMapLayer.addGeoreferenceAnnotation(georeferenceAnnotation, options);
 
           const mapIds = results.flatMap((result) => result.ok ? [result.mapId] : []);
           const errors = results.flatMap((result) => result.ok ? [] : [result.error]);
@@ -795,76 +781,86 @@
     return promise;
   }
 
-  function setWarpedMaps() {
+  function applyWarpedMapState() {
+    currentSlideResourcesRevision;
+    if (!mapLoaded || !currentSlideResourcesReady()) return;
+
+    const hidden = new Set(hiddenWarpedMapUrls);
+    const optionsByMapId = new Map<string, Partial<MapLibreWarpedMapLayerOptions>>();
+    for (const annotation of (currentWarpedMaps ?? []).toReversed()) {
+      const fullMap = annotation.url === focusedMapUrl;
+      // Full-map mode uses defaults instead of the authored theme overrides.
+      const options = fullMap
+        ? {
+            ...DEFAULT_WARPED_MAP_OPTIONS,
+            applyMask: false,
+            transformationType: "helmert" as const,
+          }
+        : getWarpedMapOptions(annotation, theme);
+      const visible = !hidden.has(annotation.url);
+      for (const id of getMapIdsForAnnotationUrl(annotation.url)) {
+        optionsByMapId.set(id, {
+          ...options,
+          ...(!fullMap && annotation.url === highlight ? { renderMask: true } : {}),
+          visible,
+          anticipateVisibility: visible &&
+            (options.anticipateVisibility ?? warpedMapLayerOptions.anticipateVisibility),
+        });
+      }
+    }
+    // Visibility, theme, focus and highlighting share a single options update.
+    // Reordering is only necessary when the actual stack of maps changes.
+    const ids = [...optionsByMapId.keys()];
+    const order = JSON.stringify(ids);
+    untrack(() => {
+      if (order !== appliedMapOrder) {
+        if (ids.length) warpedMapLayer.bringMapsToFront(ids);
+        appliedMapOrder = order;
+      }
+      warpedMapLayer.setMapsOptions(
+        (id) => {
+          const options = optionsByMapId.get(id);
+          if (!options) return { visible: false, anticipateVisibility: false };
+
+          // Allmaps merges options, so explicitly clear obsolete overrides in
+          // the same update. Allmaps handles comparing the resulting values.
+          return {
+            ...Object.fromEntries(
+              Object.keys(warpedMapLayer.getMapMapOptions(id) ?? {})
+                .map((key) => [key, undefined]),
+            ),
+            ...options,
+          };
+        },
+        ANIMATE_WARPED_MAP_OPACITY ? undefined : {
+          // Keep other transitions, including in batches that also change visibility.
+          animatedOptions: warpedMapLayer.renderer?.warpedMapList.options.animatedOptions
+            .filter((option) => option !== "visible" && option !== "opacity"),
+        },
+      );
+    });
+  }
+
+  function setChapterCamera() {
     layoutRevision;
     resetSignal;
-
-    const cameraLayoutOptions = getCameraLayoutOptions(currentPadding);
-
     currentSlideResourcesRevision;
-
-    if (mapLoaded && currentWarpedMaps && !currentSlideResourcesReady()) return;
-
-    if (mapLoaded && currentWarpedMaps) {
-      const hiddenUrlSet = new Set(latestHiddenWarpedMapUrls);
-      const warpedMapStateKey = getWarpedMapStateKey(currentWarpedMaps);
-      const shouldApplyWarpedMapState =
-        warpedMapStateKey !== appliedWarpedMapStateKey;
-      // Get all IDs
-      const optionsByMapId = new Map();
-      currentWarpedMaps
-        .slice()
-        // For correct order
-        .reverse()
-        .forEach((annotation) => {
-          const { url, options } = annotation;
-          const annotationIds = mapIdsByAnnotationUrl.get(url);
-          if (annotationIds) {
-            if (shouldApplyWarpedMapState) {
-              warpedMapLayer.bringMapsToFront(annotationIds);
-            }
-            annotationIds.forEach((id: string) => {
-              optionsByMapId.set(id, {
-                ...DEFAULT_WARPED_MAP_OPTIONS,
-                ...options,
-                visible: !hiddenUrlSet.has(url),
-                anticipateVisibility:
-                  !hiddenUrlSet.has(url) &&
-                  (options?.anticipateVisibility ??
-                    warpedMapLayerOptions.anticipateVisibility),
-              });
-            });
-          }
+    if (!mapLoaded || !currentSlideResourcesReady()) return;
+    const cameraLayoutOptions = getCameraLayoutOptions(currentPadding);
+    if (focusedMapUrl) {
+      const ids = getMapIdsForAnnotationUrl(focusedMapUrl);
+      if (!ids.length) return;
+      try {
+        const camera = warpedMapLayer.getMapsCenterZoomBearing(ids, {
+          applyMask: false,
+          bearingMapIds: [ids[0]],
+          ...cameraLayoutOptions,
         });
-
-      // Check which maps to hide and show
-      // const mapsToShow = mapIds.filter((id) => !visibleMaps.includes(id))
-      const mapsToHide = visibleMaps.filter((id) => !optionsByMapId.has(id));
-      const mapIds = Array.from(optionsByMapId.keys());
-
-      mapsToHide.forEach((id) => {
-        optionsByMapId.set(id, {
-          visible: false,
-          ...DEFAULT_WARPED_MAP_OPTIONS,
-        });
-      });
-      if (shouldApplyWarpedMapState) {
-        if (debug) {
-          console.log("Setting current warped maps...", {
-            chapterIndex: index,
-            mapCount: mapIds.length,
-            currentWarpedMaps,
-            optionsByMapId,
-            visibleMaps,
-          });
-        }
-        warpedMapLayer.setMapsOptions((mapId) => optionsByMapId.get(mapId));
-        appliedWarpedMapStateKey = warpedMapStateKey;
+        flyToCamera(camera, cameraLayoutOptions, true, false);
+      } catch (error) {
+        console.error("Failed to fit full map", focusedMapUrl, error);
       }
-
-      visibleMaps = mapIds;
-      currentVisibleMaps = mapIds;
-
+    } else if (currentWarpedMaps) {
       const camera = resolveChapterCamera(
         currentChapter ?? {},
         (annotation) => getMapIdsForAnnotationUrl(annotation.url)
@@ -880,115 +876,11 @@
           bearing: map.getBearing(),
         },
       );
-      setDebugBounds(warpedMapLayer.getMapsBounds(mapIds));
+      setDebugBounds(warpedMapLayer.getMapsBounds(getMapIdsForAnnotations(currentWarpedMaps)));
       flyToCamera(camera, cameraLayoutOptions, true);
-    } else if (mapLoaded) {
-      // Hide all maps
-      const mapsToHide = new Set(visibleMaps);
-      if (mapsToHide.size) {
-        warpedMapLayer.setMapsOptions((mapId) =>
-          mapsToHide.has(mapId) ? { visible: false } : undefined,
-        );
-      }
-      visibleMaps = [];
-      currentVisibleMaps = [];
-      appliedWarpedMapStateKey = undefined;
+    } else {
       setDebugBounds();
     }
-  }
-
-  function setWarpedMapVisibilityOverrides(hiddenUrls: string[]) {
-    latestHiddenWarpedMapUrls = hiddenUrls;
-
-    if (!mapLoaded || !currentVisibleMaps.length) return;
-
-    const hiddenUrlSet = new Set(hiddenUrls);
-    const currentVisibleMapSet = new Set(currentVisibleMaps);
-
-    warpedMapLayer.setMapsOptions((mapId) => {
-      if (!currentVisibleMapSet.has(mapId)) return undefined;
-
-      const url = annotationUrlByMapId.get(mapId);
-      if (!url) return undefined;
-
-      return {
-        visible: !hiddenUrlSet.has(url),
-        // Hidden maps must leave the renderer's anticipated tile set as well,
-        // so showing them again rebuilds buffers cleared when they were hidden.
-        anticipateVisibility:
-          !hiddenUrlSet.has(url) &&
-          (currentWarpedMaps?.find((annotation) => annotation.url === url)
-            ?.options?.anticipateVisibility ??
-            warpedMapLayerOptions.anticipateVisibility),
-      };
-    });
-  }
-
-  function highlightMaps() {
-    currentSlideResourcesRevision;
-
-    if (!mapLoaded) return;
-    if (!highlight && highlightedMaps.length === 0) return;
-
-    if (highlight) {
-      if (debug) {
-        console.log("Highlighting maps...", highlight);
-      }
-      const ids = getMapIdsForAnnotationUrl(highlight);
-      const nextHighlightedMapSet = new Set(ids);
-      const mapsToUpdate = new Set([...highlightedMaps, ...ids]);
-
-      warpedMapLayer.setMapsOptions((mapId) =>
-        mapsToUpdate.has(mapId)
-          ? { renderMask: nextHighlightedMapSet.has(mapId) }
-          : undefined,
-      );
-
-      highlightedMaps = ids;
-    } else {
-      const mapsToUnhighlight = new Set(highlightedMaps);
-
-      warpedMapLayer.setMapsOptions((mapId) =>
-        mapsToUnhighlight.has(mapId) ? { renderMask: false } : undefined,
-      );
-      highlightedMaps = [];
-    }
-  }
-
-  function zoomToWarpedMapBounds() {
-    const signal = zoomToWarpedMapSignal;
-    const url = zoomToWarpedMapUrl;
-
-    currentSlideResourcesRevision;
-
-    if (
-      !mapLoaded ||
-      !url ||
-      signal === 0 ||
-      signal === handledZoomToWarpedMapSignal
-    ) {
-      return;
-    }
-
-    const ids = getMapIdsForAnnotationUrl(url);
-    if (!ids.length) return;
-
-    const cameraLayoutOptions = getCameraLayoutOptions(currentPadding);
-    let camera: CenterZoomBearing;
-
-    try {
-      camera = warpedMapLayer.getMapsCenterZoomBearing(ids, {
-        bearingMapIds: [ids[0]],
-        ...cameraLayoutOptions,
-      });
-    } catch (error) {
-      console.error("Failed to zoom to warped map layer", url, error);
-      handledZoomToWarpedMapSignal = signal;
-      return;
-    }
-
-    flyToCamera(camera, cameraLayoutOptions, true, false);
-    handledZoomToWarpedMapSignal = signal;
   }
 
   const easeToWithLayoutOffset = (options: EaseToOptions) => {
@@ -1006,11 +898,10 @@
     if (event.repeat) return;
     if (mapLoaded && event.code === "Backquote") {
       const opacity = warpedMapLayer.getOpacity();
-      if (opacity === 0) {
-        warpedMapLayer.setOpacity(1);
-      } else {
-        warpedMapLayer.setOpacity(0);
-      }
+      warpedMapLayer.setLayerOptions(
+        { opacity: opacity === 0 ? 1 : 0 },
+        { animate: ANIMATE_WARPED_MAP_OPACITY },
+      );
     }
   }
 
@@ -1143,17 +1034,20 @@
       cancelled = true;
     };
   });
-  $effect(setWarpedMaps);
-  $effect(() => setWarpedMapVisibilityOverrides(hiddenWarpedMapUrls));
-  $effect(highlightMaps);
-  $effect(zoomToWarpedMapBounds);
+  $effect(applyWarpedMapState);
+  $effect(setChapterCamera);
   $effect(setLayersOpacity);
   $effect(() => {
     if (!mapLoaded) return;
-    void applyCurrentBasemapStyle();
+    basemapStyleKey;
+    // Loading a style must not subscribe this effect to temporary layer state.
+    untrack(() => { void applyCurrentBasemapStyle(); });
   });
   $effect(() => {
-    if (basemapStyleKey !== loadedBasemapStyleKey) return;
+    // Keep the hide flag tracked while a new theme's style is loading.
+    currentHideBasemap;
+    basemapLayerState;
+    if (!mapLoaded || basemapStyleKey !== loadedBasemapStyleKey) return;
     applyBasemapLayerState();
   });
   $effect(setLocation);

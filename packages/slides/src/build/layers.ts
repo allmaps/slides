@@ -1,7 +1,8 @@
 import { parseAnnotation, type GeoreferencedMap } from "@allmaps/annotation";
 import type { WarpedMap } from "@allmaps/render";
 import { createFauxGeoreferencedMap } from "../model/map/image.ts";
-import type { WarpedMapProps } from "../model/types.ts";
+import type { ThemeMode, WarpedMapProps } from "../model/types.ts";
+import { getWarpedMapOptions } from "../model/map/annotations.ts";
 import { recipeHash, type RemoteCache, type CachedResource } from "@allmaps/static-render/cache";
 import type { Sources } from "@allmaps/static-render/sources";
 import { StaticWarpedMap, staticMapOptions } from "@allmaps/static-render/warped";
@@ -18,8 +19,9 @@ export async function loadLayer(
   props: WarpedMapProps,
   annotations: RemoteCache,
   sources: Sources,
+  theme: ThemeMode = "light",
 ): Promise<LoadedLayer> {
-  const { options, effects } = staticMapOptions(props.options, props.url);
+  const { options, effects } = staticMapOptions(getWarpedMapOptions(props, theme), props.url);
   let annotation: CachedResource | undefined;
   let maps: GeoreferencedMap[];
   if (props.type === "Image")

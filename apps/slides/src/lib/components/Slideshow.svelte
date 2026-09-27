@@ -82,8 +82,7 @@
   let highlightedWarpedMapUrl: string | undefined = $state(undefined);
   let basemapAttributions: string[] = $state([]);
   let hiddenWarpedMapUrls: string[] = $state([]);
-  let zoomToWarpedMapUrl: string | undefined = $state(undefined);
-  let zoomToWarpedMapSignal: number = $state(0);
+  let focusedWarpedMapUrl: string | undefined = $state(undefined);
   let scrollToTopSignal: number = $state(0);
   let mapResetSignal: number = $state(0);
   let panelElement: HTMLDivElement | undefined = $state();
@@ -218,6 +217,7 @@
 
   const resetWarpedMapVisibility = () => {
     hiddenWarpedMapUrls = [];
+    focusedWarpedMapUrl = undefined;
   };
 
   const closePanelOverlays = () => {
@@ -255,8 +255,7 @@
     closePanelOverlays();
     panelVisible = !panelVisible;
   };
-  const showChapterLayers = async (slug: string) => {
-    await scrollActivePanelToChapter(slug);
+  const showChapterLayers = () => {
     activePanelOverlay = "layers";
   };
 
@@ -340,19 +339,21 @@
     hiddenWarpedMapUrls = isHidden
       ? hiddenWarpedMapUrls.filter((hiddenUrl) => hiddenUrl !== url)
       : [...hiddenWarpedMapUrls, url];
+    if (!isHidden && focusedWarpedMapUrl === url) focusedWarpedMapUrl = undefined;
 
     if (isHidden && LAYER_HIGHLIGHT_ENABLED) {
       highlightedWarpedMapUrl = url;
     }
   };
 
-  const zoomToWarpedMapBounds = (url: string) => {
+  const toggleFullMap = (url: string) => {
     if (LAYER_HIGHLIGHT_ENABLED) {
       highlightedWarpedMapUrl = url;
     }
 
-    zoomToWarpedMapUrl = url;
-    zoomToWarpedMapSignal += 1;
+    focusedWarpedMapUrl = focusedWarpedMapUrl === url ? undefined : url;
+    if (focusedWarpedMapUrl)
+      hiddenWarpedMapUrls = hiddenWarpedMapUrls.filter((hiddenUrl) => hiddenUrl !== url);
   };
 
   const samePadding = (a: PaddingOptions, b: PaddingOptions) =>
@@ -651,8 +652,7 @@
         onBasemapAttribution={(attributions) => { basemapAttributions = attributions; }}
         highlight={highlightedWarpedMapUrl}
         {hiddenWarpedMapUrls}
-        {zoomToWarpedMapUrl}
-        {zoomToWarpedMapSignal}
+        {focusedWarpedMapUrl}
         {debug}
       />
     {/if}
@@ -833,12 +833,14 @@
             chapter={activeChapter}
             {hiddenWarpedMapUrls}
             {highlightedWarpedMapUrl}
+            {focusedWarpedMapUrl}
+            {isDarkMode}
             highlightEnabled={LAYER_HIGHLIGHT_ENABLED}
             top="0px"
             bottomMargin={PANEL_NAVIGATOR_SPACE}
             onClose={closePanelOverlays}
             onToggleVisibility={toggleWarpedMapVisibility}
-            onZoomToBounds={zoomToWarpedMapBounds}
+            onToggleFullMap={toggleFullMap}
             onHighlight={highlightWarpedMap}
           />
         {/if}

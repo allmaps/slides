@@ -33,7 +33,7 @@
     scrollToTopSignal?: number;
     onTocClose?: () => void;
     onIndexChange?: (index: number) => void;
-    onShowLayers?: (slug: string) => void;
+    onShowLayers?: () => void;
     onShowChapters?: () => void;
     backHref?: string;
     backTitle?: string;
@@ -233,6 +233,12 @@
     scrolling = false;
     clearTimeout(scrollIdleTimeout);
     clearTimeout(indexUpdateTimeout);
+  };
+
+  const showChapterLayers = (chapterIndex: number) => {
+    endNavigation();
+    setIndex(chapterIndex);
+    onShowLayers?.();
   };
 
   const waitForScrollIdle = () => {
@@ -450,7 +456,7 @@
             <ArrowLeft size={20} aria-hidden="true" /><span>{slideshowNumber ? `${slideshowNumber}${slideshowNumber.includes('.') ? '' : '.'} ` : ''}{slideshow.title}</span>
           </a>
         {/if}
-        <ChapterContent {chapter} number={getChapterLabel(project, slideshow, chapter.slug)} onShowMaps={() => onShowLayers?.(chapter.slug)} onShowChapters={() => onShowChapters?.()} />
+        <ChapterContent {chapter} number={getChapterLabel(project, slideshow, chapter.slug)} onShowMaps={() => showChapterLayers(index)} onShowChapters={() => onShowChapters?.()} />
         {#if subslideshows.length}
           <aside class="read-more" aria-label={t("sections")}>
             <div class="read-more__heading">

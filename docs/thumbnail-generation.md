@@ -8,13 +8,19 @@ thumbnails without a browser, DOM, or a running web server.
 | Consumer         | Output                               | Appearance                                              |
 | ---------------- | ------------------------------------ | ------------------------------------------------------- |
 | Section cards and TOC hover previews | 540 × 400 WebP per slide and theme | Complete map scene in light and dark styles             |
-| Map layers panel | 256 × 256 WebP per map-entry variant | Transparent, north-up, fitted to the mask; no basemap   |
+| Map layers panel | 256 × 256 WebP per map-entry/theme variant | Transparent, north-up, fitted to the applied mask; no basemap   |
 | Social metadata  | 1200 × 630 JPEG per slideshow route  | First slide in light theme; optional overall short title and subtitle with a soft halo |
 
 A map-entry variant includes its URL, type, image crop, wiggle and renderer
 options. An AnnotationPage with several maps produces one combined layer-row
 preview. A panel thumbnail is never upscaled into a slide: warped maps render
 again in the slide's shared viewport.
+
+`warpedMaps[].darkOptions` overrides `options` when rendering dark previews,
+using the same default/options/override merge as the interactive viewer.
+Geometry and camera fitting are resolved per theme too. Identical effective
+options share a layer preview; differing dark options get a separate variant.
+Sharing images always use light-mode options.
 
 The layout serializes a small manifest with asset paths and dimensions.
 `SlideshowPanel` selects the active theme; `SlideshowLayers` displays transparent

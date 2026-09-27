@@ -94,6 +94,8 @@ export type WarpedMapProps = {
   useBounds?: boolean;
   useZoom?: boolean;
   options?: Partial<MapLibreWarpedMapLayerOptions>;
+  /** Overrides merged over options when the interface is in dark mode. */
+  darkOptions?: Partial<MapLibreWarpedMapLayerOptions>;
   region?: [number, number, number, number];
   wiggle?: boolean;
 };

@@ -79,11 +79,11 @@ export async function prepareThumbnails(content: ContentSnapshot, options: {
   }
   const startText = getStartScreenText(project);
 
-  const getLayer = async (props: WarpedMapProps) => {
-    const key = layerPreviewKey(props);
+  const getLayer = async (props: WarpedMapProps, theme: ThemeMode) => {
+    const key = layerPreviewKey(props, theme);
     let layer = layers.get(key);
     if (!layer) {
-      layer = await loadLayer(props, annotationCache, sources);
+      layer = await loadLayer(props, annotationCache, sources, theme);
       layers.set(key, layer);
       plan.layers[key] = {
         effects: layer.effects,
@@ -159,10 +159,10 @@ export async function prepareThumbnails(content: ContentSnapshot, options: {
       overlayLayers,
     );
     const selected = await Promise.all(
-      (chapter.warpedMaps ?? []).toReversed().map(getLayer),
+      (chapter.warpedMaps ?? []).toReversed().map((props) => getLayer(props, theme)),
     );
     return addJob({
-      layers: selected.map((layer) => layerPreviewKey(layer.props)),
+      layers: selected.map((layer) => layerPreviewKey(layer.props, theme)),
       camera,
       size,
       styles,
@@ -183,7 +183,10 @@ export async function prepareThumbnails(content: ContentSnapshot, options: {
         `[thumbnails] ${slideshow.id}: ${slideshow.chapters.length} slides`,
       );
       const size: [number, number] = [540, 400];
-      let camera: Camera = { center: [0, 0], zoom: 14, bearing: 0 };
+      const cameras: Record<ThemeMode, Camera> = {
+        light: { center: [0, 0], zoom: 14, bearing: 0 },
+        dark: { center: [0, 0], zoom: 14, bearing: 0 },
+      };
       let overlays: LayerSpecification[] = Object.entries(
         slideshow.sources,
       ).flatMap(([id, source]) =>
@@ -200,78 +203,74 @@ export async function prepareThumbnails(content: ContentSnapshot, options: {
           throw new Error(
             "Warped sprite previews are not supported; use IIIF image sources",
           );
-        const selected = await Promise.all(
-          (chapter.warpedMaps ?? []).map(getLayer),
-        );
-        const mapsFor = (props: WarpedMapProps) =>
-          layers.get(layerPreviewKey(props))?.maps ?? [];
-        for (const layer of selected) {
-          const key = layerPreviewKey(layer.props);
-          if (manifest.layers[key]) continue;
-          const mapCamera = resolveChapterCamera(
-            {
-              warpedMaps: [
-                {
-                  ...layer.props,
-                  useZoom: false,
-                  useBounds: true,
-                  useBearing: false,
-                },
-              ],
-            },
-            () => layer.maps,
-            [256, 256],
-            12,
-          );
-          manifest.layers[key] = addJob({
-            layers: [key],
-            camera: mapCamera,
-            size: [256, 256],
-            format: "webp",
-          });
-        }
-        const previousCamera = camera;
-        camera = resolveChapterCamera(chapter, mapsFor, size, 20, camera);
-        // Preserve the app's sequential, partial user-layer changes.
+        // User-layer changes advance once per chapter, independently of theme.
         overlays = applyUserLayerChanges(overlays, chapter.layers);
-        if (!("slug" in chapter)) continue;
-        const key = slidePreviewKey(slideshow.id, String(chapter.slug));
-        const light = await renderScene(
-          slideshow,
-          chapter,
-          "light",
-          camera,
-          size,
-          overlays,
-        );
-        const dark = await renderScene(
-          slideshow,
-          chapter,
-          "dark",
-          camera,
-          size,
-          overlays,
-        );
-        manifest.slides[key] = { light, dark };
-        if (chapter === slideshow.chapters[0]) {
-          const socialSize: [number, number] = [1200, 630];
-          const socialCamera = resolveChapterCamera(
-            chapter,
-            mapsFor,
-            socialSize,
-            32,
-            previousCamera,
+        const previews = {} as Record<ThemeMode, Thumbnail>;
+        for (const theme of ["light", "dark"] as const) {
+          const selected = await Promise.all(
+            (chapter.warpedMaps ?? []).map((props) => getLayer(props, theme)),
           );
-          manifest.social[slideshow.id] = await renderScene(
+          const mapsFor = (props: WarpedMapProps) =>
+            layers.get(layerPreviewKey(props, theme))?.maps ?? [];
+          for (const layer of selected) {
+            const key = layerPreviewKey(layer.props, theme);
+            if (manifest.layers[key]) continue;
+            const mapCamera = resolveChapterCamera(
+              {
+                warpedMaps: [
+                  {
+                    ...layer.props,
+                    useZoom: false,
+                    useBounds: true,
+                    useBearing: false,
+                  },
+                ],
+              },
+              () => layer.maps,
+              [256, 256],
+              12,
+            );
+            manifest.layers[key] = addJob({
+              layers: [key],
+              camera: mapCamera,
+              size: [256, 256],
+              format: "webp",
+            });
+          }
+          const previousCamera = cameras[theme];
+          const camera = resolveChapterCamera(chapter, mapsFor, size, 20, previousCamera);
+          cameras[theme] = camera;
+          if (!("slug" in chapter)) continue;
+          previews[theme] = await renderScene(
             slideshow,
             chapter,
-            "light",
-            socialCamera,
-            socialSize,
+            theme,
+            camera,
+            size,
             overlays,
-            true,
           );
+          if (theme === "light" && chapter === slideshow.chapters[0]) {
+            const socialSize: [number, number] = [1200, 630];
+            const socialCamera = resolveChapterCamera(
+              chapter,
+              mapsFor,
+              socialSize,
+              32,
+              previousCamera,
+            );
+            manifest.social[slideshow.id] = await renderScene(
+              slideshow,
+              chapter,
+              "light",
+              socialCamera,
+              socialSize,
+              overlays,
+              true,
+            );
+          }
         }
+        if ("slug" in chapter)
+          manifest.slides[slidePreviewKey(slideshow.id, String(chapter.slug))] = previews;
       }
     }
     console.log(

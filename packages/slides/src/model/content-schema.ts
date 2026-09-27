@@ -156,6 +156,11 @@ const subslideshowReferenceSchema = z.union([
   }),
 ]);
 
+const warpedMapOptionsSchema = z.custom<Partial<MapLibreWarpedMapLayerOptions>>(
+  (value) => typeof value === "object" && value !== null && !Array.isArray(value),
+  "must be an object",
+);
+
 const warpedMapSchema = z
   .object({
     type: z.literal("Image").optional(),
@@ -167,11 +172,8 @@ const warpedMapSchema = z
     useBearing: z.boolean().optional(),
     useBounds: z.boolean().optional(),
     useZoom: z.boolean().optional(),
-    options: z
-      .custom<
-        Partial<MapLibreWarpedMapLayerOptions>
-      >((value) => typeof value === "object" && value !== null && !Array.isArray(value), "must be an object")
-      .optional(),
+    options: warpedMapOptionsSchema.optional(),
+    darkOptions: warpedMapOptionsSchema.optional(),
     region: fourNumberTupleSchema.optional(),
     wiggle: z.boolean().optional(),
   })

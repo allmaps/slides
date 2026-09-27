@@ -122,6 +122,36 @@ Run `slides thumbnails .` to refresh sharing images, or build the site. Changes
 to the text, its size or its font reuse cached map scenes and only regenerate the text
 composition and JPEG. Ordinary development edits still do not start rendering.
 
+## Warped maps in light and dark mode
+
+Each `warpedMaps` entry can provide `options` and `darkOptions`. The app and
+preview builder merge app defaults, `options`, then `darkOptions` when the
+interface is dark. Omitted dark settings keep their regular values. Switching
+back to light mode restores regular options and removes dark-only overrides.
+
+```yaml
+warpedMaps:
+  - url: https://annotations.allmaps.org/maps/example
+    options:
+      removeColor: true
+      removeColorColor: "#ffffff"
+      saturation: 0
+      colorize: true
+      colorizeColor: "#000000"
+    darkOptions:
+      colorizeColor: "#ffffff"
+```
+
+Use this in slide frontmatter or a slideshow's `start.warpedMaps`. Dark overrides
+follow the interface theme even if the basemap has its own fixed theme. Slide
+and map-layer previews use the appropriate options and geometry for each theme;
+sharing images use the light options. Regenerate previews after changing them.
+
+The layers panel's **Show full map** button toggles the selected map's mask off,
+hides the basemap and fits the entire image. **Restore slide view** restores the
+authored mask, background and camera. Selecting a different slide clears this
+temporary mode and layer visibility changes.
+
 ## Interface colors
 
 Choose an Allmaps palette in `slides.config.yml`:

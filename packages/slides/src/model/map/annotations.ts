@@ -1,4 +1,11 @@
-import type { MapChapterProps, WarpedMapProps } from "../types.ts";
+import type { MapChapterProps, ThemeMode, WarpedMapProps } from "../types.ts";
+import { DEFAULT_WARPED_MAP_OPTIONS } from "../settings.ts";
+
+export const getWarpedMapOptions = (map: WarpedMapProps, theme: ThemeMode = "light") => ({
+  ...DEFAULT_WARPED_MAP_OPTIONS,
+  ...map.options,
+  ...(theme === "dark" ? map.darkOptions : {}),
+});
 
 export const getUniqueAnnotations = (annotations: WarpedMapProps[]) => {
   const unique = new Map<string, WarpedMapProps>();
@@ -33,4 +40,8 @@ export const layerPreviewKey = ({
   region,
   wiggle,
   options,
-}: WarpedMapProps) => stableStringify({ url, type, region, wiggle, options });
+  darkOptions,
+}: WarpedMapProps, theme: ThemeMode = "light") => stableStringify({
+  url, type, region, wiggle,
+  options: theme === "dark" && darkOptions ? { ...options, ...darkOptions } : options,
+});

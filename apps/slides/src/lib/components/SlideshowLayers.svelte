@@ -5,11 +5,11 @@
   import { page } from "$app/state";
   import { env } from "$env/dynamic/public";
   import {
+    Expand,
     Eye,
     EyeOff,
     Layers,
     MoveUpRight,
-    ScanSearch,
   } from "@lucide/svelte";
 
   import { emptyThumbnails, type ThumbnailManifest } from "$lib/shared/thumbnails";
@@ -25,13 +25,15 @@
     basemapAttributions?: string[];
     hiddenWarpedMapUrls?: string[];
     highlightedWarpedMapUrl?: string;
+    focusedWarpedMapUrl?: string;
+    isDarkMode?: boolean;
     highlightEnabled?: boolean;
     top?: string;
     bottomMargin?: string;
     tab?: "toc" | "layers";
     onClose?: () => void;
     onToggleVisibility?: (url: string) => void;
-    onZoomToBounds?: (url: string) => void;
+    onToggleFullMap?: (url: string) => void;
     onHighlight?: (url?: string) => void;
     class?: string;
   };
@@ -45,13 +47,15 @@
     thumbnails = emptyThumbnails(),
     hiddenWarpedMapUrls = [],
     highlightedWarpedMapUrl,
+    focusedWarpedMapUrl,
+    isDarkMode = false,
     highlightEnabled = false,
     top,
     bottomMargin,
     tab,
     onClose,
     onToggleVisibility,
-    onZoomToBounds,
+    onToggleFullMap,
     onHighlight,
     class: className = "",
   }: Props = $props();
@@ -121,6 +125,7 @@
   };
 
   const toggleLayerVisibility = (url: string) => {
+    if (url === focusedWarpedMapUrl) return;
     onToggleVisibility?.(url);
   };
 
@@ -167,13 +172,17 @@
         {@const hidden = isWarpedMapHidden(warpedMap)}
         {@const highlighted = highlightedWarpedMapUrl === warpedMap.url}
         {@const title = getLayerTitle(warpedMap, index)}
-        {@const image = thumbnails.layers[layerPreviewKey(warpedMap)]}
+        {@const focused = focusedWarpedMapUrl === warpedMap.url}
+        {@const image = thumbnails.layers[layerPreviewKey(warpedMap, isDarkMode ? "dark" : "light")]
+          ?? thumbnails.layers[layerPreviewKey(warpedMap)]}
         <li>
+          <!-- svelte-ignore a11y_no_noninteractive_tabindex (Only button rows get tabindex=0; focused groups get -1.) -->
           <div
-            role="button"
-            tabindex="0"
-            aria-label={`${t(hidden ? "show" : "hide")}: ${title}`}
-            aria-pressed={!hidden}
+            role={focused ? "group" : "button"}
+            tabindex={focused ? -1 : 0}
+            aria-label={focused ? title : `${t(hidden ? "show" : "hide")}: ${title}`}
+            aria-pressed={focused ? undefined : !hidden}
+            class:layer-row--focused={focused}
             class="layer-row {hidden ? 'layer-row--hidden' : ''} {highlighted
               ? 'layer-row--highlighted'
               : ''}"
@@ -227,6 +236,7 @@
               <button
                 type="button"
                 class="layer-icon-button"
+                disabled={focused}
                 aria-label={t(hidden ? "show" : "hide")}
                 aria-pressed={!hidden}
                 title={t(hidden ? "show" : "hide")}
@@ -247,16 +257,18 @@
               <button
                 type="button"
                 class="layer-icon-button"
-                aria-label={t("zoomToMapLayer")}
-                title={t("zoomToMapLayer")}
+                class:layer-icon-button--active={focused}
+                aria-pressed={focused}
+                aria-label={t(focused ? "restoreMapView" : "showFullMap")}
+                title={t(focused ? "restoreMapView" : "showFullMap")}
                 onfocus={() => setLayerHighlight(warpedMap.url)}
                 onblur={() => setLayerHighlight(undefined)}
                 onclick={(event) => {
                   event.stopPropagation();
-                  onZoomToBounds?.(warpedMap.url);
+                  onToggleFullMap?.(warpedMap.url);
                 }}
               >
-                <ScanSearch size={16} aria-hidden="true" />
+                <Expand size={16} aria-hidden="true" />
               </button>
             </div>
           </div>
@@ -299,6 +311,10 @@
 
   .layer-row--hidden {
     opacity: 0.58;
+  }
+
+  .layer-row--focused {
+    cursor: default;
   }
 
   .layer-preview {
@@ -385,12 +401,17 @@
     opacity: 0.35;
   }
 
+  .layer-icon-button--active {
+    background: var(--app-overlay-selected-bg);
+    color: var(--highlight-fg);
+  }
+
   .layer-icon-button:disabled:hover {
     background: transparent;
   }
 
   @media (hover: hover) and (pointer: fine) {
-    .layer-row:hover {
+    .layer-row:not(.layer-row--focused):hover {
       background: var(--app-overlay-selected-bg);
     }
 
