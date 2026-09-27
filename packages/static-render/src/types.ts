@@ -17,6 +17,8 @@ export type RenderJob = {
   size: [number, number];
   format: "webp" | "jpg";
   styles?: { lower: StyleSpecification; upper: StyleSpecification };
+  /** Optional bottom-aligned title/subtitle with a soft contrast halo. */
+  textOverlay?: { title: string; subtitle?: string; font?: string };
 };
 /** JSON only: no Svelte components, callbacks, absolute asset paths or running app. */
 export type RenderPlan = {
@@ -29,6 +31,8 @@ export type RenderPlan = {
   layers: Record<string, RenderLayer>;
   jobs: RenderJob[];
   resources: Record<string, { base64: string; extension: "json" }>;
+  /** Caller-supplied fonts; omitted base64 uses an installed font family. */
+  fonts?: Record<string, { family: string; base64?: string }>;
 };
 export type RenderImage = { path: string; width: number; height: number };
 export type RenderResult = {

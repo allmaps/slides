@@ -122,6 +122,8 @@ export const buildProject = (
   return {
     title: slidesConfig.title,
     description: slidesConfig.description,
+    titleLong: slidesConfig.titleLong,
+    descriptionLong: slidesConfig.descriptionLong,
     main: slidesConfig.main,
     interface: slidesConfig.interface,
     credits: slidesConfig.credits,
@@ -129,6 +131,12 @@ export const buildProject = (
     slideshows,
   };
 };
+
+/** Overall short copy wins over the main slideshow's optional description. */
+export function getStartScreenText(project: Project) {
+  const main = project.slideshows.find((show) => show.id === project.main);
+  return { title: project.title, description: project.description ?? main?.description };
+}
 
 export function validateProjectReferences(
   slideshows: Slideshow[],

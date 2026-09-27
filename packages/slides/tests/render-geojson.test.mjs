@@ -40,6 +40,11 @@ test("content GeoJSON appears in slide and social scenes and respects per-slide 
     }
   }
   assert(scene(manifest.social.main).styles.upper.layers.some(layer => layer.type === "line"));
+  assert.equal(scene(manifest.social.main).textOverlay.title, 'GeoJSON story');
+  assert.equal(plan.fonts.title.family, 'League Spartan');
+  assert.ok(plan.fonts.title.base64);
+  for (const previews of Object.values(manifest.slides))
+    for (const image of Object.values(previews)) assert.equal(scene(image).textOverlay, undefined);
   for (const theme of ["light", "dark"])
     assert(!scene(manifest.slides["main:hidden"][theme]).styles.upper.layers.some(layer => layer.type === "line"));
 });

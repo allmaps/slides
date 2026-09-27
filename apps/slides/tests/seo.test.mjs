@@ -113,14 +113,29 @@ test("missing thumbnails and invalid public URLs do not invent image URLs or can
   }
 });
 
-test("social titles include the main slideshow title without duplicating it", () => {
-  const renamedProject = { ...project, title: "Different project label" };
-  for (const [slideshow, title] of [[main, "Atlas"], [history, "Atlas — History"], [{ ...history, title: "Atlas" }, "Atlas"]]) {
+test("social titles use the overall long title without duplicating the short title", () => {
+  const renamedProject = { ...project, titleLong: "Atlas through the centuries", descriptionLong: "A complete history of this place" };
+  for (const [slideshow, title] of [[main, "Atlas through the centuries"], [history, "Atlas through the centuries — History"], [{ ...history, title: "Atlas" }, "Atlas through the centuries"]]) {
     const { head } = render(Seo, { props: { project: renamedProject, slideshow } });
     assert.ok(head.includes(`<meta property="og:title" content="${title}"`));
     assert.ok(head.includes(`<meta name="twitter:title" content="${title}"`));
     assert.equal(createSlideshowSeo({ project: renamedProject, slideshow }).title, title);
   }
+});
+
+test("overall long description wins on the main route; image alt uses the short copy", () => {
+  env.PUBLIC_URL = 'https://example.org/atlas/';
+  const described = { ...project, titleLong: 'Atlas through the centuries', descriptionLong: 'Long overall summary' };
+  const describedMain = { ...main, title: 'A different slideshow title', description: 'Main slideshow summary' };
+  const { head } = render(Seo, { props: { project: described, slideshow: describedMain,
+    image: { path: 'thumbnails/social.jpg', width: 1200, height: 630 } } });
+  assert.match(head, /name="description" content="Long overall summary"/);
+  assert.match(head, /name="twitter:description" content="Long overall summary"/);
+  assert.match(head, /property="og:image:alt" content="Atlas — Project summary"/);
+  assert.equal(jsonLdFrom(head).name, described.titleLong);
+  assert.equal(jsonLdFrom(head).isPartOf.description, described.descriptionLong);
+  assert.equal(createSlideshowSeo({ project: described, slideshow: history }).imageAlt, 'Atlas — History');
+  assert.equal(createSlideshowSeo({ project: described, slideshow: history }).description, 'Slideshow summary');
 });
 
 test("public URLs retain nested subpaths with or without a trailing slash", () => {

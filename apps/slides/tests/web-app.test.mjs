@@ -12,7 +12,7 @@ test('installation always launches the main story and includes every slideshow r
     const root = `${base}/`;
     const icon = `${base}/_app/immutable/assets/icon.png`;
     const manifest = createWebAppManifest(project, base, icon);
-    assert.equal(manifest.name, 'Main story');
+    assert.equal(manifest.name, 'Project name');
     assert.equal(manifest.display, 'standalone');
     assert.equal(manifest.start_url, root);
     assert.equal(manifest.id, root);
@@ -27,4 +27,11 @@ test('installation always launches the main story and includes every slideshow r
 
 test('installation metadata falls back to the project title', () => {
   assert.equal(createWebAppManifest({ ...project, slideshows: [] }, '', '/icon.png').name, 'Project name');
+});
+
+test('installation keeps the short overall title as the icon label', () => {
+  const manifest = createWebAppManifest({ ...project, titleLong: 'Expanded project title', descriptionLong: 'Long summary' }, '', '/icon.png');
+  assert.equal(manifest.name, 'Expanded project title');
+  assert.equal(manifest.short_name, 'Project name');
+  assert.equal(manifest.description, 'Long summary');
 });

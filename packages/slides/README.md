@@ -58,6 +58,56 @@ Configuration paths and assets are relative to the content directory.
 relative to the invoking working directory. Output defaults to `<content>/dist`.
 Vite options such as `--port 5174` pass through to `dev`/`preview`.
 
+## Overall titles, descriptions and sharing images
+
+An overall `title` or `description` can be a string, or short and long variants:
+
+```yaml
+title:
+  short: Kattenburg Atlas
+  long: Kattenburg Atlas — four centuries of maritime history
+description:
+  short: A maritime and military microcosm
+  long: Explore the history of Kattenburg through maps, images and stories.
+```
+
+If only one variant is supplied, it is used for both. Existing strings also
+serve both purposes. The app title, start modal and sharing image use the short
+text. The overall description takes priority over the main slideshow's
+description in the start modal and on the main route. If it is absent, the
+main slideshow description remains a fallback.
+
+Page titles, Open Graph/Twitter metadata and structured data use the long
+overall text. Subslideshow page titles append the subslideshow title; their
+descriptions use the slideshow/first chapter description, falling back to the
+long overall description.
+
+Sharing images are separate 1200 × 630 JPEGs: the overall short title appears
+over the first slide's map scene, with the overall short description below it.
+Subslideshow images use the same overall title and the subslideshow title as
+their subtitle. In-app chapter cards, hover previews and map buttons keep
+their images free of text.
+
+The default sharing font is the app's bundled League Spartan. To use another
+font, supply its family name and a local TTF/OTF path relative to the content
+directory (outside the IIIF image folder):
+
+```yaml
+socialImage:
+  font:
+    family: My Display Font
+    path: assets/fonts/display.ttf
+```
+
+Omitting `path` uses a font already installed on the rendering machine; include
+the file for consistent local and CI output. Font files are passed to the
+generic renderer as inputs, not embedded in its package. A custom app selected
+with `app.directory` should provide the default font or configure its own here.
+
+Run `slides thumbnails .` to refresh sharing images, or build the site. Text
+and font changes reuse cached map scenes and only regenerate the text
+composition and JPEG. Ordinary development edits still do not start rendering.
+
 ## Shared GeoJSON overlays
 
 Declare GeoJSON sources in the content configuration to show them throughout
@@ -278,7 +328,7 @@ and builds a self-contained local map/image fixture, including native rendering.
 
 The app keeps controls inside iOS safe-area insets in portrait and landscape.
 An Apple touch icon derived from the favicon is included for Home Screen installs.
-The generated `manifest.webmanifest` uses the main slideshow title and scopes
+The generated `manifest.webmanifest` uses the overall title and scopes
 navigation to the deployment's base path, including every subslideshow. It opens
 the main slideshow in standalone mode. Installed apps fill the viewport while
 only the reading panels scroll. After deploying changes to installation metadata,

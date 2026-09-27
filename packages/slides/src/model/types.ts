@@ -58,8 +58,15 @@ export type InterfaceConfig = {
 };
 
 export type SlidesConfig = {
+  /** Short text for the interface and sharing images. */
   title: string;
   description?: string;
+  /** Expanded text for page titles, metadata and structured data. */
+  titleLong?: string;
+  descriptionLong?: string;
+  socialImage?: {
+    font?: { family: string; path?: string };
+  };
   main: string;
   slideshows: SlideshowDefinition[];
   sources: Record<string, SourceDefinition>;
@@ -150,7 +157,7 @@ export type SlideshowDefinition = {
 
 export type Project = Pick<
   SlidesConfig,
-  "title" | "description" | "main" | "interface" | "credits"
+  "title" | "description" | "titleLong" | "descriptionLong" | "main" | "interface" | "credits"
 > & {
   creditsTitle?: string;
   sources: Record<string, SourceSpecification>;

@@ -26,7 +26,31 @@ self-contained basemap example. A plan contains:
 - `layers`: normalized georeferenced maps and options, keyed by caller IDs.
 - `jobs`: ordered layer IDs, camera, dimensions, output format and optional
   lower/upper MapLibre styles. No styles means a transparent background.
+- `fonts`: optional caller IDs mapped to `{ family, base64? }` font inputs.
 - `resources`: optional annotation JSON snapshots encoded as base64.
+
+Jobs can add `textOverlay: { title, subtitle?, font? }`. `font` references an
+entry in `fonts`; omitted entries use the system sans-serif font. The optional
+base64 is the content of a TTF/OTF file; omitting it selects an installed family.
+For reproducible output, pass font bytes. The renderer ships no application
+fonts or branding. For example:
+
+```js
+plan.fonts = {
+  display: { family: "My Display Font", base64: fontBytes.toString("base64") },
+};
+plan.jobs[0].textOverlay = {
+  title: "An atlas", subtitle: "A journey through time", font: "display",
+};
+```
+
+Text is rendered literally (markup is escaped), wraps and shrinks when needed,
+and sits at the lower left with a soft dark halo for contrast. A separate composition
+cache includes text and font contents; changing copy does not redraw the map.
+Jobs without `textOverlay` retain their original pixels. Sharp/Pango renders
+text without a browser; the renderer provides a writable Fontconfig cache and
+defaults to its fontconfig backend, so custom fonts work on macOS and Linux.
+Explicit `FONTCONFIG_FILE` and `PANGOCAIRO_BACKEND` settings are respected.
 
 `createSourceContext` resolves local IIIF images and remote resources. Annotation
 loading and application-specific map/style decisions belong to the caller;

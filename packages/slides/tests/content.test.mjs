@@ -6,6 +6,7 @@ import path from 'node:path';
 import { loadSlidesConfig } from '../src/content/config.ts';
 import { loadContent } from '../src/content/index.ts';
 import { contentModule, markdownModule } from '../src/vite/index.ts';
+import { getStartScreenText } from '../src/model/project.ts';
 
 async function fixture(t) {
   const root = await mkdtemp(path.join(tmpdir(), 'slides-content-'));
@@ -24,6 +25,30 @@ test('directory content works without package.json, exports, or an entry point',
   assert.equal(content.project.title, 'Directory only');
   assert.equal(content.project.slideshows[0].chapters[0].sourcePath, 'chapters/01-start.md');
   assert.match(markdownModule(content), /chapters\/01-start.md/);
+});
+
+test('overall short/long text is normalized, with short copy taking priority on the start screen', async t => {
+  const root = await fixture(t);
+  const configPath = path.join(root, 'slides.config.yml');
+  for (const [title, description, expected] of [
+    ['Atlas', 'Project summary', ['Atlas', 'Atlas', 'Project summary', 'Project summary']],
+    [{ short: 'Atlas', long: 'An atlas through the centuries' }, { short: 'Explore the city', long: 'A detailed history of the city' },
+      ['Atlas', 'An atlas through the centuries', 'Explore the city', 'A detailed history of the city']],
+    [{ long: 'Only long' }, { short: 'Only short' }, ['Only long', 'Only long', 'Only short', 'Only short']],
+  ]) {
+    await writeFile(configPath, JSON.stringify({ title, description,
+      slideshows: [{ id: 'main', path: 'chapters', title: 'Main story', description: 'Slideshow summary' }] }));
+    const content = await loadContent(await loadSlidesConfig({ content: root }));
+    assert.deepEqual([content.project.title, content.project.titleLong, content.project.description, content.project.descriptionLong], expected);
+    assert.deepEqual(getStartScreenText(content.project), { title: expected[0], description: expected[2] });
+    assert.equal(content.config.iiif.collectionLabel, expected[0]);
+    assert.match(contentModule(content), /titleLong/);
+  }
+  await writeFile(configPath, JSON.stringify({ title: 'Atlas',
+    slideshows: [{ id: 'main', path: 'chapters', description: 'Slideshow summary' }] }));
+  assert.equal(getStartScreenText((await loadContent(await loadSlidesConfig({ content: root }))).project).description, 'Slideshow summary');
+  await writeFile(configPath, JSON.stringify({ title: { short: ' ', long: '' } }));
+  await assert.rejects(loadSlidesConfig({ content: root }), /provide short or long text/);
 });
 
 test('an explicit config is the same config exposed to the app', async t => {

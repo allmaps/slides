@@ -1,3 +1,5 @@
+import path from "node:path";
+import { readFile, realpath } from "node:fs/promises";
 import {
   resolveBasemapStyle,
   getEffectiveBasemapTheme,
@@ -30,6 +32,8 @@ import { sceneStyles } from "./styles.ts";
 import type { RenderPlan, RenderJob } from "@allmaps/static-render/types";
 import type { ContentSnapshot } from "../content/index.ts";
 import { createContentAssets } from "../content/assets.ts";
+import { within } from "../content/index.ts";
+import { getStartScreenText } from "../model/project.ts";
 export async function prepareThumbnails(content: ContentSnapshot, options: {
   assetRoot: string;
   cacheRoot: string;
@@ -58,6 +62,19 @@ export async function prepareThumbnails(content: ContentSnapshot, options: {
   const manifest = emptyThumbnails();
   const layers = new Map<string, LoadedLayer>();
   const project = content.project;
+  const font = slidesConfig.socialImage?.font;
+  const fontPath = font
+    ? font.path && path.resolve(options.assetRoot, font.path)
+    : path.join(content.config.appDir, "static/fonts/LeagueSpartan-VariableFont_wght.ttf");
+  if (font?.path && fontPath) {
+    within(options.assetRoot, fontPath);
+    within(await realpath(options.assetRoot), await realpath(fontPath));
+  }
+  plan.fonts = { title: {
+    family: font?.family ?? "League Spartan",
+    ...(fontPath ? { base64: (await readFile(fontPath)).toString("base64") } : {}),
+  } };
+  const startText = getStartScreenText(project);
 
   const getLayer = async (props: WarpedMapProps) => {
     const key = layerPreviewKey(props);
@@ -147,6 +164,11 @@ export async function prepareThumbnails(content: ContentSnapshot, options: {
       size,
       styles,
       format: social ? "jpg" : "webp",
+      ...(social ? { textOverlay: {
+        title: project.title,
+        subtitle: slideshow.id === project.main ? startText.description : slideshow.title,
+        font: "title",
+      } } : {}),
     });
   };
 

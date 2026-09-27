@@ -23,10 +23,10 @@ type SlideshowSeoOptions = {
 };
 
 export const getSlideshowPageTitle = (project: Project, slideshow?: Slideshow) => {
-  const mainTitle = project.slideshows.find((candidate) => candidate.id === project.main)?.title ?? project.title;
-  return slideshow && slideshow.id !== project.main && slideshow.title !== mainTitle
-    ? `${mainTitle} — ${slideshow.title}`
-    : mainTitle;
+  const title = project.titleLong ?? project.title;
+  return slideshow && slideshow.id !== project.main && slideshow.title !== title && slideshow.title !== project.title
+    ? `${title} — ${slideshow.title}`
+    : title;
 };
 
 export const createSlideshowSeo = ({
@@ -38,12 +38,19 @@ export const createSlideshowSeo = ({
   const canonical = absolutePublicUrl(slideshow.slug, publicUrl);
   const siteUrl = absolutePublicUrl("", publicUrl);
   const image = imagePath ? absolutePublicUrl(imagePath, publicUrl) : undefined;
-  const description = (
-    slideshow.description ?? slideshow.chapters[0]?.description ?? project.description
+  const overallDescription = project.descriptionLong ?? project.description;
+  const description = (slideshow.id === project.main
+    ? overallDescription ?? slideshow.description ?? slideshow.chapters[0]?.description
+    : slideshow.description ?? slideshow.chapters[0]?.description ?? overallDescription
   )?.trim();
+  const title = getSlideshowPageTitle(project, slideshow);
+  const name = slideshow.id === project.main ? title : slideshow.title;
+  const imageSubtitle = slideshow.id === project.main
+    ? project.description ?? slideshow.description : slideshow.title;
 
   return {
-    title: getSlideshowPageTitle(project, slideshow),
+    title,
+    imageAlt: [project.title, imageSubtitle].filter(Boolean).join(" — "),
     canonical,
     description,
     image,
@@ -52,21 +59,21 @@ export const createSlideshowSeo = ({
       "@type": "WebPage",
       "@id": canonical,
       url: canonical,
-      name: slideshow.title,
+      name,
       description,
       isPartOf: {
         "@type": "WebSite",
         "@id": `${siteUrl}#website`,
         url: siteUrl,
-        name: project.title,
-        description: project.description,
+        name: project.titleLong ?? project.title,
+        description: overallDescription,
       },
       primaryImageOfPage: image ? { "@type": "ImageObject", url: image } : undefined,
       mainEntity: {
         "@type": "PresentationDigitalDocument",
         "@id": `${canonical}#presentation`,
         url: canonical,
-        name: slideshow.title,
+        name,
         description,
         image,
         hasPart: slideshow.chapters.map((chapter, index) => ({

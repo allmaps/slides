@@ -23,6 +23,20 @@ const optionalNonEmptyString = z.preprocess(
 );
 const optionalSlug = z.preprocess(nullableToUndefined, z.string().optional());
 
+const projectTextSchema = z.preprocess(
+  emptyOptionalStringToUndefined,
+  z.union([
+    nonEmptyString,
+    z.object({ short: optionalNonEmptyString, long: optionalNonEmptyString })
+      .refine((text) => text.short || text.long, "provide short or long text"),
+  ]).optional(),
+);
+
+const shortText = (text: z.output<typeof projectTextSchema>) =>
+  typeof text === "string" ? text : text?.short ?? text?.long;
+const longText = (text: z.output<typeof projectTextSchema>) =>
+  typeof text === "string" ? text : text?.long ?? text?.short;
+
 const optionalValue = <Schema extends z.ZodType>(schema: Schema) =>
   z.preprocess(nullableToUndefined, schema.optional());
 
@@ -243,8 +257,11 @@ export const slidesConfigSchema = z
         webp: z.union([z.boolean(), z.string(), z.number()]).optional(),
       })
       .optional(),
-    title: optionalString,
-    description: optionalString,
+    title: projectTextSchema,
+    description: projectTextSchema,
+    socialImage: z.object({
+      font: z.object({ family: nonEmptyString, path: optionalNonEmptyString }).optional(),
+    }).optional(),
     main: optionalNonEmptyString,
     credits: optionalNonEmptyString,
     slideshows: z.array(slideshowDefinitionSchema).optional().default([]),
@@ -345,8 +362,11 @@ export const parseSlidesConfig = (
   return {
     success: true,
     data: {
-      title: config.title ?? "Slides",
-      description: config.description,
+      title: shortText(config.title) ?? "Slides",
+      description: shortText(config.description),
+      titleLong: longText(config.title),
+      descriptionLong: longText(config.description),
+      socialImage: config.socialImage,
       main:
         config.main ??
         (config.slideshows.length === 1 ? config.slideshows[0].id : "main"),

@@ -3,12 +3,11 @@ import type { Project } from "@allmaps/slides/model/types";
 /** Keep installation and navigation on the current deployment's origin/path. */
 export function createWebAppManifest(project: Project, basePath: string, iconUrl: string) {
   const root = `${basePath.replace(/\/+$/, "")}/`;
-  const name = project.slideshows.find(show => show.id === project.main)?.title ?? project.title;
   return {
     id: root,
-    name,
-    short_name: name,
-    description: project.description,
+    name: project.titleLong ?? project.title,
+    short_name: project.title,
+    description: project.descriptionLong ?? project.description,
     start_url: root,
     scope: root,
     display: "standalone",

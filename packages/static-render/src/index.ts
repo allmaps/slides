@@ -6,6 +6,7 @@ import { atomicWrite, digest, recipeHash } from "./cache.ts";
 import { renderWarpedLayer, type LoadedLayer } from "./warped.ts";
 import { renderBasemap } from "./basemap.ts";
 import { NativeRenderer } from "./native.ts";
+import { prepareTextFonts, renderTextOverlay } from "./text-overlay.ts";
 import type { RenderOptions, RenderPlan, RenderResult } from "./types.ts";
 export type * from "./types.ts";
 
@@ -35,8 +36,20 @@ export function validateRenderPlan(plan: RenderPlan) {
       throw new Error(`Invalid camera: ${job.id}`);
     if (!["webp", "jpg"].includes(job.format))
       throw new Error(`Invalid output format: ${job.format}`);
+    if (job.textOverlay) {
+      if (typeof job.textOverlay.title !== "string" || !job.textOverlay.title.trim() ||
+          (job.textOverlay.subtitle !== undefined && typeof job.textOverlay.subtitle !== "string"))
+        throw new Error(`Invalid text overlay: ${job.id}`);
+      if (job.textOverlay.font && !plan.fonts?.[job.textOverlay.font])
+        throw new Error(`Unknown render font: ${job.textOverlay.font}`);
+    }
     for (const id of job.layers)
       if (!plan.layers[id]) throw new Error(`Unknown render layer: ${id}`);
+  }
+  for (const font of Object.values(plan.fonts ?? {})) {
+    if (typeof font.family !== "string" || !font.family.trim() ||
+        (font.base64 !== undefined && (typeof font.base64 !== "string" || !Buffer.from(font.base64, "base64").length)))
+      throw new Error("Invalid render font");
   }
   for (const filename of [
     ...Object.values(plan.assets.images),
@@ -92,11 +105,11 @@ export async function renderBatch(
     }
     for (const job of plan.jobs) {
       const selected = job.layers.map((id) => layers.get(id)!);
-      const png = await cache.get(
+      let png = await cache.get(
         {
           version: 2,
           renderer: "static-render-2",
-          job: { ...job, id: undefined },
+          job: { ...job, id: undefined, textOverlay: undefined },
           revisions: selected.map((l) => l.revision),
           epoch: plan.epoch,
         },
@@ -145,6 +158,20 @@ export async function renderBatch(
           return canvas.composite(overlays).png().toBuffer();
         },
       );
+      if (job.textOverlay) {
+        await prepareTextFonts(options.cacheRoot);
+        const font = job.textOverlay.font ? plan.fonts?.[job.textOverlay.font] : undefined;
+        const fontBytes = font?.base64 ? Buffer.from(font.base64, "base64") : undefined;
+        const fontHash = fontBytes ? digest(fontBytes) : undefined;
+        const filename = fontHash ? path.join(options.cacheRoot, "fonts", `${fontHash}.font`) : undefined;
+        if (filename && fontBytes) await atomicWrite(filename, fontBytes);
+        const scene = png;
+        png = await cache.get({
+          renderer: "text-overlay-2", image: digest(scene), size: job.size,
+          text: job.textOverlay, font: { family: font?.family, hash: fontHash },
+        }, () => renderTextOverlay(scene, job.size, job.textOverlay!,
+          font ? { family: font.family, filename } : undefined));
+      }
       const encoded = await cache.get(
         { version: 1, sharp: "0.35.4", format: job.format, hash: digest(png) },
         () =>

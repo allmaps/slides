@@ -27,14 +27,16 @@
   <meta property="og:title" content={metadata.title} />
   <meta name="twitter:title" content={metadata.title} />
   <meta property="og:description" content={metadata.description} />
+  <meta name="twitter:description" content={metadata.description} />
   {#if image && metadata.image}
     <meta property="og:image" content={metadata.image} />
     <meta property="og:image:width" content={String(image.width)} />
     <meta property="og:image:height" content={String(image.height)} />
     <meta property="og:image:type" content="image/jpeg" />
-    <meta property="og:image:alt" content={slideshow.chapters[0]?.title ?? slideshow.title} />
+    <meta property="og:image:alt" content={metadata.imageAlt} />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:image" content={metadata.image} />
+    <meta name="twitter:image:alt" content={metadata.imageAlt} />
   {/if}
   {#if metadata.jsonLd}
     {@html `<script type="application/ld+json">${serializeJsonLd(metadata.jsonLd)}</script>`}

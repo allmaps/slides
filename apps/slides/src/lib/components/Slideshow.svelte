@@ -25,7 +25,7 @@
     getSlideshowRouteHref,
   } from "$lib/shared/project";
   import { DEFAULT_DURATION, DEFAULT_PADDING } from "$lib/shared/settings";
-  import { getChapterCount } from "@allmaps/slides/model/project";
+  import { getChapterCount, getStartScreenText } from "@allmaps/slides/model/project";
   import type {
     MapChapter,
     MapChapterProps,
@@ -127,10 +127,7 @@
   const startScreenVisible = $derived(
     activeSlideshow.id === project.main && !mainSlideshowStarted,
   );
-  const startDescription = $derived(
-    activeSlideshow.description ??
-      (activeSlideshow.id === project.main ? project.description : undefined),
-  );
+  const startText = $derived(getStartScreenText(project));
   const activeIndex = $derived.by(() =>
     clampIndex(
       isSubslideshowActive
@@ -650,8 +647,8 @@
 
   {#if isDarkMode !== undefined && activeSlideshow.id === project.main}
     <StartScreen
-      title={project.title}
-      description={startDescription}
+      title={startText.title}
+      description={startText.description}
       chapterCount={getChapterCount(activeSlideshow)}
       visible={startScreenVisible}
       {isDarkMode}

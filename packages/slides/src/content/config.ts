@@ -116,7 +116,7 @@ export async function loadSlidesConfig(options: LoadSlidesConfigOptions = {}) {
       inputRoot: path.resolve(sourceContentDir, raw.iiif?.input ?? "assets/images"),
       outputRoot: path.resolve(sourceContentDir, raw.iiif?.output ?? "static/iiif"),
       idBase: raw.iiif?.id,
-      collectionLabel: raw.iiif?.collectionLabel ?? raw.title,
+      collectionLabel: raw.iiif?.collectionLabel ?? normalized.data.title,
       sizes: booleanOption(raw.iiif?.sizes, true), tiles: booleanOption(raw.iiif?.tiles, true),
       tileSize: raw.iiif?.tileSize === undefined ? undefined : String(raw.iiif.tileSize),
       webp: booleanOption(raw.iiif?.webp, true),

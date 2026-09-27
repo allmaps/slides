@@ -137,14 +137,12 @@
   }
 
   .start-description {
-    overflow: hidden;
     max-width: 100%;
     color: var(--highlight-fg);
     font-size: 1.25rem;
     font-weight: 500;
     line-height: 1.1;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    text-wrap: balance;
   }
 
   .start-card h1 {

@@ -35,7 +35,9 @@ try {
   await mkdir(path.join(root, 'assets/map-styles'), { recursive: true });
   await sharp({ create: { width: 24, height: 16, channels: 3, background: '#c52e27' } }).png().toFile(path.join(root, 'assets/images/ship.png'));
   await writeFile(path.join(root, 'assets/map-styles/plain.json'), JSON.stringify({ version: 8, sources: {}, layers: [{ id: 'background', type: 'background', paint: { 'background-color': '#aaddcc' } }] }));
-  const config = { title: 'Packed site', main: 'main', slideshows: [{ id: 'main', path: 'chapters' }], site: { publicUrl: 'https://example.org/story/', basePath: '/story' },
+  const config = { title: { short: 'Packed site', long: 'Packed site — an atlas through time' },
+    description: { short: 'Explore our atlas', long: 'A detailed description for search and sharing' },
+    main: 'main', slideshows: [{ id: 'main', path: 'chapters', description: 'Main slideshow fallback' }], site: { publicUrl: 'https://example.org/story/', basePath: '/story' },
     map: { styles: { light: 'assets/map-styles/plain.json', dark: 'assets/map-styles/plain.json' } }, iiif: { sizes: false, tiles: false, webp: false } };
   await writeFile(path.join(root, 'slides.config.json'), JSON.stringify(config));
   await writeFile(path.join(root, 'chapters/01-first.md'), '---\ntitle: First chapter\n---\nA packaged story.\n\n![Ship](assets/images/ship.png)');
@@ -47,6 +49,12 @@ try {
   run(['exec', 'slides', 'build', '.', '--outDir', 'site']);
   const html = await readFile(path.join(root, 'site/index.html'), 'utf8');
   assert.match(html, /First chapter/);
+  assert.match(html, /<title>Packed site — an atlas through time<\/title>/);
+  assert.match(html, /name="description" content="A detailed description for search and sharing"/);
+  // The start modal mounts after theme detection; the prerendered header and
+  // image description still expose the overall short copy.
+  assert.match(html, /title="Packed site"/);
+  assert.match(html, /property="og:image:alt" content="Packed site — Explore our atlas"/);
   assert.match(html, /https:\/\/example.org\/story\//);
   const siteFiles = await readdir(path.join(root, 'site'), { recursive: true });
   const worker = siteFiles.find(file => /maplibre-gl-worker[^/]*\.js$/.test(file));
@@ -57,6 +65,17 @@ try {
   assert.equal(info.width, 24);
   const rendered = await readdir(path.join(root, 'site/thumbnails'));
   assert.ok(rendered.some(name => name.endsWith('.webp')) && rendered.some(name => name.endsWith('.jpg')));
+  const social = rendered.find(name => name.endsWith('.jpg'));
+  const socialPixels = await sharp(path.join(root, 'site/thumbnails', social)).raw().toBuffer({ resolveWithObject: true });
+  const { data: pixels, info: imageInfo } = socialPixels;
+  assert.equal(imageInfo.width, 1200);
+  assert.equal(imageInfo.height, 630);
+  assert.ok(Math.abs(pixels[(600 * 1200 + 10) * imageInfo.channels] - pixels[(10 * 1200 + 10) * imageInfo.channels]) < 5,
+    'the text halo leaves the lower corner of the map clear');
+  let white = 0;
+  for (let y = 400; y < 580; y++) for (let x = 56; x < 1144; x++)
+    if (pixels[(y * 1200 + x) * imageInfo.channels] > 235) white++;
+  assert.ok(white > 1000, 'the packaged app supplies its font and renders the sharing title');
   // A repeat build must reuse pixels. It still exports every public asset.
   run(['exec', 'slides', 'build', '.', '--outDir', 'site']);
   assert.deepEqual(await readdir(path.join(root, 'site/thumbnails')), rendered);

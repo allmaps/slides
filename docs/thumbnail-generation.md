@@ -9,7 +9,7 @@ thumbnails without a browser, DOM, or a running web server.
 | ---------------- | ------------------------------------ | ------------------------------------------------------- |
 | Section cards and TOC hover previews | 540 × 400 WebP per slide and theme | Complete map scene in light and dark styles             |
 | Map layers panel | 256 × 256 WebP per map-entry variant | Transparent, north-up, fitted to the mask; no basemap   |
-| Social metadata  | 1200 × 630 JPEG per slideshow route  | First slide, reframed at this aspect ratio, light theme |
+| Social metadata  | 1200 × 630 JPEG per slideshow route  | First slide in light theme, overall short title and subtitle with a soft halo |
 
 A map-entry variant includes its URL, type, image crop, wiggle and renderer
 options. An AnnotationPage with several maps produces one combined layer-row
@@ -58,6 +58,15 @@ renders warped overlays; Chiitiler renders the lower and upper style passes.
 Sharp composites lower basemap, warped maps and upper labels/overlays before
 final encoding. Slide and social images have no attribution banner.
 
+Social images receive a separate text composition after the complete map scene.
+The main route uses the overall short description as its subtitle; subslideshows
+use their own title. All use the overall short title and the app's League Spartan
+font by default. `socialImage.font` can supply another family and local file.
+The neutral render plan carries font bytes and optional per-job `textOverlay`
+data. Small slide cards and hover previews never receive this overlay. See
+[the configuration examples](../packages/slides/README.md#overall-titles-descriptions-and-sharing-images)
+for short/long copy and fallback rules.
+
 GeoJSON sources declared in the content configuration use the same SimpleStyle
 layers in the live map and upper thumbnail pass. The native adapter removes
 null feature IDs (leaving properties and valid IDs intact), since those features
@@ -90,6 +99,7 @@ repository (or the directory selected by `--cacheDir`, with a `/slides` suffix).
 | `thumbnails/sources` | IIIF, styles, TileJSON, tiles, glyphs and GeoJSON. |
 | `thumbnails/native` | Native protocol cache. |
 | `thumbnails/renders-v2` | Render passes and encoded results by recipe. |
+| `thumbnails/fonts` | Supplied fonts and writable Fontconfig cache. |
 | `thumbnails/assets` | Immutable images and annotation snapshots. |
 | `projects/<project-key>/thumbnails` | Plan, template, result and last completed manifest. |
 
@@ -117,8 +127,11 @@ authentication error, 404 or invalid annotation still fails the build.
 
 Recipes include camera, size, ordered maps, effects, resolved styles, source
 content/epoch and renderer/encoding versions. Annotation changes and local
-image changes alter their content hashes. Prose/title edits do not affect
-pixels. Writes use a temporary file and atomic rename. Failed requests and
+image changes alter their content hashes. Body prose and chapter titles do not
+affect pixels. Overall short copy, subslideshow titles and font changes invalidate
+only the sharing-image composition and encoding, preserving the cached map scene
+and in-app previews. Long text affects metadata only. Writes use a temporary file
+and atomic rename. Failed requests and
 failed render jobs are not cached as successful results.
 
 The published route accepts only filenames present in the manifest. All URLs

@@ -27,7 +27,7 @@
   <link rel="icon" href={favicon} />
   <link rel="apple-touch-icon" sizes="180x180" href={appIcon} />
   <link rel="manifest" href={`${base}/manifest.webmanifest`} />
-  <meta name="apple-mobile-web-app-title" content={mainSlideshow?.title ?? project.title} />
+  <meta name="apple-mobile-web-app-title" content={project.title} />
   <meta name="apple-mobile-web-app-capable" content="yes" />
 </svelte:head>
 
