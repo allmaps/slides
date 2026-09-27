@@ -10,10 +10,11 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { canvasRotation } from "./rotation.ts";
+  import { fitImageRegion, imageZoomState, nativeImageScale, settledResize, type ImageZoomState } from "./atlas-view.ts";
   import type { CanvasPanelProps } from "./types.ts";
   import type { IiifResource } from "./iiif-resource.ts";
 
-  let { resource, label, enlargeLabel, target, transitioning = false, rotation, runtimeOptions, onactivate, onready, onerror }: {
+  let { resource, label, enlargeLabel, target, transitioning = false, rotation, runtimeOptions, onactivate, onready, onerror, onzoomchange }: {
     resource: IiifResource;
     label: string;
     enlargeLabel?: string;
@@ -24,11 +25,15 @@
     onactivate: () => void;
     onready: (controls: ImageControls) => void;
     onerror: () => void;
+    onzoomchange: (state: ImageZoomState) => void;
   } = $props();
   let home: HTMLDivElement;
   let canvas: HTMLCanvasElement;
   let relocate = $state<((destination?: HTMLElement) => void)>();
   let configureRuntime = $state<((options: CanvasPanelProps["runtimeOptions"]) => void)>();
+  const positive = (value: number | undefined) => value !== undefined && Number.isFinite(value) && value > 0 ? value : 1;
+  const maxScale = $derived(nativeImageScale(resource) * positive(runtimeOptions?.maxOverZoom));
+  const modalSize = $derived(canvasRotation(resource, rotation));
 
   $effect(() => { relocate?.(target); });
   $effect(() => { configureRuntime?.(runtimeOptions); });
@@ -61,12 +66,12 @@
       // Leave room to pan past an image edge before Atlas pulls it back.
       configureRuntime = (options) => {
         const ratio = options?.visibilityRatio ?? 0.8;
-        const positive = (value: number | undefined) => value !== undefined && Number.isFinite(value) && value > 0 ? value : 1;
         runtime.setOptions({
           visibilityRatio: Number.isFinite(ratio) ? Math.max(0, Math.min(1, ratio)) : 0.8,
-          maxOverZoom: positive(options?.maxOverZoom),
+          maxOverZoom: nativeImageScale(resource) * positive(options?.maxOverZoom),
           maxUnderZoom: positive(options?.maxUnderZoom),
         });
+        runtime.updateNextFrame();
       };
       configureRuntime(runtimeOptions);
       runtime.stopControllers();
@@ -77,18 +82,26 @@
       let previewPoster: string | undefined;
       const view = canvasRotation(resource, rotation);
       const region = view.bounds(resource.region ?? { x: 0, y: 0, width: resource.width, height: resource.height });
+      const getZoomState = () => imageZoomState(
+        runtime.getScaleFactor(),
+        Math.min(width / view.width, height / view.height) * runtime.options.maxUnderZoom,
+        maxScale,
+      );
+      let lastZoomState: ImageZoomState | undefined;
+      const updateZoomState = () => {
+        const state = getZoomState();
+        if (state.canZoomIn === lastZoomState?.canZoomIn && state.canZoomOut === lastZoomState?.canZoomOut) return;
+        lastZoomState = state;
+        onzoomchange(state);
+      };
       const fitRegion = () => {
         cancelAtlasMotion(runtime);
-        const scale = Math.min(width / region.width, height / region.height);
-        runtime.setViewport({
-          x: region.x - (width / scale - region.width) / 2,
-          y: region.y - (height / scale - region.height) / 2,
-          width: width / scale, height: height / scale,
-        });
+        runtime.setViewport(fitImageRegion(region, width, height, expanded ? maxScale : Infinity));
         runtime.updateNextFrame();
       };
       const controls: ImageControls = {
-        zoomIn: () => world.zoomIn(), zoomOut: () => world.zoomOut(),
+        zoomIn: () => { if (getZoomState().canZoomIn) world.zoomIn(); },
+        zoomOut: () => { if (getZoomState().canZoomOut) world.zoomOut(); },
         snapshot: () => {
           try { return canvas.toDataURL("image/png"); } catch { return undefined; }
         },
@@ -117,24 +130,50 @@
         // Cached tiles paint directly, without pendingDrawCall (offscreen tile
         // preparation). The resize snapshot expires after any rendered frame.
         if (canvas.style.backgroundImage) canvas.style.backgroundImage = "";
+        updateZoomState();
       });
       const resizeCanvas = () => {
         const nextWidth = Math.max(1, canvas.clientWidth);
         const nextHeight = Math.max(1, canvas.clientHeight);
         const dpi = window.devicePixelRatio || 1;
-        if (width === nextWidth && height === nextHeight && renderer.dpi === dpi) return;
+        if (width === nextWidth && height === nextHeight && renderer.dpi === dpi) {
+          // A capped canvas can move within the dialog without changing size.
+          interaction.updateBounds();
+          updateZoomState();
+          return;
+        }
+        const viewport = { ...runtime.getViewport() };
+        const scale = Math.min(width / viewport.width, height / viewport.height);
+        const regionScale = Math.min(width / region.width, height / region.height, maxScale);
+        const homeScale = Math.min(width / view.width, height / view.height, maxScale);
+        const atRegionFit = Math.abs(scale / regionScale - 1) < 0.001;
+        const atHomeFit = Math.abs(scale / homeScale - 1) < 0.001;
+        cancelAtlasMotion(runtime);
         renderer.dpi = dpi;
         canvas.width = Math.round(nextWidth * dpi);
         canvas.height = Math.round(nextHeight * dpi);
         renderer.ctx.setTransform(dpi, 0, 0, dpi, 0, 0);
-        runtime.resize(width, nextWidth, height, nextHeight);
         width = nextWidth;
         height = nextHeight;
-        if (!expanded) fitRegion();
+        renderer.resize();
+        if (!expanded || atRegionFit) fitRegion();
+        else if (atHomeFit) runtime.setViewport(fitImageRegion({ x: 0, y: 0, width: view.width, height: view.height }, width, height, maxScale));
+        else {
+          const nextScale = Math.max(Math.min(width / view.width, height / view.height), Math.min(maxScale, scale));
+          runtime.setViewport({
+            x: viewport.x + viewport.width / 2 - width / nextScale / 2,
+            y: viewport.y + viewport.height / 2 - height / nextScale / 2,
+            width: width / nextScale, height: height / nextScale,
+          });
+        }
+        runtime.updateControllerPosition();
         interaction.updateBounds();
+        updateZoomState();
       };
-      const resize = new ResizeObserver(resizeCanvas);
+      const pendingResize = settledResize(resizeCanvas);
+      const resize = new ResizeObserver(pendingResize.schedule);
       resize.observe(canvas);
+      window.addEventListener("resize", pendingResize.schedule);
 
       // Move the actual canvas into the dialog, retaining its runtime and tiles.
       // Its last rendered frame covers the synchronous canvas resize/clear.
@@ -148,9 +187,10 @@
         cancelAtlasMotion(runtime);
         expanded = Boolean(destination);
         parent.append(canvas);
-        resizeCanvas();
+        pendingResize.flush();
         fitRegion();
         interaction.updateBounds();
+        updateZoomState();
         if (expanded) {
           interaction.start();
           canvas.focus({ preventScroll: true });
@@ -177,6 +217,8 @@
       fitRegion();
       cleanup = () => {
         resize.disconnect();
+        window.removeEventListener("resize", pendingResize.schedule);
+        pendingResize.cancel();
         unsubscribe();
         afterFrame();
         canvas.removeEventListener("click", click);
@@ -199,6 +241,8 @@
   <!-- The open button is the keyboard entry point; programmatic canvas focus
     enables zoom shortcuts without adding an invisible tab stop. -->
   <canvas bind:this={canvas} class:interactive={Boolean(target)} data-background="transparent"
+    style:max-width={target ? `${modalSize.width * maxScale}px` : undefined}
+    style:max-height={target ? `${modalSize.height * maxScale}px` : undefined}
     style:view-transition-name={transitioning ? "canvas-panel-image" : "none"}
     role={target ? "img" : "button"} aria-label={target ? label : (enlargeLabel ?? `Enlarge image: ${label}`)} tabindex="-1"></canvas>
 </div>
@@ -206,6 +250,8 @@
 <style>
   .canvas-home, canvas { display: block; width: 100%; height: 100%; }
   canvas { cursor: zoom-in; background: center / contain no-repeat; outline: none; }
-  canvas.interactive { touch-action: none; cursor: grab; }
+  /* Atlas allows zooming to at least the canvas width. Limit the modal canvas
+     itself so small images cannot be upscaled by wheel/pinch or home commands. */
+  canvas.interactive { position: absolute; inset: 0; margin: auto; touch-action: none; cursor: grab; }
   canvas.interactive:active { cursor: grabbing; }
 </style>

@@ -29,6 +29,7 @@
   let open = $state(false);
   let transitioning = $state(false);
   let panel = $state<ImageControls>();
+  let zoomState = $state({ canZoomIn: false, canZoomOut: false });
   let poster = $state<string>();
   let resource = $state.raw<IiifResource>();
   const view = $derived(resource ? canvasRotation(resource, rotation) : undefined);
@@ -169,6 +170,7 @@
     {#key `${attempt}:${rotation}`}
       {#if resource && loadImage}
         <AtlasViewer {resource} {label} enlargeLabel={ui.enlargeImage.replaceAll("{title}", label)} {transitioning} {rotation} {runtimeOptions} target={open ? zoomPanel : undefined} onactivate={enlarge}
+          onzoomchange={(state) => { zoomState = state; }}
           onready={(controls) => { panel = controls; ready = true; error = false; }}
           onerror={() => { error = true; }} />
       {/if}
@@ -202,8 +204,8 @@
   {#if open}
     <div class="toolbar" style:view-transition-name={transitioning ? "canvas-panel-image-controls" : "none"}>
       <div class="zoom-controls" role="group" aria-label={ui.imageZoom}>
-        <button type="button" class="image-control" aria-label={ui.zoomIn} onclick={() => panel?.zoomIn()}><Plus size={22} /></button>
-        <button type="button" class="image-control" aria-label={ui.zoomOut} onclick={() => panel?.zoomOut()}><Minus size={22} /></button>
+        <button type="button" class="image-control" aria-label={ui.zoomIn} disabled={!zoomState.canZoomIn} onclick={() => panel?.zoomIn()}><Plus size={22} /></button>
+        <button type="button" class="image-control" aria-label={ui.zoomOut} disabled={!zoomState.canZoomOut} onclick={() => panel?.zoomOut()}><Minus size={22} /></button>
         {#if enableDownloads}<button type="button" class="image-control" aria-label={ui.downloadView} onclick={download}><Download size={22} /></button>{/if}
       </div>
       <button type="button" class="image-control" aria-label={ui.closeImage} onclick={close}><X size={24} /></button>
@@ -252,7 +254,8 @@
   .poster { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
   .preview-controls { position: absolute; right: 0.5rem; bottom: 0.5rem; display: flex; gap: 0.4rem; }
   .image-control { display: grid; place-items: center; width: 52px; height: 52px; border: 0; border-radius: 0.5rem; background: var(--canvas-panel-control-bg, rgb(18 26 28 / 0.65)); color: var(--canvas-panel-control-color, #fff); box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.25); backdrop-filter: blur(12px); cursor: pointer; pointer-events: auto; }
-  .image-control:hover { background: var(--canvas-panel-control-hover-bg, rgb(18 26 28 / 0.3)); }
+  .image-control:hover:not(:disabled) { background: var(--canvas-panel-control-hover-bg, rgb(18 26 28 / 0.3)); }
+  .image-control:disabled { opacity: 0.35; cursor: default; }
   .image-control:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; }
   .expand-control:focus { outline: none; }
   .expand-control:focus-visible { background: var(--canvas-panel-control-hover-bg, rgb(18 26 28 / 0.3)); }

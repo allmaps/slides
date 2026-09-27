@@ -61,6 +61,9 @@ the preview and in the modal overlay. Pass caption content without a surrounding
 `runtimeOptions` supports `visibilityRatio` (default `0.8`, clamped to 0–1),
 `maxOverZoom` and `maxUnderZoom` (both default `1`, positive numbers). A lower
 visibility ratio allows more panning beyond the image edge before correction.
+`maxOverZoom` is relative to the painting images' native resolution; the default
+does not enlarge an image beyond one source pixel per CSS pixel. An explicit
+larger value opts into upscaling.
 Other Atlas runtime options are intentionally not exposed.
 
 Relative URLs resolve against `document.baseURI`. `#xywh=` fragments and crops in
@@ -108,6 +111,10 @@ preprocessing CLI. Remote metadata and pixels must support CORS.
 
 The preview and modal share one canvas, runtime and tile cache. Opening enables
 interaction; closing removes zoom/pan listeners and restores the initial region.
+Small images stay centered at native size in the modal. Zoom controls disable at
+their limits and update when the viewport changes. Resizing retains the last
+canvas image and redraws after a 200 ms pause, preserving a zoomed view or refitting
+an image that was already fitted. Opening and closing still resize immediately.
 Atlas's context-menu handler remains active in the non-interactive preview, including
 before the first modal opening. It suppresses the browser's native canvas context
 menu. Exactly one handler is retained across modal cycles and removed on unmount.

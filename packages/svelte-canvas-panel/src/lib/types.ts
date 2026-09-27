@@ -18,6 +18,7 @@ export type CanvasPanelProps = (
   runtimeOptions?: {
     /** Fraction of the viewport kept inside the image, clamped to 0–1. Default 0.8. */
     visibilityRatio?: number;
+    /** Maximum source-pixel scale. Default 1: one image pixel per CSS pixel. */
     maxOverZoom?: number;
     maxUnderZoom?: number;
   };
