@@ -194,6 +194,7 @@
   let mapLoaded = $state(false);
   let currentBearing = $state(0);
   let currentSlideResourcesRevision = $state(0);
+  let loadedAnnotationsRevision = $state(0);
   let mapIdsByAnnotationUrl: Map<string, string[]> = new Map();
   let annotationLoadPromisesByUrl: Map<string, Promise<void>> = new Map();
   let spriteLoadPromisesByKey: Map<string, Promise<void>> = new Map();
@@ -230,6 +231,7 @@
 
   const rememberMapIdsForAnnotation = (url: string, ids: string[]) => {
     mapIdsByAnnotationUrl.set(url, ids);
+    loadedAnnotationsRevision += 1;
   };
 
   const getEmptyFeatureCollection = () => ({
@@ -675,7 +677,6 @@
           const options = {
             ...getWarpedMapOptions(annotation, theme),
             visible: false,
-            anticipateVisibility: false,
           };
           const id = warpedMapLayer.addGeoreferencedMap(georeferencedMap, options);
           rememberMapIdsForAnnotation(url, [id]);
@@ -690,7 +691,6 @@
           const options = {
             ...getWarpedMapOptions(annotation, theme),
             visible: false,
-            anticipateVisibility: false,
           };
           const results = warpedMapLayer.addGeoreferenceAnnotation(georeferenceAnnotation, options);
 
@@ -783,9 +783,20 @@
 
   function applyWarpedMapState() {
     currentSlideResourcesRevision;
+    loadedAnnotationsRevision;
     if (!mapLoaded || !currentSlideResourcesReady()) return;
 
     const hidden = new Set(hiddenWarpedMapUrls);
+    // Anticipation belongs to the whole active slideshow, not just its visible
+    // slide. Maps retained from another slideshow should stop preloading.
+    const anticipationByMapId = new Map<string, boolean>();
+    for (const annotation of getAnnotationsFromChapters(chapters)) {
+      const anticipateVisibility = getWarpedMapOptions(annotation, theme).anticipateVisibility
+        ?? anticipate ?? false;
+      for (const id of getMapIdsForAnnotationUrl(annotation.url)) {
+        anticipationByMapId.set(id, anticipateVisibility);
+      }
+    }
     const optionsByMapId = new Map<string, Partial<MapLibreWarpedMapLayerOptions>>();
     for (const annotation of (currentWarpedMaps ?? []).toReversed()) {
       const fullMap = annotation.url === focusedMapUrl;
@@ -803,8 +814,7 @@
           ...options,
           ...(!fullMap && annotation.url === highlight ? { renderMask: true } : {}),
           visible,
-          anticipateVisibility: visible &&
-            (options.anticipateVisibility ?? warpedMapLayerOptions.anticipateVisibility),
+          anticipateVisibility: options.anticipateVisibility ?? anticipate ?? false,
         });
       }
     }
@@ -820,7 +830,10 @@
       warpedMapLayer.setMapsOptions(
         (id) => {
           const options = optionsByMapId.get(id);
-          if (!options) return { visible: false, anticipateVisibility: false };
+          if (!options) return {
+            visible: false,
+            anticipateVisibility: anticipationByMapId.get(id) ?? false,
+          };
 
           // Allmaps merges options, so explicitly clear obsolete overrides in
           // the same update. Allmaps handles comparing the resulting values.
