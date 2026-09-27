@@ -128,8 +128,9 @@ thumbnails after changing the geometry or style with `slides thumbnails .`.
 
 ## Credits and navigation
 
-All slides are included in chapter numbering and totals, including the start
-screen count. Chapters start at 1. Sections in one subslideshow use `1.1`, `1.2`,
+All slides are included in chapter numbering and totals. The start screen shows
+the overall title and description, the Start button and the Allmaps credit.
+Chapters start at 1. Sections in one subslideshow use `1.1`, `1.2`,
 and so on; multiple subslideshows under a chapter add a level: `1.1.1`, `1.2.1`.
 
 Configure one shared Markdown credits document at the top level. A slideshow can
@@ -182,9 +183,9 @@ and a border around the navigator remain visible. The progress bar stays visible
 in every position. The expanded card stops below the app title, with the same
 margin as around the edges. Tapping the handle also animates the card open.
 The maps, chapters and credits overlays open above the navigator. Opening them
-does not change the map padding. On mobile, they fit inside the current card,
-below its handle, without expanding it. With the card collapsed, overlays float
-above the navigator. On wide desktop layouts, overlays can use all the space
+does not change the map padding. On mobile, all overlays can grow to the
+available height below the app title, independently of the text card's height,
+including when the card is collapsed. On wide desktop layouts, overlays can use all the space
 between the top screen margin and navigator. Expanding the mobile card to its
 maximum height preserves the map's previous framing.
 

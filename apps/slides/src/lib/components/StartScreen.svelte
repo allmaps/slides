@@ -2,7 +2,7 @@
   import { getInterfaceText } from "$lib/shared/interface-context";
   const t = getInterfaceText();
   import { tick } from "svelte";
-  import { List, Play } from "@lucide/svelte";
+  import { Play } from "@lucide/svelte";
 
   import AllmapsLogo from "$lib/components/AllmapsLogo.svelte";
   import type { StartScreenTextConfig } from "$lib/shared/types";
@@ -10,7 +10,6 @@
   type Props = {
     title: string;
     description?: string;
-    chapterCount: number;
     visible: boolean;
     isDarkMode: boolean;
     text?: StartScreenTextConfig;
@@ -20,7 +19,6 @@
   let {
     title,
     description,
-    chapterCount,
     visible,
     isDarkMode,
     text,
@@ -31,13 +29,6 @@
 
   const startButtonLabel = $derived(text?.startButton ?? t("startButton"));
   const madeWithLabel = $derived(text?.madeWith ?? t("madeWith"));
-
-  const chapterLabel = $derived(
-    (chapterCount === 1
-      ? text?.chapterCountSingular ?? t("chapterCountSingular")
-      : text?.chapterCountPlural ?? t("chapterCountPlural")
-    ).replaceAll("{count}", String(chapterCount)),
-  );
 
   $effect(() => {
     if (!visible) return;
@@ -67,11 +58,6 @@
     {/if}
 
     <h1 id="start-screen-title">{title}</h1>
-
-    <p class="start-count">
-      <List size={28} strokeWidth={1.5} aria-hidden="true" />
-      <span>{chapterLabel}</span>
-    </p>
 
     <button
       bind:this={startButton}
@@ -116,21 +102,19 @@
   .start-card {
     display: flex;
     width: min(45.4375rem, calc(100vw - 2rem));
-    min-height: 26.1875rem;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     border-radius: 0.75rem;
-    background: rgb(255 255 255 / 0.96);
+    background: var(--app-panel-bg);
     box-shadow: 0 0.25rem 0.75rem rgb(18 26 28 / 0.18);
     color: var(--app-black);
-    padding: 2.5rem 2rem 1.5rem;
+    padding: 2.5rem;
     text-align: center;
     backdrop-filter: blur(0.75rem);
   }
 
   .start-description,
-  .start-count,
   .start-credit,
   .start-card h1 {
     margin: 0;
@@ -153,22 +137,6 @@
     line-height: 1;
   }
 
-  .start-count {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    margin-top: 1.75rem;
-    font-size: 1.25rem;
-    font-weight: 500;
-    line-height: 1.1;
-  }
-
-  .start-count :global(svg) {
-    flex: 0 0 auto;
-    color: var(--highlight-fg);
-  }
-
-  .start-count span,
   .start-button span,
   .start-credit span {
     transform: translateY(0.06em);
@@ -227,15 +195,11 @@
 
   :global(.dark) .start-card {
     width: min(38.9375rem, calc(100vw - 2rem));
-    min-height: 24.6875rem;
-    background: rgb(18 26 28 / 0.42);
     box-shadow: none;
     color: #fff;
-    backdrop-filter: blur(1.25rem);
   }
 
-  :global(.dark) .start-description,
-  :global(.dark) .start-count :global(svg) {
+  :global(.dark) .start-description {
     color: #fff;
   }
 
@@ -250,12 +214,10 @@
   @media (max-width: 639px) {
     .start-card,
     :global(.dark) .start-card {
-      min-height: 0;
       padding: 2.25rem 1.25rem 1.5rem;
     }
 
     .start-description,
-    .start-count,
     .start-button,
     .start-credit {
       font-size: 1rem;
@@ -265,7 +227,6 @@
       margin-top: 1rem;
     }
 
-    .start-count,
     .start-button {
       margin-top: 1.35rem;
     }

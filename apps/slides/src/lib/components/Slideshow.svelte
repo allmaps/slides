@@ -25,7 +25,7 @@
     getSlideshowRouteHref,
   } from "$lib/shared/project";
   import { DEFAULT_DURATION, DEFAULT_PADDING } from "$lib/shared/settings";
-  import { getChapterCount, getStartScreenText } from "@allmaps/slides/model/project";
+  import { getStartScreenText } from "@allmaps/slides/model/project";
   import type {
     MapChapter,
     MapChapterProps,
@@ -649,7 +649,6 @@
     <StartScreen
       title={startText.title}
       description={startText.description}
-      chapterCount={getChapterCount(activeSlideshow)}
       visible={startScreenVisible}
       {isDarkMode}
       onStart={startSlideshow}
@@ -948,11 +947,8 @@
       pointer-events: auto;
     }
     .story-panel--dragging .reading-panel { transition: none; }
-    .panel-overlays {
-      top: calc(100% - min(var(--mobile-panel-height), var(--mobile-panel-full-height)) + var(--panel-handle-height));
-    }
-    /* A collapsed card has no content area; its overlays float above the navigator. */
-    .story-panel--text-hidden .panel-overlays { top: 0; }
+    /* All overlays can use the space below the title, independent of the card. */
+    .panel-overlays { top: 0; }
   }
 
   @media (min-width: 768px) {
