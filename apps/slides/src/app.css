@@ -71,7 +71,10 @@
     --app-font-weight-black: 700;
     background: #fff;
     color-scheme: light dark;
+  }
 
+  /* Resolve derived colors on the same element as the configured fg/bg pair. */
+  .slides-theme {
     --app-black: #121a1c;
     --app-text: #5f5f5f;
     --app-interface-grey: #bfbfbf;
@@ -83,18 +86,15 @@
     --app-overlay-selected-bg: color-mix(
       in srgb,
       var(--highlight-fg) 24%,
-      var(--highlight-bg)
+      var(--app-overlay-bg)
     );
-    --app-overlay-icon: color-mix(in srgb, var(--highlight-fg) 68%, black);
     --app-hover-bg: rgb(18 26 28 / 0.05);
     --app-selected-bg: var(--app-black);
     --app-selected-text: #fff;
     --app-icon: var(--app-interface-grey);
-    --app-breadcrumb: #64c18f;
+    --app-breadcrumb: var(--highlight-fg);
     --app-map-control-bg: rgb(18 26 28 / 0.15);
     --app-map-control-text: #fff;
-    --highlight-fg: #64c18f;
-    --highlight-bg: #dff3e7;
   }
 
   @media (min-width: 640px) {
@@ -104,16 +104,13 @@
     :root { --app-edge-spacing: 20px; }
   }
 
-  .dark {
+  .slides-theme.dark {
     color-scheme: dark;
 
     --app-text: #fff;
     --app-muted: rgb(255 255 255 / 0.5);
     --app-panel-bg: rgb(18 26 28 / 0.7);
-    --app-navigator-bg: color-mix(in srgb, var(--app-overlay-bg) 92%, transparent);
-    --app-overlay-bg: #303336;
-    --app-overlay-selected-bg: rgb(255 255 255 / 0.12);
-    --app-overlay-icon: var(--highlight-fg);
+    --app-overlay-bg: color-mix(in srgb, var(--highlight-bg) 15%, var(--app-black));
     --app-hover-bg: rgb(255 255 255 / 0.1);
     --app-selected-bg: #fff;
     --app-selected-text: var(--app-black);

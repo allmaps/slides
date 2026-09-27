@@ -1,6 +1,7 @@
 import type { MapLibreWarpedMapLayerOptions } from "@allmaps/maplibre";
 import type { Flavor } from "@protomaps/basemaps";
 import type { SourceSpecification, StyleSpecification } from "maplibre-gl";
+import type { ThemeConfig } from "./theme.ts";
 
 export type ThemeMode = "light" | "dark";
 
@@ -64,6 +65,8 @@ export type SlidesConfig = {
   /** Expanded text for page titles, metadata and structured data. */
   titleLong?: string;
   descriptionLong?: string;
+  /** An Allmaps palette name or custom foreground/background accent colors. */
+  theme?: ThemeConfig;
   socialImage?: {
     font?: { family: string; path?: string };
   };
@@ -157,7 +160,7 @@ export type SlideshowDefinition = {
 
 export type Project = Pick<
   SlidesConfig,
-  "title" | "description" | "titleLong" | "descriptionLong" | "main" | "interface" | "credits"
+  "title" | "description" | "titleLong" | "descriptionLong" | "theme" | "main" | "interface" | "credits"
 > & {
   creditsTitle?: string;
   sources: Record<string, SourceSpecification>;

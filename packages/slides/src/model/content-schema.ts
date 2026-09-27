@@ -3,6 +3,7 @@ import { z } from "zod";
 import type { MapLibreWarpedMapLayerOptions } from "@allmaps/maplibre";
 import type { SlidesConfig } from "./types.ts";
 import type { StyleSpecification } from "maplibre-gl";
+import { THEME_NAMES } from "./theme.ts";
 
 const nullableToUndefined = (value: unknown) =>
   value === null ? undefined : value;
@@ -55,6 +56,14 @@ const fourNumberTupleSchema = z.tuple([
   z.number(),
 ]);
 const themeModeSchema = z.enum(["light", "dark"]);
+const themeColorSchema = z.string().trim().regex(
+  /^#(?:[\da-f]{3}|[\da-f]{6})$/i,
+  "use an opaque hex color, e.g. #64c18f or #fff",
+);
+const themeSchema = z.union([
+  z.enum(THEME_NAMES),
+  z.strictObject({ fg: themeColorSchema, bg: themeColorSchema }),
+]);
 const unknownRecordSchema = z.record(z.string(), z.unknown());
 const themeStringRecordSchema = z.partialRecord(
   themeModeSchema,
@@ -259,6 +268,7 @@ export const slidesConfigSchema = z
       .optional(),
     title: projectTextSchema,
     description: projectTextSchema,
+    theme: optionalValue(themeSchema),
     socialImage: z.object({
       font: z.object({ family: nonEmptyString, path: optionalNonEmptyString }).optional(),
     }).optional(),
@@ -366,6 +376,7 @@ export const parseSlidesConfig = (
       description: shortText(config.description),
       titleLong: longText(config.title),
       descriptionLong: longText(config.description),
+      theme: config.theme,
       socialImage: config.socialImage,
       main:
         config.main ??

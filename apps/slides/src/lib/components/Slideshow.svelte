@@ -26,6 +26,7 @@
   } from "$lib/shared/project";
   import { DEFAULT_DURATION, DEFAULT_PADDING } from "$lib/shared/settings";
   import { getStartScreenText } from "@allmaps/slides/model/project";
+  import { resolveTheme } from "@allmaps/slides/model";
   import type {
     MapChapter,
     MapChapterProps,
@@ -62,6 +63,7 @@
   let { project, slideshow, mainSlideshow, debug = dev, thumbnails = emptyThumbnails() }: Props = $props();
 
   const t = provideInterfaceText(() => project.interface);
+  const themeColors = $derived(resolveTheme(project.theme));
 
   const activeSlideshow = $derived(slideshow);
   const rootSlideshow = $derived(mainSlideshow ?? slideshow);
@@ -615,9 +617,11 @@
 </svelte:head>
 
 <div
-  class="relative h-app-screen w-screen overflow-hidden bg-white dark:bg-black {isDarkMode
+  class="slides-theme relative h-app-screen w-screen overflow-hidden bg-white dark:bg-black {isDarkMode
     ? 'dark'
     : ''}"
+  style:--highlight-fg={themeColors.fg}
+  style:--highlight-bg={themeColors.bg}
 >
   <div class="absolute inset-0 z-0 min-h-0">
     {#if isDarkMode !== undefined}

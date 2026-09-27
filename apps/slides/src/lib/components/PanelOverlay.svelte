@@ -86,7 +86,7 @@
       <div class="flex shrink-0 items-center gap-2">
         {@render actions?.()}
         {#if !tab}
-          <button type="button" class="inline-flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-md text-[var(--app-overlay-icon)] hover:bg-[var(--app-overlay-selected-bg)]" aria-label={closeLabel} title={closeLabel} onclick={onClose}>
+          <button type="button" class="inline-flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-md text-[var(--app-text)] hover:bg-[var(--app-overlay-selected-bg)]" aria-label={closeLabel} title={closeLabel} onclick={onClose}>
             <X size={22} aria-hidden="true" />
           </button>
         {/if}
@@ -142,7 +142,7 @@
     border-radius: 0.625rem 0.625rem 0 0;
     border: 0;
     background: var(--app-overlay-bg);
-    color: var(--app-overlay-icon);
+    color: var(--app-text);
     cursor: pointer;
     padding: 0;
     pointer-events: auto;

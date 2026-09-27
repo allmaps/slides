@@ -108,6 +108,33 @@ Run `slides thumbnails .` to refresh sharing images, or build the site. Text
 and font changes reuse cached map scenes and only regenerate the text
 composition and JPEG. Ordinary development edits still do not start rendering.
 
+## Interface colors
+
+Choose an Allmaps palette in `slides.config.yml`:
+
+```yaml
+theme: purple
+```
+
+Available themes are `green` (the default), `purple`, `red`, `yellow`, `orange`,
+`pink` and `blue`. Alternatively, supply both accent colors as quoted, opaque
+hex values (`#RGB` or `#RRGGBB`):
+
+```yaml
+theme:
+  fg: "#c552b5"
+  bg: "#e8bae1"
+```
+
+`fg` colors links, accents, progress and the Start button; `bg` colors the
+navigator and overlays. Hover/selected states blend the pair. In dark mode,
+the background is mixed with the app's dark neutral. Overlay icons use the
+same neutral color as their text. Start-button text stays white for every theme.
+
+Only these two accent colors are configurable. Reading panels, body text,
+muted controls and shadows keep their existing light/dark neutral colors.
+The UI palette is independent of `map.theme`, map styles and GeoJSON colors.
+
 ## Shared GeoJSON overlays
 
 Declare GeoJSON sources in the content configuration to show them throughout

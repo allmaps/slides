@@ -124,6 +124,7 @@ export const buildProject = (
     description: slidesConfig.description,
     titleLong: slidesConfig.titleLong,
     descriptionLong: slidesConfig.descriptionLong,
+    theme: slidesConfig.theme,
     main: slidesConfig.main,
     interface: slidesConfig.interface,
     credits: slidesConfig.credits,

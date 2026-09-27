@@ -156,7 +156,7 @@
   {onClose}
   class={className}
 >
-  <div class="mb-3 flex items-center gap-2 text-[16px] leading-[1.1] font-normal text-[var(--app-muted)]">
+  <div class="mb-3 flex items-center gap-2 text-[16px] leading-[1.1] font-normal text-[var(--app-text)]">
     <Layers size={16} aria-hidden="true" />
     <span class="translate-y-[0.07em]">{describeLayerCount()}</span>
   </div>
@@ -310,7 +310,7 @@
     justify-content: center;
     border-radius: 0.375rem;
     background: rgb(255 255 255 / 0.45);
-    color: var(--app-overlay-icon);
+    color: var(--app-text);
   }
 
   :global(.dark) .layer-preview {
@@ -376,7 +376,7 @@
     align-items: center;
     justify-content: center;
     border-radius: 0.375rem;
-    color: var(--app-overlay-icon);
+    color: var(--app-text);
     transition: background-color 150ms ease;
   }
 

@@ -643,7 +643,7 @@
     width: 200px;
     max-width: calc(100vw - 24px);
     padding: 1px;
-    border: 1px solid color-mix(in srgb, var(--app-overlay-icon) 25%, transparent);
+    border: 1px solid color-mix(in srgb, var(--app-text) 25%, transparent);
     border-radius: 10px;
     background: var(--app-overlay-bg);
     box-shadow: 0 6px 24px #0003;
@@ -665,7 +665,7 @@
     align-items: center;
     justify-content: center;
     border-radius: 0.375rem;
-    color: var(--app-overlay-icon);
+    color: var(--app-text);
     transition: background-color 150ms ease;
   }
 
@@ -741,7 +741,7 @@
     padding-left: 0.75rem;
     border-left: 1px solid color-mix(in srgb, currentColor 16%, transparent);
   }
-  .toc-number { flex: 0 0 auto; min-width: 1.4em; white-space: nowrap; font-variant-numeric: tabular-nums; color: var(--app-overlay-icon); }
+  .toc-number { flex: 0 0 auto; min-width: 1.4em; white-space: nowrap; font-variant-numeric: tabular-nums; color: var(--app-text); }
   @media (prefers-reduced-motion: reduce) {
     .toc-disclosure, .toc-chevron { transition: none; }
   }
