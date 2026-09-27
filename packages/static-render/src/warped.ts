@@ -6,9 +6,13 @@ import { unitsPerPixel, type Camera } from "./camera.ts";
 import { digest, type RenderCache } from "./cache.ts";
 import type { Sources } from "./sources.ts";
 import { StaticWarpedMap } from "./static-warped-map.ts";
+import { applyMapEffects } from "./map-effects.ts";
+import type { WarpedMapEffects } from "./map-options.ts";
 export { StaticWarpedMap } from "./static-warped-map.ts";
+export { staticMapOptions } from "./map-options.ts";
 export type LoadedLayer = {
-  effects?: { opacity?: number; saturation?: number };
+  effects?: WarpedMapEffects;
+  mapEffects?: WarpedMapEffects[];
   maps: WarpedMap[];
   revision: string;
 };
@@ -23,15 +27,19 @@ export async function renderWarpedLayer(
 ) {
   return cache.get(
     {
-      version: 2,
-      renderer: "intarray-beta83",
+      version: 3,
+      renderer: "intarray-beta84",
       layer: layer.revision,
+      effects: layer.effects,
+      mapEffects: layer.mapEffects,
       camera,
       size,
     },
     async () => {
       const inputs: Buffer[] = [];
-      for (const map of layer.maps) {
+      for (const [index, map] of layer.maps.entries()) {
+        const effects = { ...map.mapOptions, ...layer.effects, ...layer.mapEffects?.[index] };
+        if (effects.visible === false || effects.renderMaps === false || effects.opacity === 0) continue;
         const decoded = new Map<string, DecodedImage>();
         const failures: string[] = [];
         const fetchFn: typeof fetch = async (input) => {
@@ -92,16 +100,10 @@ export async function renderWarpedLayer(
           );
           const rgba = await renderer.render(viewport);
           if (failures.length) throw new Error(failures.join("\n"));
-          const opacity = layer.effects?.opacity ?? 1;
-          for (let i = 3; i < rgba.length; i += 4)
-            rgba[i] = Math.round(rgba[i] * opacity);
-          let output = sharp(Buffer.from(rgba), {
+          await applyMapEffects(rgba, effects, map.georeferencedMap.resource.id);
+          const output = sharp(Buffer.from(rgba), {
             raw: { width: size[0], height: size[1], channels: 4 },
           });
-          if (layer.effects?.saturation !== undefined)
-            output = output.modulate({
-              saturation: layer.effects.saturation,
-            });
           inputs.push(await output.png().toBuffer());
         } finally {
           renderer.destroy();

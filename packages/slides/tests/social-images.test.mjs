@@ -33,6 +33,11 @@ test("social scenes use overall short copy, subslideshow titles and a caller-sup
   const prepare = async () => prepareThumbnails(await loadContent(await loadSlidesConfig({ content: root })), {
     assetRoot: root, cacheRoot: path.join(root, 'cache'), annotationsRoot: path.join(root, 'annotations'), offline: true, refresh: false,
   });
+  const defaults = await prepare();
+  assert.ok(defaults.plan.jobs.every(job => !job.textOverlay), 'sharing images default to no text');
+  assert.equal(defaults.plan.fonts, undefined, 'a configured font alone must not enable overlays');
+  config.socialImage.textOverlay = true;
+  await writeFile(configPath, JSON.stringify(config));
   const { plan, manifest } = await prepare();
   const scene = image => plan.jobs.find(job => job.id === image.path);
   assert.deepEqual(scene(manifest.social.main).textOverlay, { title: 'Atlas', subtitle: 'Explore the city', font: 'title' });
@@ -43,7 +48,38 @@ test("social scenes use overall short copy, subslideshow titles and a caller-sup
   assert.deepEqual(scene(manifest.social.main).size, [1200, 630]);
   for (const previews of Object.values(manifest.slides))
     for (const image of Object.values(previews)) assert.equal(scene(image).textOverlay, undefined);
+  config.socialImage.textSize = 48;
+  await writeFile(configPath, JSON.stringify(config));
+  const sized = await prepare();
+  const sizedOverlays = sized.plan.jobs.filter(job => job.textOverlay);
+  assert.equal(sizedOverlays.length, 2);
+  assert.ok(sizedOverlays.every(job => job.textOverlay.textSize === 48));
   config.socialImage.font.path = '../outside.ttf';
   await writeFile(configPath, JSON.stringify(config));
   await assert.rejects(prepare, /outside its root|ENOENT/);
+  config.socialImage.textOverlay = false;
+  await writeFile(configPath, JSON.stringify(config));
+  const clean = await prepare();
+  assert.equal(clean.plan.fonts, undefined, 'disabled overlays must not read font files');
+  assert.ok(clean.plan.jobs.every(job => !job.textOverlay));
+  for (const image of Object.values(clean.manifest.social)) {
+    const job = clean.plan.jobs.find(job => job.id === image.path);
+    assert.equal(job.format, 'jpg');
+    assert.deepEqual(job.size, [1200, 630]);
+  }
+  config.socialImage = { textOverlay: true };
+  await writeFile(configPath, JSON.stringify(config));
+  const enabled = await prepare();
+  assert.equal(enabled.plan.jobs.filter(job => job.textOverlay).length, 2);
+  config.socialImage.textOverlay = 'false';
+  await writeFile(configPath, JSON.stringify(config));
+  await assert.rejects(prepare, /textOverlay/);
+  for (const textSize of [0, -1, 513, '48']) {
+    config.socialImage = { textOverlay: true, textSize };
+    await writeFile(configPath, JSON.stringify(config));
+    await assert.rejects(prepare, /textSize/);
+  }
+  delete config.socialImage;
+  await writeFile(configPath, JSON.stringify(config));
+  assert.ok((await prepare()).plan.jobs.every(job => !job.textOverlay));
 });

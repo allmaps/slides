@@ -1,12 +1,14 @@
 import type { GeoreferencedMap } from "@allmaps/annotation";
 import type { StyleSpecification } from "maplibre-gl";
-import type { StaticWarpedMap } from "./static-warped-map.ts";
+import type { WebGL2RenderOptions } from "@allmaps/render/webgl2";
+import type { WarpedMapEffects } from "./map-options.ts";
+export type { WarpedMapEffects } from "./map-options.ts";
 import type { Camera } from "./camera.ts";
 import type { SourceAssets } from "./sources.ts";
 
 export type RenderLayer = {
-  effects?: { opacity?: number; saturation?: number };
-  maps: Array<{ map: GeoreferencedMap; options: ConstructorParameters<typeof StaticWarpedMap>[3] }>;
+  effects?: WarpedMapEffects;
+  maps: Array<{ map: GeoreferencedMap; options?: Partial<WebGL2RenderOptions> }>;
   /** Optional caller revision for inputs beyond the serialized geometry/options. */
   revision?: string;
 };
@@ -18,7 +20,13 @@ export type RenderJob = {
   format: "webp" | "jpg";
   styles?: { lower: StyleSpecification; upper: StyleSpecification };
   /** Optional bottom-aligned title/subtitle with a soft contrast halo. */
-  textOverlay?: { title: string; subtitle?: string; font?: string };
+  textOverlay?: {
+    title: string;
+    subtitle?: string;
+    font?: string;
+    /** Title size at 1200 × 630, in pixels (default: 76); subtitle scales proportionally. */
+    textSize?: number;
+  };
 };
 /** JSON only: no Svelte components, callbacks, absolute asset paths or running app. */
 export type RenderPlan = {

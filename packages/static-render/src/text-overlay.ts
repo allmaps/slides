@@ -60,9 +60,10 @@ export async function renderTextOverlay(
   const scale = Math.min(width / 1200, height / 630);
   const padding = Math.max(1, Math.round(56 * scale));
   const textWidth = width - 2 * padding;
-  const title = await textImage(text.title, font, 76 * scale, 500, textWidth, Math.max(1, Math.round(height * 0.29)));
+  const textSize = (text.textSize ?? 76) * scale;
+  const title = await textImage(text.title, font, textSize, 500, textWidth, Math.max(1, Math.round(height * 0.29)));
   const subtitle = text.subtitle?.trim()
-    ? await textImage(text.subtitle, font, 34 * scale, 400, textWidth, Math.max(1, Math.round(height * 0.18)))
+    ? await textImage(text.subtitle, font, textSize * 34 / 76, 400, textWidth, Math.max(1, Math.round(height * 0.18)))
     : undefined;
   const gap = subtitle ? Math.round(24 * scale) : 0;
   const top = height - padding - title.info.height - gap - (subtitle?.info.height ?? 0);

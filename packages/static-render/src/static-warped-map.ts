@@ -29,6 +29,22 @@ export function invertProjectiveWeights(weights: Float64Array): number[][] {
 
 /** Keep Allmaps' forward geometry and sample its exact projective inverse. */
 export class StaticWarpedMap extends WarpedMap {
+  constructor(...args: ConstructorParameters<typeof WarpedMap>) {
+    const [id, map, listOptions, mapOptions] = args;
+    let resourceMask = mapOptions?.resourceMask ?? listOptions?.resourceMask;
+    if ((mapOptions?.applyMask ?? listOptions?.applyMask) === false) {
+      const { width, height } = map.resource;
+      if (!width || !height)
+        throw new Error(`Unmasked preview needs image dimensions: ${map.resource.id}`);
+      // The buffer backend always samples resourceMask, even with applyMask=false.
+      // Override an explicit mask as well as the mask from the annotation.
+      resourceMask = [[0, 0], [width, 0], [width, height], [0, height]];
+    }
+    // beta.84 initializes resourceMask from the annotation instead of options.
+    super(id, resourceMask ? { ...map, resourceMask } : map, listOptions,
+      resourceMask ? { ...mapOptions, resourceMask } : mapOptions);
+  }
+
   override getProjectedTransformer(
     ...args: Parameters<WarpedMap["getProjectedTransformer"]>
   ) {

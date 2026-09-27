@@ -82,11 +82,24 @@ overall text. Subslideshow page titles append the subslideshow title; their
 descriptions use the slideshow/first chapter description, falling back to the
 long overall description.
 
-Sharing images are separate 1200 × 630 JPEGs: the overall short title appears
+Sharing images are separate 1200 × 630 JPEGs, without text by default.
+Enable the title/subtitle overlay and optionally adjust its size:
+
+```yaml
+socialImage:
+  textOverlay: true
+  textSize: 76
+```
+
+`textOverlay` defaults to `false`. When enabled, the overall short title appears
 over the first slide's map scene, with the overall short description below it.
 Subslideshow images use the same overall title and the subslideshow title as
-their subtitle. In-app chapter cards, hover previews and map buttons keep
-their images free of text.
+their subtitle. `textSize` is the title size in pixels at 1200 × 630 (default:
+`76`, greater than zero and at most `512`). The subtitle scales proportionally
+(34 pixels at the default size); long text still shrinks to fit.
+
+These settings only affect sharing images; in-app chapter cards, hover previews
+and map buttons always omit text. Disabled overlays do not load a font file.
 
 The default sharing font is the app's bundled League Spartan. To use another
 font, supply its family name and a local TTF/OTF path relative to the content
@@ -94,6 +107,7 @@ directory (outside the IIIF image folder):
 
 ```yaml
 socialImage:
+  textOverlay: true
   font:
     family: My Display Font
     path: assets/fonts/display.ttf
@@ -104,8 +118,8 @@ the file for consistent local and CI output. Font files are passed to the
 generic renderer as inputs, not embedded in its package. A custom app selected
 with `app.directory` should provide the default font or configure its own here.
 
-Run `slides thumbnails .` to refresh sharing images, or build the site. Text
-and font changes reuse cached map scenes and only regenerate the text
+Run `slides thumbnails .` to refresh sharing images, or build the site. Changes
+to the text, its size or its font reuse cached map scenes and only regenerate the text
 composition and JPEG. Ordinary development edits still do not start rendering.
 
 ## Interface colors

@@ -68,6 +68,10 @@ export type SlidesConfig = {
   /** An Allmaps palette name or custom foreground/background accent colors. */
   theme?: ThemeConfig;
   socialImage?: {
+    /** Include the title and subtitle in sharing images (default: false). */
+    textOverlay?: boolean;
+    /** Title size at 1200 × 630, in pixels (default: 76); subtitle scales proportionally. */
+    textSize?: number;
     font?: { family: string; path?: string };
   };
   main: string;

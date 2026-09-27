@@ -29,7 +29,7 @@ self-contained basemap example. A plan contains:
 - `fonts`: optional caller IDs mapped to `{ family, base64? }` font inputs.
 - `resources`: optional annotation JSON snapshots encoded as base64.
 
-Jobs can add `textOverlay: { title, subtitle?, font? }`. `font` references an
+Jobs can add `textOverlay: { title, subtitle?, font?, textSize? }`. `font` references an
 entry in `fonts`; omitted entries use the system sans-serif font. The optional
 base64 is the content of a TTF/OTF file; omitting it selects an installed family.
 For reproducible output, pass font bytes. The renderer ships no application
@@ -41,12 +41,16 @@ plan.fonts = {
 };
 plan.jobs[0].textOverlay = {
   title: "An atlas", subtitle: "A journey through time", font: "display",
+  textSize: 76,
 };
 ```
 
+`textSize` sets the title size in pixels at 1200 × 630 (default `76`, greater
+than zero and at most `512`). Other image dimensions scale it proportionally;
+the subtitle uses 34/76 of the title size.
 Text is rendered literally (markup is escaped), wraps and shrinks when needed,
 and sits at the lower left with a soft dark halo for contrast. A separate composition
-cache includes text and font contents; changing copy does not redraw the map.
+cache includes text, size and font contents; changing them does not redraw the map.
 Jobs without `textOverlay` retain their original pixels. Sharp/Pango renders
 text without a browser; the renderer provides a writable Fontconfig cache and
 defaults to its fontconfig backend, so custom fonts work on macOS and Linux.
@@ -147,5 +151,47 @@ matrix inverse through Allmaps' public transformation APIs for tile selection
 and pixel sampling, avoiding an independently fitted reverse transform. No
 polynomial substitution or additional native dependency is needed. Singular
 projective transforms fail explicitly. Other nonlinear transforms may still
-differ from WebGL triangulation. Unsupported debug/color effects and sprite atlases fail
-explicitly. See `../../docs/thumbnail-generation.md` for the full build flow.
+differ from WebGL triangulation. See `../../docs/thumbnail-generation.md` for the full build flow.
+
+### Warped-map option support
+
+The following covers the options exposed by Allmaps render beta.84 / MapLibre
+beta.44. Options can be supplied per map in `RenderLayer.maps[].options`;
+`RenderLayer.effects` overrides the pixel effects for every map in that layer.
+
+| Options | Applied by | Preview behavior |
+| --- | --- | --- |
+| `gcps`, `transformationType`, `internalProjection` | Allmaps renderer directly | Applied by Allmaps' buffer renderer. |
+| `resourceMask`, `applyMask` | Allmaps renderer, with mask normalization | Applied, including option masks and full-image rendering when masking is disabled. |
+| `visible`, `renderMaps` | Static renderer before rendering | A value of `false` omits the map raster. |
+| `opacity`, `saturation` | Sharp raw-pixel pipeline | Applied to each map before composition. Saturation uses Allmaps' RGB luminance weights. |
+| `removeColor`, `removeColorColor`, `removeColorThreshold`, `removeColorHardness` | Sharp raw-pixel pipeline | Removes the selected background using RGB distance and a smooth alpha cutoff; existing transparency is preserved. Defaults: `false`, `#222222`, `0.3`, `0.7`. |
+| `colorize`, `colorizeColor` | Sharp raw-pixel pipeline | Additive colorization after saturation. Defaults: `false`, `#ff56ba`. |
+| `projection` | Allmaps renderer directly (Web Mercator only) | Other output projections warn and fall back to Web Mercator; `internalProjection` remains configurable. |
+| `distortionMeasure`, `distortionMeasures`, `distortionColor00/01/1/2/3`, `resourceResolution` | Neither (unsupported) | Warn and omit: these depend on WebGL's triangulation/distortion data. |
+| `renderGcps`, `renderTransformedGcps`, `renderVectors`, `renderFullMask`, `renderMask`, `renderAppliedMask`, and their `Color`, `Size`, `BorderColor`, `BorderSize` settings | Neither (unsupported) | Warn and omit diagnostic geometry. Mask clipping itself is supported. |
+| `renderLines`, `renderPoints`, `renderGrid`, `renderGridColor`, `debugTriangles`, `debugTiles` | Neither (unsupported) | Warn and omit diagnostic rendering. |
+| `scaleFactorCorrection`, `log2ScaleFactorCorrection` | Neither (unsupported override) | Warn and use the static renderer's tile resolution selection. |
+| `fetchFn`, `warpedMapFactory`, `warpedMapList` | Neither (unsupported override) | Warn and use the static renderer's source cache and map factory. Live objects/callbacks cannot be serialized in a JSON plan. |
+
+Sharp handles image decoding and alpha composition. Its raw-pixel pipeline
+implements the removal/saturation/colorization math instead of using Sharp's
+HSL tint/saturation operations, which produce different colors. Effects run on
+each warped map before it is placed over the basemap or other maps. This is a
+static approximation of the WebGL appearance, especially at translucent edges.
+Invalid effect colors also warn and skip that effect; other effects still apply.
+
+Live scheduling/cache settings do not change a completed still and are ignored:
+`anticipateVisibility`, `anticipateInteraction`, `animatedOptions`, `createRTree`,
+`rtreeUpdatedOptions`, `batchFailureMode`, `overviewTilesSelection`,
+`overviewTilesMaxResolution`, `requestViewportBufferRatio`,
+`overviewRequestViewportBufferRatio`, `pruneViewportBufferRatio`,
+`overviewPruneViewportBufferRatio`, `maxTotalOverviewResolutionRatio`,
+`spritesMaxHigherLog2ScaleFactorDiff`, `spritesMaxLowerLog2ScaleFactorDiff`, and
+MapLibre's `layerId`, `layerType`, `layerRenderingMode`.
+
+Unsupported options (including unknown future options) warn once per map-entry
+preparation, listing the source and skipped settings. Disabled flags do not warn.
+Warnings do not prevent rendering, including when other supported effects are
+present. Missing sources, invalid geometry and failed decoding still fail the
+build. Slides' separate sprite-atlas input still requires IIIF sources instead.

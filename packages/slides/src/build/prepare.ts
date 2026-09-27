@@ -62,18 +62,21 @@ export async function prepareThumbnails(content: ContentSnapshot, options: {
   const manifest = emptyThumbnails();
   const layers = new Map<string, LoadedLayer>();
   const project = content.project;
-  const font = slidesConfig.socialImage?.font;
-  const fontPath = font
-    ? font.path && path.resolve(options.assetRoot, font.path)
-    : path.join(content.config.appDir, "static/fonts/LeagueSpartan-VariableFont_wght.ttf");
-  if (font?.path && fontPath) {
-    within(options.assetRoot, fontPath);
-    within(await realpath(options.assetRoot), await realpath(fontPath));
+  const textOverlay = slidesConfig.socialImage?.textOverlay === true;
+  if (textOverlay) {
+    const font = slidesConfig.socialImage?.font;
+    const fontPath = font
+      ? font.path && path.resolve(options.assetRoot, font.path)
+      : path.join(content.config.appDir, "static/fonts/LeagueSpartan-VariableFont_wght.ttf");
+    if (font?.path && fontPath) {
+      within(options.assetRoot, fontPath);
+      within(await realpath(options.assetRoot), await realpath(fontPath));
+    }
+    plan.fonts = { title: {
+      family: font?.family ?? "League Spartan",
+      ...(fontPath ? { base64: (await readFile(fontPath)).toString("base64") } : {}),
+    } };
   }
-  plan.fonts = { title: {
-    family: font?.family ?? "League Spartan",
-    ...(fontPath ? { base64: (await readFile(fontPath)).toString("base64") } : {}),
-  } };
   const startText = getStartScreenText(project);
 
   const getLayer = async (props: WarpedMapProps) => {
@@ -164,10 +167,12 @@ export async function prepareThumbnails(content: ContentSnapshot, options: {
       size,
       styles,
       format: social ? "jpg" : "webp",
-      ...(social ? { textOverlay: {
+      ...(social && textOverlay ? { textOverlay: {
         title: project.title,
         subtitle: slideshow.id === project.main ? startText.description : slideshow.title,
         font: "title",
+        ...(slidesConfig.socialImage?.textSize !== undefined
+          ? { textSize: slidesConfig.socialImage.textSize } : {}),
       } } : {}),
     });
   };

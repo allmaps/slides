@@ -9,7 +9,7 @@ thumbnails without a browser, DOM, or a running web server.
 | ---------------- | ------------------------------------ | ------------------------------------------------------- |
 | Section cards and TOC hover previews | 540 × 400 WebP per slide and theme | Complete map scene in light and dark styles             |
 | Map layers panel | 256 × 256 WebP per map-entry variant | Transparent, north-up, fitted to the mask; no basemap   |
-| Social metadata  | 1200 × 630 JPEG per slideshow route  | First slide in light theme, overall short title and subtitle with a soft halo |
+| Social metadata  | 1200 × 630 JPEG per slideshow route  | First slide in light theme; optional overall short title and subtitle with a soft halo |
 
 A map-entry variant includes its URL, type, image crop, wiggle and renderer
 options. An AnnotationPage with several maps produces one combined layer-row
@@ -58,10 +58,14 @@ renders warped overlays; Chiitiler renders the lower and upper style passes.
 Sharp composites lower basemap, warped maps and upper labels/overlays before
 final encoding. Slide and social images have no attribution banner.
 
-Social images receive a separate text composition after the complete map scene.
+Social images omit text by default. Enabling `socialImage.textOverlay: true`
+adds a separate text composition after the complete map scene.
 The main route uses the overall short description as its subtitle; subslideshows
 use their own title. All use the overall short title and the app's League Spartan
 font by default. `socialImage.font` can supply another family and local file.
+`socialImage.textSize` sets the title size in pixels at 1200 × 630 (default:
+`76`, greater than zero and at most `512`); the subtitle scales proportionally.
+Long text shrinks to fit. Disabled overlays do not load fonts.
 The neutral render plan carries font bytes and optional per-job `textOverlay`
 data. Small slide cards and hover previews never receive this overlay. See
 [the configuration examples](../packages/slides/README.md#overall-titles-descriptions-and-sharing-images)
@@ -232,9 +236,13 @@ xvfb-run -a pnpm --filter @allmaps/static-render test:native
 ```
 
 The supported scene is planar Web Mercator at pitch zero. Masks, transforms,
-opacity, saturation, image regions, basemap themes and vector overlays are
-handled. WebGL debug/effect modes (colorize, removeColor, mask/grid/GCP/vector
-visualizations) and warped-map sprite atlases currently fail explicitly.
+opacity, saturation, background-color removal, colorization, image regions,
+basemap themes and vector overlays are handled. Sharp's raw-pixel pipeline
+applies map effects before alpha composition. WebGL-only distortion shading,
+mask/grid/GCP/vector diagnostics and unknown options produce warnings and are
+omitted; previews still generate with supported settings. See the
+[complete option audit](../packages/static-render/README.md#warped-map-option-support).
+Warped-map sprite atlases still require IIIF image sources instead.
 Buffer rendering may differ from WebGL triangulation on strongly distorted
 maps. Projective maps preserve the authored forward transform used by the live
 map and camera fitting. The renderer package's `StaticWarpedMap` computes its

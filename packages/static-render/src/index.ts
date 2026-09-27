@@ -7,6 +7,7 @@ import { renderWarpedLayer, type LoadedLayer } from "./warped.ts";
 import { renderBasemap } from "./basemap.ts";
 import { NativeRenderer } from "./native.ts";
 import { prepareTextFonts, renderTextOverlay } from "./text-overlay.ts";
+import { staticMapOptions } from "./map-options.ts";
 import type { RenderOptions, RenderPlan, RenderResult } from "./types.ts";
 export type * from "./types.ts";
 
@@ -42,6 +43,9 @@ export function validateRenderPlan(plan: RenderPlan) {
         throw new Error(`Invalid text overlay: ${job.id}`);
       if (job.textOverlay.font && !plan.fonts?.[job.textOverlay.font])
         throw new Error(`Unknown render font: ${job.textOverlay.font}`);
+      const textSize = job.textOverlay.textSize;
+      if (textSize !== undefined && (!Number.isFinite(textSize) || textSize <= 0 || textSize > 512))
+        throw new Error(`Invalid text size (expected greater than 0 and at most 512): ${job.id}`);
     }
     for (const id of job.layers)
       if (!plan.layers[id]) throw new Error(`Unknown render layer: ${id}`);
@@ -85,12 +89,16 @@ export async function renderBatch(
   };
   try {
     for (const [id, layer] of Object.entries(plan.layers)) {
+      const prepared = layer.maps.map(({ map, options }) =>
+        staticMapOptions({ ...options, ...layer.effects }, map.resource.id),
+      );
       // A saved plan can be reused after a local original or render option changes.
       const imageRevisions = await Promise.all(
         layer.maps.map(({ map }) => sources.imageRevision(map.resource.id)),
       );
       layers.set(id, {
         effects: layer.effects,
+        mapEffects: prepared.map(({ effects }) => effects),
         revision: recipeHash({
           maps: layer.maps,
           effects: layer.effects,
@@ -98,8 +106,8 @@ export async function renderBatch(
           imageRevisions,
         }),
         maps: layer.maps.map(
-          ({ map, options }, index) =>
-            new StaticWarpedMap(`${id}:${index}`, map, {}, options),
+          ({ map }, index) =>
+            new StaticWarpedMap(`${id}:${index}`, map, {}, prepared[index].options),
         ),
       });
     }
@@ -108,7 +116,7 @@ export async function renderBatch(
       let png = await cache.get(
         {
           version: 2,
-          renderer: "static-render-2",
+          renderer: "static-render-3",
           job: { ...job, id: undefined, textOverlay: undefined },
           revisions: selected.map((l) => l.revision),
           epoch: plan.epoch,

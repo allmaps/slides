@@ -110,4 +110,55 @@ test("local IIIF sources, projective transforms and changed originals survive th
     first.images.map.path,
     "An unchanged plan must not hide a changed local original",
   );
+
+  const centerPixel = async result => {
+    const bytes = await sharp(path.join(options.outputRoot, result.images.map.path)).ensureAlpha().raw().toBuffer();
+    return [...bytes.subarray(center, center + 4)];
+  };
+  const messages = [];
+  t.mock.method(console, 'warn', message => messages.push(message));
+  const styled = await loadLayer({ ...props, options: {
+    ...props.options, colorize: true, colorizeColor: '#00ff00', opacity: 0.5,
+    renderMask: true, renderGrid: true, debugTriangles: true,
+  } }, context.annotations, context.sources);
+  t.after(() => styled.maps.forEach(map => map.destroy()));
+  assert.match(messages[0], /map.json.*renderMask.*renderGrid.*debugTriangles/);
+  plan.layers.map.effects = styled.effects;
+  const colored = await renderBatch(plan, options);
+  const cyan = await centerPixel(colored);
+  assert.ok(cyan[0] < 10 && cyan[1] > 240 && cyan[2] > 240);
+  assert.equal(cyan[3], 128);
+  assert.deepEqual(await renderBatch(plan, options), colored, 'effects survive a warm cache');
+  plan.layers.map.effects = { removeColor: true, removeColorColor: '#0000ff' };
+  const removed = await renderBatch(plan, options);
+  assert.equal((await centerPixel(removed))[3], 0);
+  assert.notEqual(removed.images.map.path, colored.images.map.path);
+  plan.layers.below = structuredClone(plan.layers.map);
+  plan.layers.below.effects = { colorize: true, colorizeColor: '#00ff00' };
+  plan.jobs[0].layers = ['below', 'map'];
+  const revealed = await centerPixel(await renderBatch(plan, options));
+  assert.ok(revealed[0] < 10 && revealed[1] > 240 && revealed[2] > 240 && revealed[3] === 255,
+    'removed paper must reveal the map below, not cover it with an opaque color');
+  delete plan.layers.below;
+  plan.jobs[0].layers = ['map'];
+
+  // A standalone plan can specify effects on an individual map, too.
+  delete plan.layers.map.effects;
+  Object.assign(plan.layers.map.maps[0].options, {
+    colorize: true, colorizeColor: '#ff0000', renderAppliedMask: true,
+  });
+  const magenta = await centerPixel(await renderBatch(plan, options));
+  assert.ok(magenta[0] > 240 && magenta[1] < 10 && magenta[2] > 240);
+  assert.ok(messages.some(message => /old.example.org.*renderAppliedMask/.test(message)));
+  for (const flag of ['visible', 'renderMaps']) {
+    plan.layers.map.maps[0].options[flag] = false;
+    assert.equal((await centerPixel(await renderBatch(plan, options)))[3], 0);
+    delete plan.layers.map.maps[0].options[flag];
+  }
+
+  // An option mask excludes the center; disabling masking must restore it.
+  plan.layers.map.maps[0].options.resourceMask = [[0, 0], [12, 0], [12, 12], [0, 12]];
+  assert.equal((await centerPixel(await renderBatch(plan, options)))[3], 0);
+  plan.layers.map.maps[0].options.applyMask = false;
+  assert.equal((await centerPixel(await renderBatch(plan, options)))[3], 255);
 });

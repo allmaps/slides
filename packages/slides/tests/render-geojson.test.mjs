@@ -17,6 +17,7 @@ test("content GeoJSON appears in slide and social scenes and respects per-slide 
   }] };
   await writeFile(path.join(root, "slides.config.yml"), JSON.stringify({
     title: "GeoJSON story", main: "main", slideshows: [{ id: "main", path: "chapters" }],
+    socialImage: { textOverlay: true },
     sources: { expeditionTrack: { type: "geojson", path: "assets/geojson/track.geojson" } },
     map: { styles: { light: style, dark: style } },
   }));

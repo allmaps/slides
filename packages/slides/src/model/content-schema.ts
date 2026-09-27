@@ -270,6 +270,8 @@ export const slidesConfigSchema = z
     description: projectTextSchema,
     theme: optionalValue(themeSchema),
     socialImage: z.object({
+      textOverlay: z.boolean().optional(),
+      textSize: z.number().positive().max(512).optional(),
       font: z.object({ family: nonEmptyString, path: optionalNonEmptyString }).optional(),
     }).optional(),
     main: optionalNonEmptyString,
