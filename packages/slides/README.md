@@ -19,17 +19,8 @@ pnpm exec slides build .
 pnpm exec slides preview .
 ```
 
-The current upstream `@allmaps/annotation@1.0.0-beta.37` is incompatible with
-Zod 4.6.5. Until that schema is fixed upstream, consumers need this temporary
-pin in their root `package.json`, then should commit their lockfile:
-
-```json
-{ "pnpm": { "overrides": { "zod": "4.4.3" } } }
-```
-
-For npm, use the root `"overrides": { "zod": "4.4.3" }` field instead. A
-dependency cannot enforce a transitive override on the consumer's behalf.
-The package smoke uses this documented workaround explicitly.
+The current Allmaps packages support Zod 4.6.5 without a package-manager override.
+Remove any older `zod: 4.4.3` override when upgrading and update your lockfile.
 
 This repository prepares release archives with `pnpm --filter @allmaps/slides
 pack`; it does not publish them automatically. Until the coordinated packages
@@ -209,8 +200,8 @@ Dutch translation in its `slides.config.yml`.
 
 ## Development and derivatives
 
-Vite reads and watches original Markdown, configuration and assets. Additions,
-renames and deletions refresh the site. Configuration edits restart Vite;
+Vite hot-updates application code and automatically reloads the site for Markdown
+and asset edits, additions, renames and deletions. Configuration edits restart Vite;
 invalid content appears in its error overlay. Content is never synchronized
 into another source folder.
 
@@ -236,8 +227,11 @@ The Vite cache defaults to `node_modules/.vite`. Derivatives and remote inputs
 live under its `slides` directory. Each real content root, selected config and
 deployment URL has its own application workspace and catalogs. Development and
 production have separate SvelteKit output. Completed thumbnail manifests and
-IIIF catalogs are shared between those modes. All generated runner files and symlinks live in the
-consumer's cache, never in the installed application.
+IIIF catalogs are shared between those modes. When the cache is under
+`node_modules`, the dev runner and SvelteKit output live in `.slides/` in the
+working directory so Vite does not cache application modules as dependencies.
+Add `.slides/` to your `.gitignore`. Generated files never modify the installed
+application. Restart an existing dev server once after upgrading to this layout.
 
 Linux thumbnail generation requires graphics libraries and Xvfb; see the
 [renderer setup](../static-render/README.md). `dev`, `validate` and `check` do

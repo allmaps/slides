@@ -70,8 +70,8 @@ pnpm exec slides validate ./content/gravity-at-sea
 Local test content can live in the ignored `content/tests/` directory. If present,
 run it with `pnpm exec slides dev ./content/tests --port 5175`.
 
-Each server reads its original content files. Vite watches configuration,
-Markdown and assets, including additions, renames and removals. Separate sites
+Each server reads its original content files. Vite hot-updates app code and
+automatically reloads content edits, additions, renames and removals. Separate sites
 have isolated application caches; they can run concurrently. Package-name
 selection remains supported when the content directory has a named
 `package.json`, but a package manifest is optional.
@@ -172,8 +172,10 @@ protomaps:
   key: ${PUBLIC_PROTOMAPS_KEY}
 ```
 
-Generated sites in `content/*/dist` and caches in `node_modules/.vite/slides`
-are ignored by git.
+Generated sites in `content/*/dist`, caches in `node_modules/.vite/slides` and
+dev runtime files in `.slides/` are ignored by git. Keeping the dev runtime
+outside `node_modules` prevents stale browser modules. Restart existing dev
+servers once after upgrading; image and thumbnail caches are preserved.
 
 ## Images and captions
 

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import maplibregl from 'maplibre-gl';
+import * as maplibregl from 'maplibre-gl';
 import { constrainSlideshowCamera } from '../src/lib/shared/map/constraints.ts';
 
 test('an overview offset above the mobile panel can extend beyond the world', () => {

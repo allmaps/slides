@@ -102,7 +102,7 @@ export function slidesContent(): Plugin {
       const onChange = (_event: string, filename: string) => {
         if (closed || (filename !== runtime.configPath && !filename.startsWith(root + path.sep))) return;
         const parts = path.relative(root, filename).split(path.sep);
-        if (parts.some(part => ["node_modules", ".git", "dist", "build"].includes(part))) return;
+        if (parts.some(part => ["node_modules", ".git", ".slides", "dist", "build"].includes(part))) return;
         if (filename.startsWith(runtime.outDir + path.sep) || filename.startsWith(runtime.cacheDir + path.sep)) return;
         changed.add(filename);
         clearTimeout(timer);

@@ -8,7 +8,7 @@ import {
   distance,
   lineString,
 } from "@turf/turf";
-import maplibregl from "maplibre-gl";
+import * as maplibregl from "maplibre-gl";
 
 type BBox = [number, number, number, number];
 type Coord = [number, number];

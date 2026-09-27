@@ -1,10 +1,9 @@
 import type { Camera } from "./camera.ts";
-import type { GeoJSONSourceSpecification, StyleSpecification } from "maplibre-gl";
+import type { StyleSpecification } from "maplibre-gl";
+import type { GeoJSON } from "geojson";
 import type { Sources } from "./sources.ts";
 
-type GeoJson = Exclude<GeoJSONSourceSpecification["data"], string>;
-
-function normalizeGeoJson(data: GeoJson): GeoJson {
+function normalizeGeoJson(data: GeoJSON): GeoJSON {
   if (data.type === "FeatureCollection")
     return { ...data, features: data.features.map(feature => {
       if (feature.id !== null) return feature;

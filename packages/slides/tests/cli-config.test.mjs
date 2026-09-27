@@ -5,6 +5,20 @@ import path from "node:path";
 import { tmpdir } from "node:os";
 import { loadSlidesConfig, getAppEnvironment } from "../src/content/config.ts";
 
+test("development modules stay outside node_modules without moving generated image caches", async (t) => {
+  const root = await mkdtemp(path.join(tmpdir(), "slides-dev-config-"));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  await writeFile(path.join(root, "slides.config.yml"), "title: Fixture\n");
+  const dev = await loadSlidesConfig({ content: root, cwd: root, mode: "development" });
+  const production = await loadSlidesConfig({ content: root, cwd: root, mode: "production" });
+  assert.ok(!dev.workDir.split(path.sep).includes("node_modules"));
+  assert.equal(dev.cacheDir, production.cacheDir);
+  assert.equal(dev.projectDir, production.projectDir);
+  assert.equal(dev.projectKey, production.projectKey);
+  const custom = await loadSlidesConfig({ content: root, cwd: root, mode: "development", cacheDir: "cache" });
+  assert.equal(custom.workDir, path.join(custom.projectDir, "development"));
+});
+
 test("deployment URL and root-path overrides take precedence without rewriting content", async (t) => {
   const root = await mkdtemp(path.join(tmpdir(), "slides-config-"));
   t.after(() => rm(root, { recursive: true, force: true }));

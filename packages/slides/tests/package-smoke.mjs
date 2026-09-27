@@ -19,9 +19,6 @@ try {
     const archive = path.join(archives, pkg.name.replace('@', '').replace('/', '-') + '-' + pkg.version + '.tgz');
     overrides[pkg.name] = 'file:' + archive;
   }
-  // Temporary consumer workaround: annotation beta.37 is incompatible with
-  // Zod 4.6.5. Keep this visible and remove it after the upstream schema fix.
-  overrides.zod = '4.4.3';
   await writeFile(path.join(root, 'package.json'), JSON.stringify({ name: 'content-only-consumer', private: true, type: 'module',
     devDependencies: { '@allmaps/slides': overrides['@allmaps/slides'] },
     pnpm: { overrides, onlyBuiltDependencies: ['esbuild', 'sharp', '@maplibre/maplibre-gl-native'] },
@@ -51,6 +48,10 @@ try {
   const html = await readFile(path.join(root, 'site/index.html'), 'utf8');
   assert.match(html, /First chapter/);
   assert.match(html, /https:\/\/example.org\/story\//);
+  const siteFiles = await readdir(path.join(root, 'site'), { recursive: true });
+  const worker = siteFiles.find(file => /maplibre-gl-worker[^/]*\.js$/.test(file));
+  assert.ok(worker, 'MapLibre needs an emitted worker in the static deployment');
+  assert.doesNotMatch(await readFile(path.join(root, 'site', worker), 'utf8'), /from\s*["']\.\/maplibre-gl-shared\.mjs/);
   const info = JSON.parse(await readFile(path.join(root, 'site/iiif/ship/info.json')));
   assert.equal(info.id, 'https://example.org/story/iiif/ship');
   assert.equal(info.width, 24);

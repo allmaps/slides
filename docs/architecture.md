@@ -59,7 +59,14 @@ The default cache is `<invocation-directory>/node_modules/.vite/slides`:
 | `iiif/images/<recipe>` | Reusable pixels shared across sites. |
 | `annotations`, `thumbnails` | Validated remote inputs and render recipes. |
 | `projects/<key>/thumbnails` | Last completed thumbnail batch for one site/configuration. |
-| `projects/<key>/{development,production}` | Isolated app runner, SvelteKit output, Vite cache and IIIF publication. |
+| `projects/<key>/production` | Isolated production runner, SvelteKit output and Vite cache. |
+| `projects/<key>/iiif` | Last completed IIIF catalog and publication. |
+
+For the default cache under `node_modules`, development runtime files live in
+`<invocation-directory>/.slides/projects/<key>/development`. This keeps generated
+client modules outside Vite's immutable dependency cache, so source changes
+arrive through HMR and content reloads use current modules. A custom cache
+outside `node_modules` can also contain the development runner.
 
 The project key includes the real source directory, config filename and public
 URL/base path. The app runner links to original source files and installed

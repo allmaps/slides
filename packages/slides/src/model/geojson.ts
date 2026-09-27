@@ -1,4 +1,4 @@
-import type maplibregl from "maplibre-gl";
+import type { ExpressionSpecification as MapLibreExpression, LayerSpecification } from "maplibre-gl";
 import { DEFAULT_COLORS } from "./settings.ts";
 
 // https://github.com/mapbox/simplestyle-spec/tree/master/1.1.0
@@ -7,8 +7,6 @@ type SimpleStyleNumberProperty =
   | "stroke-opacity"
   | "stroke-width"
   | "fill-opacity";
-type MapLibreExpression = maplibregl.ExpressionSpecification;
-type LayerSpecification = maplibregl.LayerSpecification;
 
 const SIMPLESTYLE_FALLBACKS = {
   markerColor: DEFAULT_COLORS.green.fill,

@@ -56,9 +56,8 @@ The JS API is intended for a Node main process; use the CLI from worker-based
 build systems. Slides invokes the CLI once per batch, then SvelteKit reads only
 its manifest. Sharp and native dependency versions are pinned together.
 
-The current upstream Allmaps annotation package requires a temporary consumer
-Zod 4.4.3 override; see [installation notes](../slides/README.md). The workspace
-lockfile already selects that compatible version.
+The current Allmaps annotation package supports Zod 4.6.5 without a consumer
+override; see [installation notes](../slides/README.md).
 
 ## Docker
 

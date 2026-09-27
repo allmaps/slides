@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { spawn, execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { mkdtemp, mkdir, readFile, stat, writeFile, rm, rename } from 'node:fs/promises';
+import { cp, mkdtemp, mkdir, readFile, realpath, stat, symlink, writeFile, rm, rename } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import net from 'node:net';
@@ -10,9 +10,11 @@ import { loadSlidesConfig } from '../src/content/config.ts';
 import { thumbnailPaths } from '../src/build/thumbnails.ts';
 import { iiifCatalogPath } from '../src/build/iiif.ts';
 
-const root = await mkdtemp(path.join(tmpdir(), 'slides-dev-smoke-'));
+const root = await realpath(await mkdtemp(path.join(tmpdir(), 'slides-dev-smoke-')));
 const children = [], sockets = [];
-const cacheDir = path.join(root, 'cache');
+// Exercise the default node_modules layout: an external cache hid stale browser
+// modules caused by Vite assigning dependency cache headers to generated code.
+const cacheDir = path.join(root, 'node_modules/.vite');
 const cli = new URL('../bin/slides.js', import.meta.url).pathname;
 const generateIiif = (content, ...args) => promisify(execFile)(process.execPath,
   [cli, 'iiif', content, '--cacheDir', cacheDir, ...args], { timeout: 60_000 });
@@ -34,20 +36,30 @@ async function until(fn, label) {
 }
 async function start(name) {
   const content = path.join(root, name), number = await port();
+  const appDir = path.join(root, `${name}-app`);
+  await mkdir(appDir);
+  for (const file of ['src', 'static', 'vite.config.js', 'svelte.config.js'])
+    await cp(new URL(`../../../apps/slides/${file}`, import.meta.url), path.join(appDir, file), { recursive: true });
+  await writeFile(path.join(appDir, 'src/lib/dev-refresh.ts'), 'export const refreshText = "Original app code";');
+  const layoutPath = path.join(appDir, 'src/routes/+layout.svelte');
+  const layout = await readFile(layoutPath, 'utf8');
+  await writeFile(layoutPath, layout.replace('<script lang="ts">', '<script lang="ts">\n  import { refreshText } from "$lib/dev-refresh";') + '\n<p id="dev-refresh">{refreshText}</p>\n');
   await mkdir(path.join(content, 'chapters'), { recursive: true });
   await mkdir(path.join(content, 'assets/images'), { recursive: true });
-  const config = { title: name, main: 'main', slideshows: [{ id: 'main', path: 'chapters' }], iiif: { tiles: false, sizes: false, webp: false } };
+  const config = { title: name, main: 'main', app: { directory: appDir }, slideshows: [{ id: 'main', path: 'chapters' }], iiif: { tiles: false, sizes: false, webp: false } };
   await writeFile(path.join(content, 'slides.config.json'), JSON.stringify(config));
   await writeFile(path.join(content, 'chapters/01-first.md'), `---\ntitle: ${name} first\n---\n${name} body`);
   const image = color => sharp({ create: { width: 16, height: 16, channels: 3, background: color } }).png().toFile(path.join(content, 'assets/images/shared.png'));
   await image(name === 'Alpha' ? '#ff0000' : '#0000ff');
-  const child = spawn(process.execPath, [cli, 'dev', content, '--cacheDir', cacheDir, '--host', '127.0.0.1', '--port', String(number), '--strictPort'], { stdio: ['ignore', 'pipe', 'pipe'] });
+  const runtime = await loadSlidesConfig({ content, cwd: root, cacheDir, mode: 'development' });
+  await symlink(path.join(runtime.workDir, 'node_modules'), path.join(appDir, 'node_modules'), 'junction');
+  const child = spawn(process.execPath, [cli, 'dev', content, '--cacheDir', cacheDir, '--host', '127.0.0.1', '--port', String(number), '--strictPort'], { cwd: root, stdio: ['ignore', 'pipe', 'pipe'] });
   const entry = { child, log: '' }; children.push(entry);
   child.stdout.on('data', bytes => entry.log += bytes); child.stderr.on('data', bytes => entry.log += bytes);
   const origin = `http://127.0.0.1:${number}`;
   const get = async url => fetch(origin + url, { signal: AbortSignal.timeout(10_000) });
   await until(async () => { const response = await get('/'); return response.ok && (await response.text()).includes(`${name} first`); }, `${name} startup`);
-  return { content, config, origin, get, image, child };
+  return { content, config, runtime, appDir, origin, get, image, child };
 }
 try {
   const a = await start('Alpha'), b = await start('Beta');
@@ -63,9 +75,33 @@ try {
   const events = [];
   socket.addEventListener('message', event => events.push(JSON.parse(event.data)));
   await until(() => events.some(e => e.type === 'connected'), 'HMR connection');
+  const layoutResponse = await a.get(`/@fs/${a.appDir}/src/routes/+layout.svelte`);
+  assert.equal(layoutResponse.status, 200);
+  assert.doesNotMatch(layoutResponse.headers.get('cache-control') ?? '', /immutable/);
+  assert.doesNotMatch(await layoutResponse.text(), /dev-refresh\.ts\?v=/);
+  const helperUrl = `/@fs/${a.appDir}/src/lib/dev-refresh.ts`;
+  const helperResponse = await a.get(helperUrl);
+  assert.equal(helperResponse.status, 200);
+  assert.doesNotMatch(helperResponse.headers.get('cache-control') ?? '', /immutable/);
+  assert.match(await helperResponse.text(), /Original app code/);
+  const clientAppResponse = await a.get(`/@fs/${a.runtime.workDir}/svelte-kit/generated/client/app.js`);
+  assert.equal(clientAppResponse.status, 200);
+  assert.doesNotMatch(clientAppResponse.headers.get('cache-control') ?? '', /immutable/);
+  assert.doesNotMatch(await clientAppResponse.text(), /nodes\/\d+\.js\?v=/);
+  const codeEventCount = events.length;
+  await writeFile(path.join(a.appDir, 'src/lib/dev-refresh.ts'), 'export const refreshText = "Updated app code";');
+  await until(() => events.slice(codeEventCount).some(e => e.type === 'update' &&
+    e.updates.some(update => update.path.includes('/src/routes/+layout.svelte'))), 'app code HMR');
+  assert.match(await (await a.get(helperUrl)).text(), /Updated app code/);
+  await until(async () => (await (await a.get('/')).text()).includes('Updated app code'), 'updated app render');
+  const markdownEventCount = events.length;
+  await writeFile(path.join(a.content, 'chapters/01-first.md'), '---\ntitle: Alpha edited\n---\nEdited body');
+  await until(() => events.slice(markdownEventCount).some(e => e.type === 'full-reload'), 'existing Markdown reload');
+  await until(async () => (await (await a.get('/')).text()).includes('Edited body'), 'updated Markdown render');
   const exportDir = path.join(root, 'iiif-export');
+  const iiifEventCount = events.length;
   await generateIiif(a.content, '--output', exportDir);
-  await until(() => events.some(e => e.type === 'full-reload'), 'explicit IIIF completion');
+  await until(() => events.slice(iiifEventCount).some(e => e.type === 'full-reload'), 'explicit IIIF completion');
   await generateIiif(b.content);
   const first = Buffer.from(await (await a.get('/iiif/shared/full/max/0/default.jpg')).arrayBuffer());
   const other = Buffer.from(await (await b.get('/iiif/shared/full/max/0/default.jpg')).arrayBuffer());
@@ -126,7 +162,7 @@ try {
     assert.doesNotMatch(children.find(entry => entry.child === site.child).log, /Command failed|CommandInterruptedError/);
     await assert.rejects(() => site.get('/'));
   }
-  console.log('PASS: explicit IIIF batches, missing/failed batches, exports, stable dev URLs, isolated pixels, add/rename/delete, data assets, HMR, thumbnails, config/base-path restart and clean SIGINT/SIGTERM shutdown.');
+  console.log('PASS: app code HMR, uncached source modules, Markdown edits/add/rename/delete, explicit IIIF batches, missing/failed batches, exports, stable dev URLs, isolated pixels, data assets, thumbnails, config/base-path restart and clean SIGINT/SIGTERM shutdown.');
 } finally {
   sockets.forEach(socket => socket.close());
   await Promise.all(children.map(({ child }) => new Promise(resolve => {

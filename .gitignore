@@ -5,7 +5,7 @@ packages/*/node_modules
 
 static/iiif
 apps/*/static/iiif
-apps/*/.slides
+.slides
 
 # Output
 .output

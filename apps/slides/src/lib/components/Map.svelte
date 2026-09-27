@@ -5,8 +5,9 @@
   import { onMount } from "svelte";
   import { Minus, Plus } from "@lucide/svelte";
 
-  import maplibregl from "maplibre-gl";
+  import * as maplibregl from "maplibre-gl";
   import "maplibre-gl/dist/maplibre-gl.css";
+  import mapWorkerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
   import type {
     CenterZoomBearing,
     EaseToOptions,
@@ -708,18 +709,16 @@
 
           if (destroyed) return;
 
-          const ids = warpedMapLayer.addGeoreferenceAnnotation(georeferenceAnnotation, {
+          const results = warpedMapLayer.addGeoreferenceAnnotation(georeferenceAnnotation, {
             visible: false,
           });
 
-          const stringIds = ids.filter(
-            (i): i is string => typeof i === "string",
-          );
-          const errors = ids.filter((i) => i instanceof Error);
+          const mapIds = results.flatMap((result) => result.ok ? [result.mapId] : []);
+          const errors = results.flatMap((result) => result.ok ? [] : [result.error]);
           if (errors.length) {
             console.error("Failed to add georeferenced map for", url, errors);
           }
-          rememberMapIdsForAnnotation(url, stringIds);
+          rememberMapIdsForAnnotation(url, mapIds);
         }
       } catch (error) {
         if (!destroyed) {
@@ -973,7 +972,7 @@
 
     try {
       camera = warpedMapLayer.getMapsCenterZoomBearing(ids, {
-        bearingSelection: "first",
+        bearingMapIds: [ids[0]],
         ...cameraLayoutOptions,
       });
     } catch (error) {
@@ -1089,8 +1088,8 @@
         if (visibility) map.setLayoutProperty(id, "visibility", visibility);
         for (const [property, value] of Object.entries(paint)) {
           const options = duration ? { duration } : {};
-          if (duration) map.setPaintProperty(id, `${property}-transition`, options);
-          map.setPaintProperty(id, property, value);
+          if (duration) map.setPaintProperty(id, `${property}-transition` as keyof maplibregl.AllPaintProperties, options);
+          map.setPaintProperty(id, property as keyof maplibregl.AllPaintProperties, value);
         }
       });
     }
@@ -1154,6 +1153,7 @@
   $effect(setLocation);
 
   onMount(() => {
+    maplibregl.setWorkerUrl(mapWorkerUrl);
     map = new maplibregl.Map({
       container,
       locale: { "Map.Title": t("map") },
@@ -1178,8 +1178,7 @@
       }
     });
 
-    map.on("styleimagemissing", async (event) => {
-      const id = event.id;
+    map.setMissingStyleImageResolver(async (id) => {
       if (!imagesAdded.has(id)) {
         imagesAdded.add(id);
         const image = await map.loadImage(id);

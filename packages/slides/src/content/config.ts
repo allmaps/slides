@@ -92,7 +92,13 @@ export async function loadSlidesConfig(options: LoadSlidesConfigOptions = {}) {
   const cacheDir = path.resolve(cwd, options.cacheDir ?? "node_modules/.vite");
   const projectKey = createHash("sha256").update(JSON.stringify([sourceContentDir, configPath, publicBasePath, publicUrl])).digest("hex").slice(0, 20);
   const projectDir = path.join(cacheDir, "slides", "projects", projectKey);
-  const workDir = path.join(projectDir, options.mode ?? "production");
+  // Vite treats imports under node_modules as immutable dependencies, including
+  // SvelteKit's generated client modules and their relative source imports.
+  // Keep the dev runner outside that tree; image/thumbnail caches stay put.
+  const workRoot = options.mode === "development" && cacheDir.split(path.sep).includes("node_modules")
+    ? path.join(cwd, ".slides", "projects", projectKey)
+    : projectDir;
+  const workDir = path.join(workRoot, options.mode ?? "production");
   const packagedApp = path.join(packageRoot, "app");
   const sourceApp = path.resolve(packageRoot, "../../apps/slides");
   const appDir = raw.app?.directory ? path.resolve(sourceContentDir, raw.app.directory)

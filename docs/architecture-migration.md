@@ -34,11 +34,9 @@ thumbnails refresh on build or an explicit command, not on ordinary dev edits.
 - The migrated Linux/amd64 Docker build image passes package checks and native
   pixel alignment. GitHub workflows are updated; they have not been dispatched.
 
-The current upstream `@allmaps/annotation@1.0.0-beta.37` schema rejects Zod 4.6.5.
-The consumer smoke explicitly pins Zod 4.4.3 using the documented root override.
-This temporary release prerequisite remains open for review; there is no silent
-dependency patch or bundling workaround. No packages have been published and no
-sites deployed.
+The Allmaps packages have been updated to annotation beta.38 and its companion
+releases, using MapLibre 6 and Zod 4.6.5. The consumer smoke no longer pins Zod
+through an override. No packages have been published and no sites deployed.
 
 Existing uncommitted work was present before this migration, including thumbnail
 documentation, app regression tests, deployment workflows and the Kattenburg
