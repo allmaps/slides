@@ -32,6 +32,7 @@
     getCameraLayoutOptions,
     type CameraLayoutOptions,
   } from "$lib/shared/map/camera";
+  import { constrainSlideshowCamera } from "$lib/shared/map/constraints";
   import { withBaseUrl } from "$lib/shared/paths";
   import { createFauxGeoreferencedMap } from "$lib/shared/map/image";
   import { prepareUserLayers, getUserLayerChange } from "$lib/shared/map/layers";
@@ -1163,6 +1164,7 @@
       zoom: 14,
       bearingSnap: 0,
       keyboard: false,
+      transformConstrain: constrainSlideshowCamera,
     });
     const updateBearing = () => {
       currentBearing = map.getBearing();
