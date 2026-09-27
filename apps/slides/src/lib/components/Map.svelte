@@ -986,22 +986,28 @@
       });
   }
 
-  function setLayersOpacity() {
-    if (mapLoaded && currentLayers) {
-      if (debug) {
-        console.log("Setting current layers opacity...", currentLayers);
+  function setUserLayerState() {
+    if (!mapLoaded || !layers) return;
+    const layerList = Array.isArray(layers) ? layers : [layers];
+
+    for (const layer of prepareUserLayers(layerList)) {
+      if (!map.getLayer(layer.id)) continue;
+      const change = currentLayers?.find((change) => `user-${change.layer}` === layer.id);
+      const source = "source" in layer ? sources?.[layer.source] : undefined;
+      const visibility = focusedMapUrl && source?.type === "geojson"
+        ? "none"
+        : change?.visibility ?? layer.layout?.visibility ?? "visible";
+      // Full-map mode temporarily hides content overlays, including layers
+      // with no per-slide overrides. Restore the slide's visibility on exit.
+      map.setLayoutProperty(layer.id, "visibility", visibility);
+
+      if (!change) continue;
+      const { paint, duration } = getUserLayerChange(change, layer.type);
+      for (const [property, value] of Object.entries(paint)) {
+        const options = duration ? { duration } : {};
+        if (duration) map.setPaintProperty(layer.id, `${property}-transition` as keyof maplibregl.AllPaintProperties, options);
+        map.setPaintProperty(layer.id, property as keyof maplibregl.AllPaintProperties, value);
       }
-      currentLayers.forEach((layer) => {
-        const type = map.getLayer(`user-${layer.layer}`)?.type;
-        if (!type) return;
-        const { id, visibility, paint, duration } = getUserLayerChange(layer, type);
-        if (visibility) map.setLayoutProperty(id, "visibility", visibility);
-        for (const [property, value] of Object.entries(paint)) {
-          const options = duration ? { duration } : {};
-          if (duration) map.setPaintProperty(id, `${property}-transition` as keyof maplibregl.AllPaintProperties, options);
-          map.setPaintProperty(id, property as keyof maplibregl.AllPaintProperties, value);
-        }
-      });
     }
   }
 
@@ -1049,7 +1055,7 @@
   });
   $effect(applyWarpedMapState);
   $effect(setChapterCamera);
-  $effect(setLayersOpacity);
+  $effect(setUserLayerState);
   $effect(() => {
     if (!mapLoaded) return;
     basemapStyleKey;
