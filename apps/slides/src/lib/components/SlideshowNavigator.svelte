@@ -115,7 +115,7 @@
     if (chapter) { closeMenu(); onNavigate(chapter.slug); }
   }}>
     {#if previous}
-      <a class="navigator-button" aria-keyshortcuts="ArrowLeft" href={getChapterRouteHref(slideshow, previous)} aria-label={t("previousChapterTitle", { title: previous.title })} title={t("previousChapterTitle", { title: previous.title })} onclick={(event) => navigate(event, previous.slug)}>
+      <a class="navigator-button" draggable="false" aria-keyshortcuts="ArrowLeft" href={getChapterRouteHref(slideshow, previous)} aria-label={t("previousChapterTitle", { title: previous.title })} title={t("previousChapterTitle", { title: previous.title })} onclick={(event) => navigate(event, previous.slug)}>
         <img class="previous-icon" src={previousIcon} width="25" height="25" alt="" />
       </a>
     {:else}
@@ -134,7 +134,7 @@
       <progress class="navigator-progress" max={Math.max(1, chapterCount)} value={chapterNumber} aria-label={t("slideshowProgress")}></progress>
     </button>
     {#if next}
-      <a class="navigator-button" aria-keyshortcuts="ArrowRight" href={getChapterRouteHref(slideshow, next)} aria-label={t("nextChapterTitle", { title: next.title })} title={t("nextChapterTitle", { title: next.title })} onclick={(event) => navigate(event, next.slug)}>
+      <a class="navigator-button" draggable="false" aria-keyshortcuts="ArrowRight" href={getChapterRouteHref(slideshow, next)} aria-label={t("nextChapterTitle", { title: next.title })} title={t("nextChapterTitle", { title: next.title })} onclick={(event) => navigate(event, next.slug)}>
         <img src={nextIcon} width="24" height="25" alt="" />
       </a>
     {:else}
@@ -225,7 +225,10 @@
   .navigator-button img { filter: brightness(0); opacity: .65; }
   :global(.dark) .navigator-button img { filter: brightness(0) invert(1); opacity: 1; }
   @media (max-width: 767px) {
-    .navigator-pagination { touch-action: pan-y pinch-zoom; user-select: none; -webkit-user-select: none; }
+    .navigator-pagination { flex: 1; align-self: stretch; justify-content: center; touch-action: pan-y pinch-zoom; user-select: none; -webkit-user-select: none; }
+    /* Keep swipes on icons and disabled arrows on the shared touch surface. */
+    .navigator-pagination .navigator-button img,
+    .navigator-pagination .navigator-button:disabled { pointer-events: none; }
   }
   @media (max-width: 359px) {
     .navigator-pagination { gap: 8px; }
