@@ -201,6 +201,24 @@ theme:
   bg: "#e8bae1"
 ```
 
+To choose different colors when dark mode is active, set `light` and `dark`.
+Each accepts a palette name or a complete `fg`/`bg` pair:
+
+```yaml
+theme:
+  light:
+    fg: "#c552b5"
+    bg: "#e8bae1"
+  dark:
+    fg: "#e8bae1"
+    bg: "#c552b5"
+```
+
+For named palettes, for example, use `theme: { light: purple, dark: blue }`.
+The colors update with the app's mode switch, saved preference and system mode.
+Omitting `dark` reuses `light`; omitting `light` uses the default green palette.
+The original palette name and flat `fg`/`bg` forms still apply to both modes.
+
 `fg` colors links, accents, progress and the Start button; `bg` colors the
 navigator and overlays. Hover/selected states blend the pair. In dark mode,
 the background is mixed with the app's dark neutral. Overlay icons use the

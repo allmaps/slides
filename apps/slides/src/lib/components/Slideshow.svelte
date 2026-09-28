@@ -63,7 +63,6 @@
   let { project, slideshow, mainSlideshow, debug = dev, thumbnails = emptyThumbnails() }: Props = $props();
 
   const t = provideInterfaceText(() => project.interface);
-  const themeColors = $derived(resolveTheme(project.theme));
 
   const activeSlideshow = $derived(slideshow);
   const rootSlideshow = $derived(mainSlideshow ?? slideshow);
@@ -75,6 +74,7 @@
   const sources = $derived(activeSlideshow.sources);
 
   let isDarkMode: boolean | undefined = $state(undefined);
+  const themeColors = $derived(resolveTheme(project.theme, isDarkMode ? "dark" : "light"));
   let mainIndex: number = $state(0);
   let subslideshowIndex: number = $state(0);
   let subslideshowIndexOwner: string | undefined = $state(undefined);

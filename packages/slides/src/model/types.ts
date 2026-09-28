@@ -65,7 +65,7 @@ export type SlidesConfig = {
   /** Expanded text for page titles, metadata and structured data. */
   titleLong?: string;
   descriptionLong?: string;
-  /** An Allmaps palette name or custom foreground/background accent colors. */
+  /** An Allmaps palette or custom fg/bg colors, optionally different per light/dark mode. */
   theme?: ThemeConfig;
   socialImage?: {
     /** Include the title and subtitle in sharing images (default: false). */

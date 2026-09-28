@@ -60,9 +60,14 @@ const themeColorSchema = z.string().trim().regex(
   /^#(?:[\da-f]{3}|[\da-f]{6})$/i,
   "use an opaque hex color, e.g. #64c18f or #fff",
 );
-const themeSchema = z.union([
+const themePaletteSchema = z.union([
   z.enum(THEME_NAMES),
   z.strictObject({ fg: themeColorSchema, bg: themeColorSchema }),
+]);
+const themeSchema = z.union([
+  themePaletteSchema,
+  z.strictObject({ light: themePaletteSchema.optional(), dark: themePaletteSchema.optional() })
+    .refine(theme => theme.light !== undefined || theme.dark !== undefined, "set a light or dark palette"),
 ]);
 const unknownRecordSchema = z.record(z.string(), z.unknown());
 const themeStringRecordSchema = z.partialRecord(
