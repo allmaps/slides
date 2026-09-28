@@ -59,6 +59,36 @@ Configuration paths and assets are relative to the content directory.
 relative to the invoking working directory. Output defaults to `<content>/dist`.
 Vite options such as `--port 5174` pass through to `dev`/`preview`.
 
+## Relative image references in annotations
+
+With IIIF enabled, an annotation’s image service `id` can reference an image
+relative to the **content root**, for example in `target.source`:
+
+```json
+{
+  "id": "assets/images/map.jpg",
+  "type": "ImageService3",
+  "width": 2000,
+  "height": 1500
+}
+```
+
+Store the annotation under `assets/annotations/` and reference it from
+`warpedMaps`. Generate local services with `slides iiif` during development;
+builds generate them automatically. When the annotation is served through
+`/api/annotations/…`, the image path becomes an absolute IIIF service URL:
+
+- Development uses the current request origin (e.g. `http://localhost:5173`)
+  and the configured base path.
+- Deployed builds use `site.publicUrl` / `PUBLIC_URL`, e.g.
+  `https://example.org/story/iiif/map`. Set this to the full deployed app URL,
+  including its base path.
+
+The authored JSON stays relative, and remote image URLs, provenance, masks and
+control points are preserved. The thumbnail renderer resolves the same local
+images directly from disk. Share the app’s `/api/annotations/…` URL to use an
+annotation outside the app.
+
 ## Overall titles, descriptions and sharing images
 
 An overall `title` or `description` can be a string, or short and long variants:

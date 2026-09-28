@@ -1,6 +1,9 @@
 import { dev } from "$app/environment";
 import { error } from "@sveltejs/kit";
 import { dataAssetFiles } from "$lib/shared/content-package";
+import { env } from "$env/dynamic/public";
+import { resolveAnnotationImages } from "@allmaps/iiif/annotations";
+import { getContentIiifImage, withBaseUrl } from "$lib/shared/paths";
 import type { RequestHandler } from "./$types";
 
 const DATA_ASSET_EXTENSION_PATTERN = /\.(?:geojson|json)$/i;
@@ -46,7 +49,7 @@ export const entries = () =>
     ([request]) => ({ request }),
   );
 
-export const GET: RequestHandler = async ({ params }) => {
+export const GET: RequestHandler = async ({ params, url }) => {
   const request = params.request;
   const loadAsset = request
     ? dataAssetLoadersByRequestPath.get(request)
@@ -56,7 +59,14 @@ export const GET: RequestHandler = async ({ params }) => {
     error(404, "Asset not found");
   }
 
-  const contents = await loadAsset();
+  const contents = JSON.stringify(resolveAnnotationImages(JSON.parse(await loadAsset()), image => {
+    const local = getContentIiifImage(image);
+    if (!local) return;
+    const service = `iiif/${local.servicePath}`;
+    return dev || !env.PUBLIC_URL
+      ? new URL(withBaseUrl(service), url.origin).href
+      : new URL(service, new URL(`${env.PUBLIC_URL.replace(/\/$/, "")}/`, url.origin)).href;
+  }));
 
   return new Response(contents, {
     headers: {

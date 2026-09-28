@@ -47,6 +47,12 @@ async function start(name) {
   await mkdir(path.join(content, 'chapters'), { recursive: true });
   await mkdir(path.join(content, 'assets/images'), { recursive: true });
   await mkdir(path.join(content, 'assets/geojson'), { recursive: true });
+  await mkdir(path.join(content, 'assets/annotations'), { recursive: true });
+  await writeFile(path.join(content, 'assets/annotations/shared.json'), JSON.stringify({
+    type: 'AnnotationPage', items: [{ type: 'Annotation', target: {
+      source: { type: 'ImageService3', id: './assets/images/shared.png', width: 16, height: 16 },
+    } }],
+  }));
   const geojson = { type: 'FeatureCollection', features: [{ type: 'Feature', properties: { stroke: '#5e7a85', 'stroke-width': 5 }, geometry: { type: 'LineString', coordinates: [[4, 52], [5, 53]] } }] };
   const geojsonPath = path.join(content, 'assets/geojson/route.geojson');
   await writeFile(geojsonPath, JSON.stringify(geojson));
@@ -127,6 +133,10 @@ try {
   await generateIiif(a.content, '--output', exportDir);
   await until(() => events.slice(iiifEventCount).some(e => e.type === 'full-reload'), 'explicit IIIF completion');
   await generateIiif(b.content);
+  assert.equal((await (await a.get('/api/annotations/shared.json')).json()).items[0].target.source.id,
+    a.origin + '/iiif/shared');
+  assert.equal((await (await b.get('/api/annotations/shared.json')).json()).items[0].target.source.id,
+    b.origin + '/iiif/shared');
   const first = Buffer.from(await (await a.get('/iiif/shared/full/max/0/default.jpg')).arrayBuffer());
   const other = Buffer.from(await (await b.get('/iiif/shared/full/max/0/default.jpg')).arrayBuffer());
   assert.notDeepEqual(first, other);
@@ -177,6 +187,11 @@ try {
   assert.equal((await a.get('/atlas/iiif/shared/info.json')).status, 404);
   await generateIiif(a.content);
   await until(async () => (await (await a.get('/atlas/iiif/shared/info.json')).json()).id === a.origin + '/atlas/iiif/shared', 'IIIF after base path restart');
+  // A configured production URL must never replace the dev server's origin.
+  assert.equal((await (await a.get('/atlas/api/annotations/shared.json')).json()).items[0].target.source.id,
+    a.origin + '/atlas/iiif/shared');
+  const authoredAnnotation = JSON.parse(await readFile(path.join(a.content, 'assets/annotations/shared.json'), 'utf8'));
+  assert.equal(authoredAnnotation.items[0].target.source.id, './assets/images/shared.png');
   assert.ok((await (await b.get('/')).text()).includes('Beta first'));
   sockets.forEach(socket => socket.close());
   for (const [site, signal, expectedCode] of [[a, 'SIGINT', 130], [b, 'SIGTERM', 143]]) {

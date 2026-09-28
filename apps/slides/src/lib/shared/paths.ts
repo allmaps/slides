@@ -57,7 +57,7 @@ export const withBaseUrl = (path: string) => {
 
 const normalizeProjectAssetPath = (path: string) => {
   const cleanPath = path.replace(/^\.?\//, "");
-  if (cleanPath.startsWith("assets/")) return cleanPath;
+  if (cleanPath.startsWith("assets/") || imageAssetUrls[`./${cleanPath}`]) return cleanPath;
 
   const [firstSegment] = cleanPath.split("/");
   if (PROJECT_ASSET_FOLDERS.has(firstSegment)) {

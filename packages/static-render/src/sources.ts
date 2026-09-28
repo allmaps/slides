@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { renderLocalIiifRequest } from "@allmaps/iiif/image";
+import { resolveAnnotationImages } from "@allmaps/iiif/annotations";
 import { digest, type CachedResource, RemoteCache } from "./cache.ts";
 
 export type SourceAssets = {
@@ -13,9 +14,13 @@ export class Sources {
   readonly remote: RemoteCache;
   private images: Map<string, string>;
   private data: Map<string, string>;
+  private imageServices: Map<string, string>;
   private prepared = new Map<string, Promise<CachedResource>>();
   constructor(remote: RemoteCache, assets: SourceAssets, root: string) {
     this.remote = remote;
+    this.imageServices = new Map(Object.entries(assets.images).map(([url, file]) => [
+      file.replace(/^\.\//, ""), new URL(url, "http://slides.local").href,
+    ]));
     this.images = new Map(
       Object.entries(assets.images).map(([url, file]) => [
         new URL(url, "http://slides.local").pathname,
@@ -66,7 +71,9 @@ export class Sources {
     const pathname = new URL(url, "http://slides.local").pathname;
     const filename = this.data.get(pathname);
     if (filename) {
-      const bytes = await readFile(filename);
+      const document = JSON.parse(await readFile(filename, "utf8"));
+      const bytes = Buffer.from(JSON.stringify(resolveAnnotationImages(document,
+        image => this.imageServices.get(image.replace(/^\.\//, "")))));
       return { bytes, hash: digest(bytes), type: "application/json" };
     }
     const image = this.findImage(url);

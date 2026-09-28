@@ -1,7 +1,8 @@
 import type { MapChapterProps, ThemeMode, WarpedMapProps } from "../types.ts";
+import type { MapLibreWarpedMapLayerOptions } from "@allmaps/maplibre";
 import { DEFAULT_WARPED_MAP_OPTIONS } from "../settings.ts";
 
-export const getWarpedMapOptions = (map: WarpedMapProps, theme: ThemeMode = "light") => ({
+export const getWarpedMapOptions = (map: WarpedMapProps, theme: ThemeMode = "light"): Partial<MapLibreWarpedMapLayerOptions> => ({
   ...DEFAULT_WARPED_MAP_OPTIONS,
   ...map.options,
   ...(theme === "dark" ? map.darkOptions : {}),

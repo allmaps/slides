@@ -8,7 +8,8 @@
     "./vite": "./src/vite.ts",
     "./image": "./src/image.ts",
     "./core": "./src/core.ts",
-    "./catalog": "./src/catalog.ts"
+    "./catalog": "./src/catalog.ts",
+    "./annotations": "./src/annotations.ts"
   },
   "dependencies": {
     "@iiif/builder": "^2.0.1",
@@ -51,6 +52,10 @@
       "./catalog": {
         "types": "./dist/catalog.d.ts",
         "default": "./dist/catalog.js"
+      },
+      "./annotations": {
+        "types": "./dist/annotations.d.ts",
+        "default": "./dist/annotations.js"
       }
     }
   },

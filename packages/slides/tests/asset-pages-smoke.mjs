@@ -22,6 +22,10 @@ try {
     .png().toFile(path.join(root, 'assets/images/ship.png'));
   await mkdir(path.join(root, 'assets/images/ships'));
   await copyFile(path.join(root, 'assets/images/ship.png'), path.join(root, 'assets/images/ships/Ship detail.png'));
+  await mkdir(path.join(root, 'assets/annotations'));
+  await writeFile(path.join(root, 'assets/annotations/ship.json'), JSON.stringify({ type: 'AnnotationPage', items: [{
+    type: 'Annotation', target: { source: { type: 'ImageService3', id: 'assets/images/ship.png', width: 800, height: 600 } },
+  }] }));
   const empty = await build('empty-site');
   assert.match(await empty('index.html'), /No slideshow content yet/);
   assert.match(await empty('index.html'), /href="\/demo\/iiif\/"/);
@@ -38,6 +42,8 @@ try {
     assert.ok(iiifOverview.includes('https://theseusviewer.org/?iiif-content=' + url));
   }
   assert.equal(JSON.parse(await empty('iiif/ship/info.json')).width, 800);
+  const annotation = JSON.parse(await empty('api/annotations/ship.json'));
+  assert.equal(annotation.items[0].target.source.id, 'https://example.org/demo/iiif/ship');
   assert.match(await empty('thumbnails/index.html'), /No generated images yet/);
 
   await mkdir(path.join(root, 'chapters'));
