@@ -864,6 +864,8 @@
 
 <style>
   .story-title {
+    -webkit-user-select: none;
+    user-select: none;
     max-width: min(28rem, calc(100vw - 12rem - var(--app-safe-left) - var(--app-safe-right)));
     top: var(--app-inset-top);
     left: var(--app-inset-left);
