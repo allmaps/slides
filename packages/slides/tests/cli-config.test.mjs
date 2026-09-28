@@ -5,6 +5,30 @@ import path from "node:path";
 import { tmpdir } from "node:os";
 import { loadSlidesConfig, getAppEnvironment } from "../src/content/config.ts";
 
+test("generation defaults, IIIF options, and config reloads preserve only explicit environment overrides", async t => {
+  const root = await mkdtemp(path.join(tmpdir(), "slides-generation-"));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const filename = path.join(root, "slides.config.json");
+  await writeFile(filename, JSON.stringify({ title: "Images" }));
+  const config = await loadSlidesConfig({ content: root, thumbnailsEnabledOverride: null });
+  assert.equal(config.iiif.enabled, true);
+  assert.equal(config.thumbnails.enabled, true);
+  await writeFile(filename, JSON.stringify({ iiif: { enabled: false, force: true, input: "photos", output: "export",
+    id: "https://images.example.org", collectionLabel: "Archive", tiles: false, sizes: false, webp: false, tileSize: 512 }, thumbnails: { enabled: false } }));
+  // Vite inherits its own environment between restarts; that must not freeze YAML values.
+  const before = process.env.SLIDES_THUMBNAILS_ENABLED;
+  t.after(() => { if (before === undefined) delete process.env.SLIDES_THUMBNAILS_ENABLED; else process.env.SLIDES_THUMBNAILS_ENABLED = before; });
+  process.env.SLIDES_THUMBNAILS_ENABLED = "true";
+  const changed = await loadSlidesConfig(config.options);
+  assert.equal(changed.thumbnails.enabled, false);
+  assert.deepEqual(changed.iiif, { enabled: false, force: true, inputRoot: path.join(config.rootDir, "photos"),
+    outputRoot: path.join(config.rootDir, "export"), idBase: "https://images.example.org", collectionLabel: "Archive",
+    tiles: false, sizes: false, webp: false, tileSize: "512" });
+  assert.equal(getAppEnvironment(changed).PUBLIC_SLIDES_IIIF_ENABLED, "false");
+  assert.equal(getAppEnvironment(changed).SLIDES_THUMBNAILS_ENABLED, "false");
+  assert.equal((await loadSlidesConfig({ ...config.options, thumbnailsEnabledOverride: "true" })).thumbnails.enabled, true);
+});
+
 test("development modules stay outside node_modules without moving generated image caches", async (t) => {
   const root = await mkdtemp(path.join(tmpdir(), "slides-dev-config-"));
   t.after(() => rm(root, { recursive: true, force: true }));

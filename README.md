@@ -95,6 +95,18 @@ Page requests never generate images. Run the IIIF command before viewing local
 images for the first time, and again after adding, replacing or deleting source
 images. Unchanged derivatives are reused from the cache.
 
+Browse `/iiif/` for generated services/manifests and `/thumbnails/` for previews
+grouped by slide, including the images used in social tags. Images-only projects
+build a no-content home page linking to IIIF. Both generators default to enabled;
+set `iiif.enabled: false` and/or `thumbnails.enabled: false` in `slides.config.yml`
+to skip them. Without IIIF, Markdown images use their original files; a local
+`<figure data-image="assets/images/photo.jpg">` can still opt into Atlas.
+See [generation settings and cache commands](packages/slides/README.md#optional-generation-and-asset-overviews).
+
+Clear project caches with `pnpm exec slides cache purge ./content/kattenburg-atlas`.
+Add `--all` to include shared derivatives/downloads, or `--dry-run` to inspect paths.
+Stop affected dev servers before purging.
+
 ## Building
 
 ```sh

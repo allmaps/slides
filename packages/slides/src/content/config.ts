@@ -17,6 +17,8 @@ export type LoadSlidesConfigOptions = {
   outDir?: string;
   mode?: "development" | "production";
   publicOverrides?: Record<string, string | undefined>;
+  /** Preserve the caller's override when Vite reloads its own environment. */
+  thumbnailsEnabledOverride?: string | null;
 };
 export type RuntimeSlidesConfig = Awaited<ReturnType<typeof loadSlidesConfig>>;
 const CONFIG_FILENAMES = ["slides.config.yml", "slides.config.yaml", "slides.config.json"];
@@ -80,6 +82,8 @@ export async function loadSlidesConfig(options: LoadSlidesConfigOptions = {}) {
   const configPath = configOverride ?? await findConfig(sourceContentDir);
   if (!configPath) throw new Error(`No ${CONFIG_FILENAMES.join(", ")} in ${sourceContentDir}`);
   const publicOverrides = options.publicOverrides ?? Object.fromEntries(["PUBLIC_URL", "PUBLIC_BASE_PATH", "PUBLIC_PROTOMAPS_KEY"].map(key => [key, process.env[key] ?? "__SLIDES_UNSET__"]));
+  const thumbnailsEnabledOverride = options.thumbnailsEnabledOverride === undefined
+    ? process.env.SLIDES_THUMBNAILS_ENABLED ?? null : options.thumbnailsEnabledOverride;
   const environment = { ...process.env, ...Object.fromEntries(Object.entries(publicOverrides).map(([key, value]) => [key, value === "__SLIDES_UNSET__" ? undefined : value])) };
   const result = slidesConfigSchema.safeParse(parseConfigDocument(await readFile(configPath, "utf8"), configPath, environment));
   if (!result.success) throw new Error(`Invalid Slides config ${configPath}: ${result.error.message}`);
@@ -106,13 +110,15 @@ export async function loadSlidesConfig(options: LoadSlidesConfigOptions = {}) {
   const packageJson = path.join(sourceContentDir, "package.json");
   const contentPackageName = await exists(packageJson) ? JSON.parse(await readFile(packageJson, "utf8")).name : undefined;
   return {
-    options: { ...options, content: sourceContentDir, configPath, cwd, cacheDir, publicOverrides },
+    options: { ...options, content: sourceContentDir, configPath, cwd, cacheDir, publicOverrides, thumbnailsEnabledOverride },
     configPath, rootDir: sourceContentDir, sourceContentDir, appDir, contentPackageName,
     publicBasePath, publicUrl, protomapsKey, cacheDir, projectKey, projectDir, workDir,
     outDir: path.resolve(cwd, options.outDir ?? process.env.SLIDES_BUILD_OUTPUT ?? path.join(sourceContentDir, "dist")),
     raw, slidesConfig: { ...normalized.data, protomaps: { ...normalized.data.protomaps, key: protomapsKey } },
+    thumbnails: { enabled: booleanOption(thumbnailsEnabledOverride ?? undefined, raw.thumbnails?.enabled ?? true) },
     iiif: {
       enabled: booleanOption(raw.iiif?.enabled, true),
+      force: raw.iiif?.force ?? false,
       inputRoot: path.resolve(sourceContentDir, raw.iiif?.input ?? "assets/images"),
       outputRoot: path.resolve(sourceContentDir, raw.iiif?.output ?? "static/iiif"),
       idBase: raw.iiif?.id,
@@ -129,6 +135,7 @@ export const getAppEnvironment = (config: RuntimeSlidesConfig): NodeJS.ProcessEn
   PUBLIC_BASE_PATH: config.publicBasePath, PUBLIC_URL: config.publicUrl,
   PUBLIC_PROTOMAPS_KEY: config.protomapsKey,
   PUBLIC_SLIDES_IIIF_ENABLED: String(config.iiif.enabled),
+  SLIDES_THUMBNAILS_ENABLED: String(config.thumbnails.enabled),
   SLIDES_OPTIONS: JSON.stringify(config.options),
   SLIDES_CONFIG_PATH: config.configPath,
   SLIDES_CONTENT_PACKAGE_ROOT: config.sourceContentDir,

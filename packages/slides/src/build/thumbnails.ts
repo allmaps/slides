@@ -6,6 +6,7 @@ import type { Thumbnail, ThumbnailManifest } from "../model/thumbnails.ts";
 import type { RenderResult } from "@allmaps/static-render/types";
 import { atomicWrite, readJson } from "./files.ts";
 import { runNode } from "./process.ts";
+import { emptyThumbnails } from "../model/thumbnails.ts";
 
 export function thumbnailPaths(config: RuntimeSlidesConfig) {
   const cacheRoot = path.resolve(process.env.SLIDES_THUMBNAILS_CACHE_ROOT ?? path.join(config.cacheDir, "slides", "thumbnails"));
@@ -15,9 +16,18 @@ export function thumbnailPaths(config: RuntimeSlidesConfig) {
     manifestPath: path.join(config.projectDir, "thumbnails", "manifest.json") };
 }
 export async function buildThumbnails(config: RuntimeSlidesConfig) {
-  const { prepareThumbnails } = await import("./prepare.ts");
+  if (!config.thumbnails.enabled) {
+    console.log("Thumbnail generation is disabled in the Slides config or environment.");
+    return emptyThumbnails();
+  }
   const content = await loadContent(config);
   const paths = thumbnailPaths(config);
+  if (!content.slideCount) {
+    const manifest = emptyThumbnails();
+    await atomicWrite(paths.manifestPath, JSON.stringify(manifest));
+    return manifest;
+  }
+  const { prepareThumbnails } = await import("./prepare.ts");
   const offline = booleanOption(process.env.SLIDES_THUMBNAILS_OFFLINE);
   const prepared = await prepareThumbnails(content, { ...paths, assetRoot: config.sourceContentDir,
     offline, refresh: booleanOption(process.env.SLIDES_THUMBNAILS_REFRESH), publicUrl: config.publicUrl });

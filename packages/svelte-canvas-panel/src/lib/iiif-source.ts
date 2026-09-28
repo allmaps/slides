@@ -36,6 +36,7 @@ export const getIiifRequest = (src: string): IiifRequest | undefined => {
 export type IiifSource = (
   | { type: "manifest"; url: string; canvas?: string }
   | { type: "image"; url: string }
+  | { type: "static"; url: string }
 ) & { region?: string };
 
 export type ImageBox = { x: number; y: number; width: number; height: number };

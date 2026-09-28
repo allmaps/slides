@@ -67,6 +67,7 @@ export function slidesContent(): Plugin {
     },
     async load(source) {
       if (source === `\0${catalogId}`) {
+        if (!runtime.iiif.enabled) return `export default { entries: async () => [], get: async () => new Response("Not found", { status: 404 }) };`;
         return `import { readIiifCatalog } from ${JSON.stringify(fileURLToPath(import.meta.resolve("@allmaps/iiif/catalog")))}; export default readIiifCatalog(${JSON.stringify(iiifCatalogPath(runtime))}, { allowMissing: ${runtime.options.mode === "development"} });`;
       }
       if (source !== id && source !== `\0${markdownId}`) return;

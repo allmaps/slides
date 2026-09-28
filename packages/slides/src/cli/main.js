@@ -6,6 +6,7 @@ import { CommandInterruptedError } from "../build/process.ts";
 import { runBuildIiifCommand } from "./commands/build-iiif.ts";
 import { runAppCommand } from "./commands/run-app.ts";
 import { runValidateCommand } from "./commands/validate.ts";
+import { runCachePurgeCommand } from "./commands/cache.ts";
 
 const program = new Command();
 
@@ -45,6 +46,17 @@ addAppCommand("build", "Validate content and build the static app");
 addAppCommand("preview", "Preview the built app");
 addAppCommand("check", "Validate content and run Svelte checks");
 
+addConfigOption(program.command("cache").description("Manage generated caches")
+  .command("purge").description("Remove project caches; stop its dev server first")
+  .argument("[content]", "Content directory or package")
+  .option("--cacheDir <path>", "Vite cache directory (same as dev/build)")
+  .option("--all", "Also remove shared derivatives/downloads and other project caches")
+  .option("--dry-run", "List directories without removing them"))
+  .action((contentPackage, options) => runCachePurgeCommand({
+    contentPackageName: contentPackage, configPath: options.config,
+    cacheDir: options.cacheDir, all: options.all, dryRun: options.dryRun,
+  }));
+
 addConfigOption(
   program
     .command("validate")
@@ -63,6 +75,7 @@ addConfigOption(
     .description("Prepare an IIIF image batch for development and builds")
     .argument("[content]", "Content directory or package")
     .option("-f, --force", "Recreate existing image derivatives")
+    .option("--no-force", "Reuse unchanged derivatives, overriding iiif.force")
     .option("--id <uri>", "Public IIIF base URI")
     .option("--collection-label <label>", "IIIF collection label")
     .option("--input <path>", "Source image folder")

@@ -146,6 +146,8 @@ export function validateProjectReferences(
   const ids = new Set<string>(),
     slugs = new Set<string>();
   for (const show of slideshows) {
+    if (["iiif", "thumbnails", "api", "manifest.webmanifest"].includes(show.slug))
+      throw new Error(`Reserved slideshow route: ${show.slug}`);
     if (ids.has(show.id)) throw new Error(`Duplicate slideshow id: ${show.id}`);
     if (slugs.has(show.slug))
       throw new Error(`Duplicate slideshow route: ${show.slug}`);

@@ -2,6 +2,42 @@ import { readFile, mkdir, rename, writeFile } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
 import path from "node:path";
 import type { BuildStaticIiifResult, IiifCatalog } from "./core.ts";
+import type { ImageServiceInfo } from "./core.ts";
+
+/** List only published artifacts; never discovers sources or generates pixels. */
+export async function getIiifOverview(catalog: IiifCatalog) {
+  const requests = (await catalog.entries()).map(entry => entry.request);
+  const assets = new Set(requests);
+  const collection = assets.has("collection.json") ? "collection.json" : undefined;
+  let collectionLabel: string | undefined;
+  const manifestLabels: Record<string, string> = {};
+  if (collection) {
+    const response = await catalog.get(collection);
+    if (!response.ok) throw new Error(`Cannot read published IIIF collection: ${collection}`);
+    const metadata: { id: string; label?: Record<string, string[]>; items?: { id: string; label?: Record<string, string[]> }[] } = await response.json();
+    const label = (value?: Record<string, string[]>) => Object.values(value ?? {}).flat().join(" · ") || undefined;
+    collectionLabel = label(metadata.label);
+    const prefix = metadata.id.slice(0, -collection.length);
+    for (const item of metadata.items ?? []) {
+      if (item.id.startsWith(prefix)) {
+        const request = item.id.slice(prefix.length);
+        if (assets.has(request)) manifestLabels[request] = label(item.label) ?? request;
+      }
+    }
+  }
+  const images = await Promise.all(requests.filter(request => request.endsWith("/info.json")).map(async info => {
+    const response = await catalog.get(info);
+    if (!response.ok) throw new Error(`Cannot read published IIIF image: ${info}`);
+    const metadata: ImageServiceInfo = await response.json();
+    const name = info.slice(0, -"/info.json".length);
+    const sizes = [...(metadata.sizes ?? [])].sort((a, b) => a.width - b.width);
+    const preview = [...sizes.map(size => `${name}/full/${size.width},${size.height}/0/default.jpg`), `${name}/full/max/0/default.jpg`].find(request => assets.has(request));
+    return { name, info, preview, width: metadata.width, height: metadata.height,
+      fileCount: requests.filter(request => request.startsWith(`${name}/`)).length };
+  }));
+  return { images, fileCount: requests.length, collection, collectionLabel, manifestLabels,
+    manifests: requests.filter(request => request === "manifest.json" || request.endsWith("/manifest.json")) };
+}
 
 export type PublishedIiifCatalog = {
   version: 1;

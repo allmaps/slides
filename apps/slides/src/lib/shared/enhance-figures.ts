@@ -65,6 +65,10 @@ export function enhanceFigures(content: HTMLElement, t: InterfaceText = createIn
     } else if (local) {
       const fragment = imageSource!.includes("#") ? imageSource!.slice(imageSource!.indexOf("#")) : "";
       source = { imageService: withBaseUrl(joinUrl("iiif", local.servicePath)) + fragment };
+    } else if (figure.dataset.image && getContentAssetUrl(imageSource!.split("#")[0])
+      && !/^https?:/i.test(imageSource!) && /\.(avif|gif|jpe?g|png|webp)(?:#.*)?$/i.test(imageSource!)) {
+      const [filename, fragment] = imageSource!.split("#");
+      source = { image: resolveUrl(filename) + (fragment ? `#${fragment}` : "") };
     } else {
       // Image.svelte's marker is already resolved, including the site's base path.
       source = { imageService: figure.dataset.image ? resolveUrl(imageSource!) : imageSource! };

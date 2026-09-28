@@ -84,6 +84,25 @@ test('SVGs and images outside the IIIF input are published as ordinary assets', 
   assert.doesNotMatch(module, /\.svg\?url&iiif|bitmap\.png\?url&iiif/);
 });
 
+test('disabling IIIF imports original image assets, and images-only content is valid', async t => {
+  const root = await fixture(t);
+  await mkdir(path.join(root, 'assets/images'), { recursive: true });
+  await writeFile(path.join(root, 'assets/images/photo.jpg'), 'photo');
+  await writeFile(path.join(root, 'slides.config.yml'), 'title: Images only\niiif:\n  enabled: false\n');
+  const content = await loadContent(await loadSlidesConfig({ content: root }));
+  assert.equal(content.slideCount, 0);
+  assert.match(contentModule(content), /photo\.jpg\?url"/);
+  assert.doesNotMatch(contentModule(content), /url&iiif/);
+});
+
+test('slideshow routes cannot shadow the generated-asset overview pages', async t => {
+  const root = await fixture(t);
+  for (const slug of ['iiif', 'thumbnails']) {
+    await writeFile(path.join(root, 'slides.config.yml'), `main: main\nslideshows:\n - id: main\n   path: chapters\n - id: ${slug}\n   slug: ${slug}\n   path: chapters\n`);
+    await assert.rejects(loadSlidesConfig({ content: root }).then(loadContent), /Reserved slideshow route/);
+  }
+});
+
 test('invalid references fail before rendering and content paths cannot escape the root', async t => {
   const root = await fixture(t);
   await writeFile(path.join(root, 'chapters/01-start.md'), '---\ntitle: Start\nsubslideshows: missing\n---\n');

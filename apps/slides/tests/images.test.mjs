@@ -28,7 +28,7 @@ before(async () => {
   await writeFile(`${fixtureDirectory}/paths.mjs`, `
     export const getContentIiifImage = path => path === 'assets/images/photo.jpg'
       ? { servicePath: 'photo', width: 1200, height: 800 } : undefined;
-    export const getContentAssetUrl = path => path?.startsWith('assets/logos/') ? '/demo/_app/' + path.split('/').at(-1) : undefined;
+    export const getContentAssetUrl = path => path?.startsWith('assets/logos/') || path === 'assets/images/plain.jpg' ? '/demo/_app/' + path.split('/').at(-1) : undefined;
     export const isExternalUrl = url => /^https?:/.test(url);
     export const joinUrl = (...parts) => parts.join('/');
     export const withBaseUrl = path => '/demo/' + path;
@@ -43,6 +43,12 @@ test('local Markdown images emit only an IIIF marker, with no fallback request',
   assert.match(html, /data-iiif-image="\/demo\/iiif\/photo#xywh=10,20,300,200"/);
   assert.match(html, /data-alt="Shipyard"/);
   assert.doesNotMatch(html, /<img|<picture|<source|srcset=/);
+});
+
+test('local images without IIIF are ordinary image assets', () => {
+  const html = renderImage({ src: 'assets/images/plain.jpg', alt: 'Unprocessed image' });
+  assert.match(html, /<img\b[^>]*src="\/demo\/_app\/plain.jpg"/);
+  assert.doesNotMatch(html, /data-iiif-image|\/iiif\//);
 });
 
 test('external image URLs never opt into IIIF without explicit figure attributes', () => {

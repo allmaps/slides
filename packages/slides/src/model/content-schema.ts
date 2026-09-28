@@ -258,6 +258,7 @@ export const slidesConfigSchema = z
     iiif: z
       .object({
         enabled: z.union([z.boolean(), z.string(), z.number()]).optional(),
+        force: z.boolean().optional(),
         input: optionalString,
         output: optionalString,
         id: optionalString,
@@ -268,6 +269,7 @@ export const slidesConfigSchema = z
         webp: z.union([z.boolean(), z.string(), z.number()]).optional(),
       })
       .optional(),
+    thumbnails: z.object({ enabled: z.boolean().optional() }).optional(),
     title: projectTextSchema,
     description: projectTextSchema,
     theme: optionalValue(themeSchema),

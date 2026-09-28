@@ -2,8 +2,9 @@ import type { Snippet } from "svelte";
 
 /** The supported subset of React IIIF Vault's CanvasPanel API. */
 export type CanvasPanelProps = (
-  | { manifest: string; startCanvas?: string; imageService?: never }
-  | { imageService: string; manifest?: never; startCanvas?: never }
+  | { manifest: string; startCanvas?: string; imageService?: never; image?: never }
+  | { imageService: string; manifest?: never; startCanvas?: never; image?: never }
+  | { image: string; manifest?: never; startCanvas?: never; imageService?: never }
 ) & {
   label?: string;
   text?: CanvasPanelText;
@@ -24,7 +25,8 @@ export type CanvasPanelProps = (
   };
   enableDownloads?: boolean;
   enableViewTransitions?: boolean;
-  /** Metadata always loads on mount. Set false to defer Atlas and image pixels. */
+  /** Metadata always loads on mount. Set false to defer Atlas and IIIF pixels.
+   * Ordinary images load immediately to determine their dimensions. */
   loadImage?: boolean;
   /** Opt into small service images while waiting for Atlas. Default false. */
   preloadThumbnail?: boolean;

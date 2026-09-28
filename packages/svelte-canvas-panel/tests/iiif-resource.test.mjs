@@ -34,6 +34,38 @@ function mockResources(t, entries) {
 }
 const load = (source, signal = new AbortController().signal) => loadIiifResource(source, base, signal);
 
+test("plain images work in Atlas without requesting IIIF metadata", async t => {
+  const requests = mockResources(t, {});
+  const before = globalThis.Image;
+  t.after(() => { if (before === undefined) delete globalThis.Image; else globalThis.Image = before; });
+  globalThis.Image = class {
+    naturalWidth = 1200; naturalHeight = 800;
+    set src(value) { if (value) queueMicrotask(() => this.onload?.()); }
+  };
+  const resource = await load({ type: "static", url: "/photo.jpg#xywh=100,200,300,400" });
+  assert.deepEqual(requests, []);
+  assert.equal(resource.images[0].id, `${base}/photo.jpg`);
+  assert.equal(resource.images[0].service, undefined);
+  assert.deepEqual(resource.region, { x: 100, y: 200, width: 300, height: 400 });
+  const world = createIiifWorld(resource);
+  world.recalculateWorldSize();
+  assert.equal(world.width, 1200);
+  assert.equal(world.height, 800);
+});
+
+test("plain image loading rejects failures and cancels when its figure unmounts", async t => {
+  const before = globalThis.Image;
+  t.after(() => { if (before === undefined) delete globalThis.Image; else globalThis.Image = before; });
+  globalThis.Image = class {
+    set src(value) { if (value) queueMicrotask(() => this.onerror?.()); }
+  };
+  await assert.rejects(load({ type: "static", url: "/missing.jpg" }), /could not be loaded/);
+  const controller = new AbortController();
+  const loading = load({ type: "static", url: "/photo.jpg" }, controller.signal);
+  controller.abort();
+  await assert.rejects(loading, { name: "AbortError" });
+});
+
 test("local level 0 derivatives use advertised sizes and valid API 3 edge tiles", async t => {
   const requests = mockResources(t, { [`${base}/image/info.json`]: { ...service, id: "https://published.example.org/image" } });
   const resource = await load({ type: "image", url: "/image/info.json" });

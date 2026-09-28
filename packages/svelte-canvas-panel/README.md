@@ -31,9 +31,12 @@ no paging, ranges, editing, media controls, annotations UI or React providers.
 
 <!-- Image API, including local level 0 derivatives -->
 <CanvasPanel imageService="/iiif/photo/info.json" region="100,200,800,600" rotation={90} />
+
+<!-- Original image, without an IIIF service -->
+<CanvasPanel image="/photos/shipyard.jpg" label="Shipyard" />
 ```
 
-Choose either `manifest` or `imageService`. A manifest uses the first canvas unless
+Choose `manifest`, `imageService` or `image`. A manifest uses the first canvas unless
 `startCanvas` selects another. The caption snippet appears in a `figcaption` below
 the preview and in the modal overlay. Pass caption content without a surrounding
 `figcaption`; sanitizing HTML passed through `{@html}` remains the caller's responsibility.
@@ -45,6 +48,7 @@ the preview and in the modal overlay. Pass caption content without a surrounding
 | `manifest` | — | Presentation API 2 or 3 manifest URL; alternative to `imageService`. |
 | `startCanvas` | First canvas | Canvas ID within the manifest. |
 | `imageService` | — | Image API service base, `info.json` URL or an unrotated image request URL. |
+| `image` | — | Ordinary image URL. Loads the original to determine dimensions, then displays it in Atlas without IIIF requests. |
 | `region` | Complete canvas | Initial pixel or percentage xywh region, in original unrotated coordinates. |
 | `rotation` | `0` | Clockwise degrees, normalized to 0–360. Rotates pixels in Atlas, without requiring server rotation support. |
 | `height` | Automatic ratio | Preview height in CSS pixels; modal fills its dialog. |
@@ -77,6 +81,11 @@ supported. Painting-annotation source crop selectors, nonrectangular targets and
 audiovisual playback are unsupported and show a loading error.
 
 ## Metadata, thumbnails and lazy images
+
+An ordinary `image` loads its original pixels immediately to determine dimensions,
+even with `loadImage={false}`; that flag still defers Atlas mounting. There are no
+tiles or smaller derivatives. Use an IIIF service for efficient large-image loading.
+The original supports the same modal, native-resolution zoom limit, regions and rotation.
 
 Mount all panels at page load with `loadImage={false}` to fetch only their metadata
 and establish the correct proportions early. Set `loadImage` to true when your

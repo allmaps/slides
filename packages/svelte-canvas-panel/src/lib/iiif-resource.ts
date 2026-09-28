@@ -29,6 +29,26 @@ function dimensions(value: { width?: unknown; height?: unknown }) {
 
 /** Resolve once per figure; the preview and modal share the resulting metadata. */
 export async function loadIiifResource(source: IiifSource, baseUrl: string, signal: AbortSignal): Promise<IiifResource> {
+  if (source.type === "static") {
+    signal.throwIfAborted();
+    const url = new URL(source.url.split("#")[0], baseUrl).href;
+    const size = await new Promise<{ width: number; height: number }>((resolve, reject) => {
+      const image = new Image();
+      image.crossOrigin = "anonymous";
+      const cleanup = () => { image.onload = null; image.onerror = null; signal.removeEventListener("abort", abort); };
+      const abort = () => { cleanup(); image.src = ""; reject(signal.reason); };
+      image.onload = () => {
+        cleanup();
+        try { resolve(dimensions({ width: image.naturalWidth, height: image.naturalHeight })); }
+        catch (error) { reject(error); }
+      };
+      image.onerror = () => { cleanup(); reject(new Error(`Image could not be loaded: ${url}`)); };
+      signal.addEventListener("abort", abort, { once: true });
+      image.src = url;
+    });
+    return { ...size, region: resolveRegion(source.region ?? getRegionFragment(source.url), size),
+      images: [{ id: url, ...size, target: { x: 0, y: 0, ...size } }] };
+  }
   const fetchJson = async (url: string) => {
     const response = await fetch(url, { signal });
     if (!response.ok) throw new Error(`IIIF request failed (${response.status}): ${url}`);

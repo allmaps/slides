@@ -11,7 +11,7 @@ export const iiifCatalogPath = (config: RuntimeSlidesConfig) => path.join(config
 export async function prepareIiif(config: RuntimeSlidesConfig, overrides: BuildIiifOptions = {}) {
   const catalog = iiifCatalogPath(config);
   const options = parseIiifOptions(config.publicUrl, {
-    sizes: config.iiif.sizes, tiles: config.iiif.tiles, tileSize: config.iiif.tileSize, webp: config.iiif.webp,
+    force: config.iiif.force, sizes: config.iiif.sizes, tiles: config.iiif.tiles, tileSize: config.iiif.tileSize, webp: config.iiif.webp,
     ...Object.fromEntries(Object.entries(overrides).filter(([, value]) => value !== undefined)),
     output: path.join(config.projectDir, "iiif", "publications"),
   }, config.iiif);

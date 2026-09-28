@@ -1,13 +1,48 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { mkdtemp, mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
+import { copyFile, mkdtemp, mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import sharp from 'sharp';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { buildStaticIiif, parseIiifOptions } from '../src/core.ts';
-import { readIiifCatalog, writeIiifCatalog } from '../src/catalog.ts';
+import { getIiifOverview, readIiifCatalog, writeIiifCatalog } from '../src/catalog.ts';
+
+test('overview lists only published services and uses an available derivative', async t => {
+  const f = await fixture(t), filename = path.join(f.root, 'catalog.json');
+  const catalog = readIiifCatalog(filename, { allowMissing: true });
+  assert.deepEqual((await getIiifOverview(catalog)).images, []);
+  await f.image('#778899');
+  const result = await buildStaticIiif(f.options(path.join(f.root, 'public')));
+  await writeIiifCatalog(filename, result);
+  const overview = await getIiifOverview(catalog);
+  assert.deepEqual(overview.images, [{ name: 'ship', info: 'ship/info.json', preview: 'ship/full/max/0/default.jpg',
+    width: 16, height: 16, fileCount: Object.keys(result.assets).filter(key => key.startsWith('ship/')).length }]);
+  assert.equal(overview.fileCount, Object.keys(result.assets).length);
+  assert.equal(overview.collection, 'collection.json');
+  for (const manifest of overview.manifests) assert.equal((await catalog.get(manifest)).status, 200);
+});
+
+test('overview reads the collection and folder manifest labels, including nested image folders', async t => {
+  const f = await fixture(t), filename = path.join(f.root, 'catalog.json');
+  await f.image('#778899');
+  await mkdir(path.join(f.input, 'ships/drawings'), { recursive: true });
+  await copyFile(f.source, path.join(f.input, 'ships/drawings/Ship detail.png'));
+  const options = { ...f.options(path.join(f.root, 'public')), collectionLabel: 'Maritime archive', idBase: 'https://images.example.org/iiif' };
+  await writeIiifCatalog(filename, await buildStaticIiif(options));
+  const catalog = readIiifCatalog(filename);
+  const overview = await getIiifOverview(catalog);
+  assert.equal(overview.images.length, 2);
+  assert.equal(overview.collectionLabel, 'Maritime archive');
+  assert.deepEqual(overview.manifests, ['manifest.json', 'ships/drawings/manifest.json']);
+  const collection = await (await catalog.get(overview.collection)).json();
+  for (const request of overview.manifests) {
+    const item = collection.items.find(item => item.id === options.idBase + '/' + request);
+    assert.ok(item);
+    assert.equal(overview.manifestLabels[request], Object.values(item.label).flat().join(' · '));
+  }
+});
 
 async function fixture(t) {
   const root = await mkdtemp(path.join(tmpdir(), 'iiif-catalog-'));

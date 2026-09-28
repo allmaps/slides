@@ -8,19 +8,20 @@
   import type { CanvasPanelProps } from "./types.ts";
   import type { IiifSource } from "./iiif-source.ts";
 
-  let { manifest, startCanvas, imageService, region, label = "Image", caption, text = {},
+  let { manifest, startCanvas, imageService, image, region, label = "Image", caption, text = {},
     embedded = false, height, rotation = 0, runtimeOptions,
     enableDownloads = true, enableViewTransitions = true,
     loadImage = true, preloadThumbnail = false, onLayoutReady }: CanvasPanelProps = $props();
   const ui = $derived({
     enlargeImage: 'Enlarge image: {title}', openImage: 'Open image viewer: {title}', imageZoom: 'Image zoom',
     zoomIn: 'Zoom in', zoomOut: 'Zoom out', closeImage: 'Close image', loadingImage: 'Loading image…',
-    imageLoadError: 'The IIIF image could not be loaded.', tryAgain: 'Try again',
+    imageLoadError: 'The image could not be loaded.', tryAgain: 'Try again',
     downloadPreview: 'Download image preview', downloadView: 'Download image view',
     previewDownloadError: 'The image preview could not be downloaded.', viewDownloadError: 'The image view could not be downloaded.', ...text,
   });
   const source = $derived<IiifSource>(manifest
     ? { type: "manifest", url: manifest, canvas: startCanvas, region }
+    : image ? { type: "static", url: image, region }
     : { type: "image", url: imageService ?? "", region });
   let ready = $state(false);
   let error = $state(false);
