@@ -1,3 +1,4 @@
+import { dev } from "$app/environment";
 import { error } from "@sveltejs/kit";
 import { dataAssetFiles } from "$lib/shared/content-package";
 import type { RequestHandler } from "./$types";
@@ -60,7 +61,7 @@ export const GET: RequestHandler = async ({ params }) => {
   return new Response(contents, {
     headers: {
       "content-type": getContentType(request),
-      "cache-control": "public, max-age=3600",
+      "cache-control": dev ? "no-store" : "public, max-age=3600",
     },
   });
 };

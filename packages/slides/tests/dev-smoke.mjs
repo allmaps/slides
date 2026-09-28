@@ -46,7 +46,13 @@ async function start(name) {
   await writeFile(layoutPath, layout.replace('<script lang="ts">', '<script lang="ts">\n  import { refreshText } from "$lib/dev-refresh";') + '\n<p id="dev-refresh">{refreshText}</p>\n');
   await mkdir(path.join(content, 'chapters'), { recursive: true });
   await mkdir(path.join(content, 'assets/images'), { recursive: true });
-  const config = { title: name, main: 'main', app: { directory: appDir }, slideshows: [{ id: 'main', path: 'chapters' }], iiif: { tiles: false, sizes: false, webp: false } };
+  await mkdir(path.join(content, 'assets/geojson'), { recursive: true });
+  const geojson = { type: 'FeatureCollection', features: [{ type: 'Feature', properties: { stroke: '#5e7a85', 'stroke-width': 5 }, geometry: { type: 'LineString', coordinates: [[4, 52], [5, 53]] } }] };
+  const geojsonPath = path.join(content, 'assets/geojson/route.geojson');
+  await writeFile(geojsonPath, JSON.stringify(geojson));
+  const config = { title: name, main: 'main', app: { directory: appDir }, slideshows: [{ id: 'main', path: 'chapters' }],
+    sources: { route: { type: 'geojson', path: 'assets/geojson/route.geojson' } },
+    iiif: { tiles: false, sizes: false, webp: false } };
   await writeFile(path.join(content, 'slides.config.json'), JSON.stringify(config));
   await writeFile(path.join(content, 'chapters/01-first.md'), `---\ntitle: ${name} first\n---\n${name} body`);
   const image = color => sharp({ create: { width: 16, height: 16, channels: 3, background: color } }).png().toFile(path.join(content, 'assets/images/shared.png'));
@@ -59,7 +65,7 @@ async function start(name) {
   const origin = `http://127.0.0.1:${number}`;
   const get = async url => fetch(origin + url, { signal: AbortSignal.timeout(10_000) });
   await until(async () => { const response = await get('/'); return response.ok && (await response.text()).includes(`${name} first`); }, `${name} startup`);
-  return { content, config, runtime, appDir, origin, get, image, child };
+  return { content, config, runtime, appDir, origin, get, image, child, geojson, geojsonPath };
 }
 try {
   const a = await start('Alpha'), b = await start('Beta');
@@ -75,6 +81,24 @@ try {
   const events = [];
   socket.addEventListener('message', event => events.push(JSON.parse(event.data)));
   await until(() => events.some(e => e.type === 'connected'), 'HMR connection');
+  const geojsonUrl = '/api/geojson/route.geojson';
+  const geojsonResponse = await a.get(geojsonUrl);
+  assert.equal(geojsonResponse.status, 200);
+  assert.equal(geojsonResponse.headers.get('cache-control'), 'no-store');
+  assert.match(geojsonResponse.headers.get('content-type'), /application\/geo\+json/);
+  assert.deepEqual(await geojsonResponse.json(), a.geojson);
+  const geojsonEventCount = events.length;
+  a.geojson.features[0].properties.stroke = '#CB7679';
+  a.geojson.features[0].properties['stroke-width'] = 9;
+  await writeFile(a.geojsonPath, JSON.stringify(a.geojson));
+  await until(() => events.slice(geojsonEventCount).some(e => e.type === 'full-reload'), 'GeoJSON styling reload');
+  await until(async () => {
+    const response = await a.get(geojsonUrl);
+    assert.equal(response.headers.get('cache-control'), 'no-store');
+    const properties = (await response.json()).features[0].properties;
+    return properties.stroke === '#CB7679' && properties['stroke-width'] === 9;
+  }, 'updated GeoJSON styling at the same URL');
+  assert.deepEqual(await (await b.get(geojsonUrl)).json(), b.geojson);
   const layoutResponse = await a.get(`/@fs/${a.appDir}/src/routes/+layout.svelte`);
   assert.equal(layoutResponse.status, 200);
   assert.doesNotMatch(layoutResponse.headers.get('cache-control') ?? '', /immutable/);
@@ -162,7 +186,7 @@ try {
     assert.doesNotMatch(children.find(entry => entry.child === site.child).log, /Command failed|CommandInterruptedError/);
     await assert.rejects(() => site.get('/'));
   }
-  console.log('PASS: app code HMR, uncached source modules, Markdown edits/add/rename/delete, explicit IIIF batches, missing/failed batches, exports, stable dev URLs, isolated pixels, data assets, thumbnails, config/base-path restart and clean SIGINT/SIGTERM shutdown.');
+  console.log('PASS: app code HMR, uncached source modules, GeoJSON styling reload without HTTP caching, Markdown edits/add/rename/delete, explicit IIIF batches, missing/failed batches, exports, stable dev URLs, isolated pixels, data assets, thumbnails, config/base-path restart and clean SIGINT/SIGTERM shutdown.');
 } finally {
   sockets.forEach(socket => socket.close());
   await Promise.all(children.map(({ child }) => new Promise(resolve => {

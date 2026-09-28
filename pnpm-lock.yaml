@@ -92,6 +92,8 @@ importers:
 
   content/kattenburg-atlas: {}
 
+  content/reuzenarbeid: {}
+
   packages/iiif:
     dependencies:
       '@iiif/builder':

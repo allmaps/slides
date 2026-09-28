@@ -1092,6 +1092,20 @@
       bearingSnap: 0,
       keyboard: false,
       transformConstrain: constrainSlideshowCamera,
+      transformRequest: dev ? (url, resourceType) => {
+        if (resourceType === "Source") {
+          const sourceUrl = new URL(url, window.location.href);
+          if (
+            sourceUrl.origin === window.location.origin &&
+            sourceUrl.pathname.startsWith(withBaseUrl("/api/"))
+          ) {
+            // Worker requests must also bypass responses cached before dev
+            // asset routes started sending no-store headers.
+            return { url, cache: "no-store" };
+          }
+        }
+        return { url };
+      } : undefined,
     });
     const updateBearing = () => {
       currentBearing = map.getBearing();

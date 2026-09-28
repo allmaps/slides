@@ -180,6 +180,38 @@ Only these two accent colors are configurable. Reading panels, body text,
 muted controls and shadows keep their existing light/dark neutral colors.
 The UI palette is independent of `map.theme`, map styles and GeoJSON colors.
 
+## Protomaps colors
+
+Use `protomaps.overrides` in `slides.config.yml` to customize the default basemap
+with [Protomaps flavor properties](https://docs.protomaps.com/basemaps/flavors):
+
+```yaml
+protomaps:
+  overrides:
+    water: "#D2E1E6"
+    park_b: "#D0B8BC"
+    wood_b: "#D0B8BC"
+    scrub_b: "#D0B8BC"
+    zoo: "#D0B8BC"
+    landcover:
+      farmland: "#D0B8BC"
+      forest: "#D0B8BC"
+      grassland: "#D0B8BC"
+      scrub: "#D0B8BC"
+    pois:
+      green: "#D0B8BC"
+```
+
+These overrides merge with the default flavor in both light and dark mode.
+For different palettes, put the flavor properties under `overrides.light`
+and `overrides.dark` instead. `water` covers oceans, lakes, rivers and streams;
+landcover colors apply at wider zooms, while park/wood/scrub colors apply closer
+in. POI colors change label text; sprite icons have their own baked-in colors.
+
+The same settings apply to thumbnail generation. Regenerate existing previews
+with `slides thumbnails .`. Overrides can also be scoped to a slideshow or
+slide under `map.protomaps`; they do not modify custom `map.styles` files.
+
 ## Shared GeoJSON overlays
 
 Declare GeoJSON sources in the content configuration to show them throughout
