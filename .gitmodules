@@ -1,11 +1,12 @@
+[submodule "content/slides-template"]
+	path = content/slides-template
+	url = https://github.com/allmaps/slides-template.git
 [submodule "content/kattenburg-atlas"]
 	path = content/kattenburg-atlas
 	url = https://github.com/amsterdamtimemachine/kattenburg-atlas.git
 [submodule "content/gravity-at-sea"]
 	path = content/gravity-at-sea
 	url = https://github.com/tu-delft-heritage/gravity-expeditions-app.git
-	branch = codex/content-repository
 [submodule "content/reuzenarbeid"]
 	path = content/reuzenarbeid
 	url = https://github.com/tu-delft-heritage/reuzenarbeid.git
-	branch = codex/slides-content
