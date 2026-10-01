@@ -1,5 +1,10 @@
 # Slides architecture migration
 
+Historical record of the workspace migration, before the single-package release
+bundle. Test counts and the four-archive installation below describe that earlier
+milestone. Use [architecture](architecture.md) for the current design and
+[development and releases](development.md) for the current checks and packaging.
+
 The agreed design combines the model, directory loader, build tooling, Vite
 integration and CLI in `@allmaps/slides`. The application remains in
 `apps/slides`; IIIF generation, static rendering and the Svelte viewer remain

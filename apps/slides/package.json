@@ -2,6 +2,7 @@
   "name": "@allmaps/slides-app",
   "private": true,
   "version": "0.0.1",
+  "license": "SEE LICENSE IN LICENSE.md",
   "type": "module",
   "scripts": {
     "test": "node --test tests/*.test.mjs",

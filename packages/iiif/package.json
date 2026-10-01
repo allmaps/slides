@@ -1,6 +1,7 @@
 {
   "name": "@allmaps/iiif",
   "version": "0.0.1",
+  "license": "MIT",
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
@@ -62,6 +63,7 @@
   "files": [
     "dist",
     "bin",
-    "README.md"
+    "README.md",
+    "LICENSE"
   ]
 }

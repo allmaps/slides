@@ -11,7 +11,10 @@ export default defineConfig(() => {
     process.env.SLIDES_IIIF_ENABLED?.trim().toLowerCase() ?? "",
   );
   return {
-    build: { emptyOutDir: true },
+    build: {
+      emptyOutDir: true,
+      license: { fileName: "_app/licenses/dependencies.md" },
+    },
     plugins: [
       slidesContent(),
       tailwindcss(),

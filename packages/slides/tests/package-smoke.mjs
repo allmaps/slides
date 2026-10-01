@@ -22,7 +22,8 @@ async function checkDevServer(installed) {
     while (Date.now() < deadline && child.exitCode === null) {
       const origin = log.match(/http:\/\/127\.0\.0\.1:\d+/)?.[0];
       if (origin) {
-        const response = await fetch(`${origin}/story/`, { signal: AbortSignal.timeout(10_000) });
+        // Vite may still be compiling the app after it prints the server URL.
+        const response = await fetch(`${origin}/story/`, { signal: AbortSignal.timeout(Math.max(1, deadline - Date.now())) });
         assert.equal(response.status, 200, log);
         assert.match(await response.text(), /First chapter/);
         const info = await fetch(`${origin}/story/iiif/ship/info.json`);
@@ -50,6 +51,16 @@ try {
   run(['install', '--ignore-workspace']);
   const installed = path.join(root, 'node_modules/@allmaps/slides');
   const pkg = JSON.parse(await readFile(path.join(installed, 'package.json')));
+  assert.equal(pkg.license, 'SEE LICENSE IN LICENSE.md');
+  // The release must carry both scopes and the complete content permission.
+  const noticeFiles = ['LICENSE.md', 'static/licenses/GPL-3.0.txt',
+    'static/licenses/CONTENT-PERMISSION.txt', 'static/licenses/MIT.txt',
+    'static/licenses/NOTICE.txt', 'static/fonts/OFL.txt', 'static/fonts/SourceSans3-OFL.txt'];
+  assert.equal(await readFile(path.join(installed, 'LICENSE.md'), 'utf8'),
+    await readFile(path.join(cwd, 'LICENSE.md'), 'utf8'));
+  for (const filename of noticeFiles)
+    assert.equal(await readFile(path.join(installed, 'app', filename), 'utf8'),
+      await readFile(path.join(repository, 'apps/slides', filename), 'utf8'), `Missing or changed release notice: ${filename}`);
   assert.equal(pkg.exports['./model'].default, './dist/model/index.js');
   assert.equal(pkg.exports['./build'].default, './dist/build/index.js');
   for (const name of ['@allmaps/iiif', '@allmaps/static-render', '@allmaps/svelte-canvas-panel'])
@@ -85,6 +96,13 @@ try {
   assert.ok(Number(diagnostics.match(/COMPLETED (\d+) FILES/)?.[1]) > 10, 'svelte-check must actually check the packaged application');
   run(['exec', 'slides', 'build', '.', '--outDir', 'site']);
   const html = await readFile(path.join(root, 'site/index.html'), 'utf8');
+  const licenseHref = html.match(/rel="license" href="([^"]+)"/)?.[1];
+  assert.ok(licenseHref, 'The built page must link to its software notice');
+  assert.equal(new URL(licenseHref, config.site.publicUrl).href, 'https://example.org/story/licenses/NOTICE.txt');
+  for (const filename of noticeFiles.filter(name => name.startsWith('static/')))
+    assert.equal(await readFile(path.join(root, 'site', filename.slice('static/'.length)), 'utf8'),
+      await readFile(path.join(installed, 'app', filename), 'utf8'), `Missing or changed site notice: ${filename}`);
+  assert.match(await readFile(path.join(root, 'site/_app/licenses/dependencies.md'), 'utf8'), /maplibre-gl/);
   assert.match(html, /First chapter/);
   assert.match(html, /<title>Packed site — an atlas through time<\/title>/);
   assert.match(html, /name="description" content="A detailed description for search and sharing"/);

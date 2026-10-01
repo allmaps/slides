@@ -1,10 +1,12 @@
 {
   "name": "@allmaps/svelte-canvas-panel",
   "version": "0.0.1",
+  "license": "MIT",
   "description": "Svelte component for IIIF Atlas Viewer",
   "type": "module",
   "files": [
-    "dist"
+    "dist",
+    "LICENSE"
   ],
   "exports": {
     ".": {

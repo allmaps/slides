@@ -1,6 +1,7 @@
 {
   "name": "@allmaps/slides",
   "version": "0.0.1",
+  "license": "SEE LICENSE IN LICENSE.md",
   "type": "module",
   "bin": {
     "slides": "./bin/slides.js"
@@ -175,6 +176,7 @@
     "dist",
     "bin",
     "README.md",
+    "LICENSE.md",
     "app"
   ],
   "sideEffects": [

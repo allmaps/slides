@@ -1,0 +1,27 @@
+Allmaps Slides software notices
+
+Copyright (c) 2026 Jules Schoonman and contributors.
+
+The Allmaps Slides application is licensed under the GNU General Public
+License, version 3 or, at your option, any later version, with the additional
+Allmaps Slides Content Permission. See GPL-3.0.txt and CONTENT-PERMISSION.txt
+in this directory. You may redistribute and modify the application under
+those terms. It is supplied WITHOUT ANY WARRANTY, including warranties of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+
+The Allmaps Slides CLI and reusable libraries use the MIT license; see MIT.txt.
+Other bundled dependencies retain their own licenses. Production builds list
+bundled dependency notices in ../_app/licenses/dependencies.md.
+The bundled fonts use the SIL Open Font License; see ../fonts/OFL.txt
+(League Spartan) and ../fonts/SourceSans3-OFL.txt.
+
+The slide text, configuration, images, maps and other independently authored
+presentation content have their respective rights holders' terms. This notice
+does not apply the GPL or grant a new license to that content.
+
+Upstream source: https://github.com/allmaps/slides
+Distributors must also provide access to the Corresponding Source for the
+application version they distribute, including applicable modifications and
+build scripts. The upstream URL alone does not identify a distributor's
+modifications or necessarily the source corresponding to this deployment.
+See https://github.com/allmaps/slides/blob/main/docs/licensing.md for guidance.

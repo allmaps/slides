@@ -1,0 +1,43 @@
+Allmaps Slides Content Permission, version 1.0
+
+Additional permission under GNU GPL version 3, section 7
+
+This permission applies to Allmaps Slides application code whose copyright
+holders have licensed it under the GNU General Public License, version 3 or,
+at your option, any later version, with this permission (the "Application").
+
+"Content" means independently authored narrative text, Markdown, declarative
+configuration and frontmatter, images, maps, georeferencing annotations,
+geospatial data, audio, video and other presentation material that does not
+contain or derive from the Application's program code. Content remains Content
+when mechanically converted, serialized, optimized or compiled for loading or
+display by the Application, including as HTML, JSON, Svelte components or
+JavaScript modules. Copied or adapted Application code does not become Content
+merely because it is placed in a content repository or a generated file.
+
+The copyright holders granting this permission permit you to combine the
+Application with Content and to use, modify and convey the resulting
+presentation without applying the GPL to the Content. You may convey Content,
+including its mechanically generated representations, under terms chosen by
+its respective rights holders, provided you have the rights necessary to do so.
+
+To the extent that combining Content with the Application would otherwise
+require Content to be included in Corresponding Source or licensed under the
+GPL, those requirements are waived for the Content only. The GPL continues to
+apply to the Application and modifications of it, including its code present
+in generated presentations. Its Corresponding Source obligations, including
+applicable build scripts, are not waived for Application code.
+
+This permission does not exempt the generated presentation as a whole from
+the GPL, relicense Content, grant rights in third-party material, or change
+the licenses of dependencies, fonts, maps or other separately licensed works.
+It imposes no requirement to publish Content or choose a particular Content
+license, and does not restrict any rights you already have under the GPL.
+
+This permission is granted only for copyrights controlled by the copyright
+holders who apply it. You may extend it to your contributions where you have
+the necessary rights. As provided by GPL version 3, section 7, you may remove
+this additional permission from a copy you convey. Recipients of a copy
+without this permission must rely on the permissions otherwise applicable to
+that copy. The permission is not automatically available for third-party GPL
+code that does not carry it.

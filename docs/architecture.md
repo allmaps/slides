@@ -1,5 +1,8 @@
 # Architecture
 
+For setup and release commands, see [development](development.md). The
+[documentation index](README.md) links authoring guides and package references.
+
 ## Responsibilities
 
 `@allmaps/slides` is one public package with internal `model`, `content`, `build`,
@@ -32,8 +35,9 @@ Content directory
 The Vite adapter emits explicit asset imports and the resolved project/configuration.
 A separate Markdown module imports compiled components, avoiding a dependency
 cycle when those components read configuration or image metadata. Neither
-module generates images. The server module only supplies the path of a
-prepared IIIF catalog. Routes read that catalog and serve/prerender its listed
+module generates images. A virtual IIIF configuration module supplies the path
+of a prepared catalog and generation flags. Ordinary server modules read that
+catalog; routes serve/prerender its listed
 files. No author-written JavaScript entry point is required.
 
 ## Public URLs and caching

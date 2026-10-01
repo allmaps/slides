@@ -26,7 +26,7 @@ export async function bundleSlides(root) {
   await rm(app, { recursive: true, force: true });
   await mkdir(app, { recursive: true });
   const source = path.resolve(root, '../../apps/slides');
-  for (const name of ['src', 'static', 'vite.config.js', 'svelte.config.js'])
+  for (const name of ['src', 'static', 'vite.config.js', 'svelte.config.js', 'LICENSE.md'])
     await cp(path.join(source, name), path.join(app, name), { recursive: true });
   console.log('Bundled @allmaps/slides, including IIIF, the renderer, Svelte components and application.');
 }

@@ -74,7 +74,7 @@ font by default. `socialImage.font` can supply another family and local file.
 Long text shrinks to fit. Disabled overlays do not load fonts.
 The neutral render plan carries font bytes and optional per-job `textOverlay`
 data. Small slide cards and hover previews never receive this overlay. See
-[the configuration examples](../packages/slides/README.md#overall-titles-descriptions-and-sharing-images)
+[the configuration examples](configuration.md#overall-titles-descriptions-and-sharing-images)
 for short/long copy and fallback rules.
 
 GeoJSON sources declared in the content configuration use the same SimpleStyle
@@ -85,8 +85,8 @@ would otherwise be silently omitted. The render caches include this correction.
 The renderer has a JSON batch CLI, a Node API and a Docker image. Plans contain
 relative local asset paths and can be moved with their content/source caches.
 Sharp is pinned to the same version across the IIIF and native dependencies.
-See [the renderer README](../packages/static-render/README.md) for commands and
-[the Slides README](../packages/slides/README.md) for shared exports.
+See [the renderer reference](static-render.md) for commands and
+[the Slides API](api.md) for shared exports.
 
 Both renderers receive the same center, zoom, bearing and pixel dimensions.
 Allmaps' Mercator scale is `40075016.68557849 / (512 * 2 ** zoom)` and its
@@ -212,8 +212,8 @@ The container build uses three BuildKit cache mounts and explicit Actions
 cache import/export; ordinary image-layer caching alone does not persist cache
 mounts on hosted runners. A daily `CACHE_EPOCH` build argument lets unchanged
 content revalidate remote inputs. The renderer cache is namespaced by the
-framework lockfile. See the content package README for build arguments and
-local source overrides.
+framework lockfile. See [Kattenburg's deployment guide](https://github.com/amsterdamtimemachine/kattenburg-atlas/blob/main/docs/deployment.md)
+for build arguments and local source overrides.
 
 The optional renderer/build-tool image remains useful for standalone batches.
 It shares `install-system-deps.sh` with the Pages and web-image builds. The
@@ -247,7 +247,7 @@ basemap themes and vector overlays are handled. Sharp's raw-pixel pipeline
 applies map effects before alpha composition. WebGL-only distortion shading,
 mask/grid/GCP/vector diagnostics and unknown options produce warnings and are
 omitted; previews still generate with supported settings. See the
-[complete option audit](../packages/static-render/README.md#warped-map-option-support).
+[complete option audit](static-render.md#warped-map-option-support).
 Warped-map sprite atlases still require IIIF image sources instead.
 Buffer rendering may differ from WebGL triangulation on strongly distorted
 maps. Projective maps preserve the authored forward transform used by the live
