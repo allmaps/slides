@@ -32,8 +32,6 @@
     "@allmaps/render": "1.0.0-beta.84",
     "@allmaps/slides": "workspace:*",
     "@allmaps/stdlib": "1.0.0-beta.42",
-    "@allmaps/svelte-canvas-panel": "workspace:*",
-    "@allmaps/iiif": "workspace:*",
     "@lucide/svelte": "^1.34.0",
     "@sveltejs/adapter-static": "^3.0.10",
     "@turf/turf": "^7.3.5",

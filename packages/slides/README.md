@@ -24,9 +24,9 @@ The current Allmaps packages support Zod 4.6.5 without a package-manager overrid
 Remove any older `zod: 4.4.3` override when upgrading and update your lockfile.
 
 This repository prepares release archives with `pnpm --filter @allmaps/slides
-pack`; it does not publish them automatically. Until the coordinated packages
-are released, use the monorepo CLI or locally packed archives. The
-`test:package` script demonstrates installing the four local archives together.
+pack`; it does not publish them automatically. Before publication, use the
+monorepo CLI or install the locally packed Slides archive. The `test:package`
+script installs this single archive without overrides or other workspace packages.
 
 Paths select independent sites. A named installed/workspace content package
 also works, but its only required role is locating the content directory.
@@ -550,7 +550,9 @@ during builds. Remote map sources still need their usual credentials/network.
 | `/content` | Discover and validate a content directory. |
 | `/build` | `loadSlidesConfig`, `buildSite`, `runSite`, `buildThumbnails`. |
 | `/build/catalog` | Read completed thumbnail manifests. |
-| `/vite` | `slidesContent()` adapter for the bundled application. |
+| `/vite` | `slidesContent()` and `iiifImageAssets()` adapters for the included application. |
+| `/server/iiif` | Prepared IIIF catalogs, routes, overview and annotation image resolution. |
+| `/canvas-panel` | Svelte IIIF canvas component and its prop types. |
 
 ```js
 import { loadSlidesConfig, buildSite } from '@allmaps/slides/build';
@@ -564,8 +566,29 @@ await buildSite({ content: './my-story', outDir: './public-site' });
 
 Browser code should import the model entry points, keeping Node-only build
 dependencies outside the client graph. Workspace exports point to source;
-release exports point to compiled JavaScript and declarations. The independent
-IIIF, map renderer and Svelte viewer packages can be used without Slides.
+release exports point to compiled JavaScript and declarations. The IIIF and
+renderer implementations are bundled into this package. Canvas components ship
+as preprocessed Svelte files for the application's compiler. No separate
+installation or publication of these workspace packages is needed.
+
+The renderer runs through its own bundled entry in a separate Node process.
+The app imports IIIF behavior from ordinary server modules; the Vite virtual
+module supplies only configuration data. Application sources are included because
+each presentation's Markdown is compiled when `slides build` runs.
+
+## Building the package from source
+
+From the monorepo root:
+
+```sh
+pnpm bundle
+pnpm test:package
+pnpm --filter @allmaps/slides pack --pack-destination ../../artifacts
+```
+
+The `prepack` hook rebuilds the package for packing and publishing. Runtime npm
+dependencies are installed normally by the consumer's package manager. Bundling
+does not remove the Linux graphics requirements for native thumbnails.
 
 ## Verification
 
@@ -578,7 +601,7 @@ pnpm --filter @allmaps/slides test:package
 ```
 
 The dev smoke runs two independent sites and observes actual HTTP/WebSocket
-updates. The package smoke installs archives in a fresh content-only repository
+updates. The package smoke installs one Slides archive in a fresh content-only repository
 and builds a self-contained local map/image fixture, including native rendering.
 
 The app keeps controls inside iOS safe-area insets in portrait and landscape.

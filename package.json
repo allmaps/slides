@@ -9,7 +9,9 @@
     "preview": "slides preview ./content/gravity-at-sea",
     "check": "slides check ./content/gravity-at-sea",
     "validate": "slides validate ./content/gravity-at-sea",
-    "iiif": "slides iiif ./content/gravity-at-sea"
+    "iiif": "slides iiif ./content/gravity-at-sea",
+    "bundle": "pnpm --filter @allmaps/slides run build",
+    "test:package": "pnpm --filter @allmaps/slides test:package"
   },
   "devDependencies": {
     "@allmaps/slides": "workspace:*"

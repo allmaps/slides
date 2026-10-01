@@ -97,8 +97,12 @@ CLI and content proxy with `@allmaps/slides`. IIIF is now `@allmaps/iiif`.
 Output defaults to the selected content directory's `dist`; CI should pass an
 explicit `--outDir` and upload that directory.
 
-Coordinated releases include Slides, IIIF, static-render and the Svelte viewer.
-All publish compiled JavaScript/declarations; Slides also includes app sources.
-Packing and installing archives into a fresh content-only repository is the
-release acceptance test. No package publication or site deployment is performed
-by that test.
+`pnpm bundle` produces one Slides release containing the IIIF and static-render
+implementations, preprocessed Svelte viewer components, declarations and app
+sources. The helper packages remain separate in the workspace but do not require
+separate publication. External npm dependencies remain declared in Slides.
+The application uses Slides exports; its IIIF virtual module carries only data,
+and the renderer has a separate, statically imported bundle entry.
+Packing and installing the single Slides archive into a fresh content-only
+repository is the release acceptance test. No package publication or site
+deployment is performed by that test.

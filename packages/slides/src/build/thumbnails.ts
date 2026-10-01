@@ -1,5 +1,5 @@
 import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { packageRoot } from "../package.ts";
 import { booleanOption, type RuntimeSlidesConfig } from "../content/config.ts";
 import { loadContent } from "../content/index.ts";
 import type { Thumbnail, ThumbnailManifest } from "../model/thumbnails.ts";
@@ -34,7 +34,7 @@ export async function buildThumbnails(config: RuntimeSlidesConfig) {
   const planPath = path.join(paths.work, "plan.json"), resultPath = path.join(paths.work, "result.json");
   await atomicWrite(planPath, JSON.stringify(prepared.plan));
   await atomicWrite(path.join(paths.work, "manifest-template.json"), JSON.stringify(prepared.manifest));
-  await runNode(fileURLToPath(import.meta.resolve("@allmaps/static-render/cli")), [planPath,
+  await runNode(path.join(packageRoot, "bin/render.js"), [planPath,
     "--assets", config.sourceContentDir, "--output", paths.outputRoot, "--cache", paths.cacheRoot,
     "--result", resultPath, ...(offline ? ["--offline"] : [])]);
   const result = await readJson<RenderResult>(resultPath);

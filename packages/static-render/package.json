@@ -10,7 +10,7 @@
   },
   "exports": {
     ".": "./src/index.ts",
-    "./cli": "./bin/render.mjs",
+    "./cli": "./src/cli.js",
     "./cache": "./src/cache.ts",
     "./sources": "./src/sources.ts",
     "./warped": "./src/warped.ts",
@@ -47,7 +47,7 @@
         "types": "./dist/index.d.ts",
         "default": "./dist/index.js"
       },
-      "./cli": "./bin/render.mjs",
+      "./cli": "./dist/cli.js",
       "./cache": {
         "types": "./dist/cache.d.ts",
         "default": "./dist/cache.js"

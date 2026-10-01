@@ -1,8 +1,4 @@
-import { slidesContent } from "@allmaps/slides/vite";
-
-import {
-  iiifImageAssets,
-} from "@allmaps/iiif/vite";
+import { slidesContent, iiifImageAssets } from "@allmaps/slides/vite";
 import { sveltekit } from "@sveltejs/kit/vite";
 import tailwindcss from "@tailwindcss/vite";
 import { defineConfig } from "vite";
@@ -24,8 +20,9 @@ export default defineConfig(() => {
     ],
     resolve: { dedupe: ["svelte"] },
     ssr: {
-      noExternal: ["@lucide/svelte", "@allmaps/svelte-canvas-panel"],
-      external: ["@allmaps/iiif", "@allmaps/static-render"],
+      // Vite matches noExternal by package name, including for subpath imports.
+      noExternal: ["@lucide/svelte", "@allmaps/slides", "@allmaps/svelte-canvas-panel"],
+      external: ["@allmaps/slides/server/iiif", "@allmaps/slides/build/catalog"],
     },
   };
 });

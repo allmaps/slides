@@ -1,6 +1,6 @@
-declare module "virtual:slides/iiif-server" {
-	const catalog: import("@allmaps/iiif").IiifCatalog;
-	export default catalog;
+declare module "virtual:slides/iiif-config" {
+	const config: import("@allmaps/slides/server/iiif").IiifServerConfig;
+	export default config;
 }
 
 declare module "virtual:slides/content" {

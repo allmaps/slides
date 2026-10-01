@@ -1,5 +1,5 @@
-import catalog from "virtual:slides/iiif-server";
-import { getIiifOverview } from "@allmaps/iiif/catalog";
+import catalog from "$lib/server/iiif";
+import { getIiifOverview } from "@allmaps/slides/server/iiif";
 
 export const trailingSlash = "always";
 export const load = async () => ({ iiif: await getIiifOverview(catalog) });

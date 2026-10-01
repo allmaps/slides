@@ -70,6 +70,37 @@ pnpm exec slides validate ./content/gravity-at-sea
 Local test content can live in the ignored `content/tests/` directory. If present,
 run it with `pnpm exec slides dev ./content/tests --port 5175`.
 
+## Building the npm package
+
+From this repository, run:
+
+```sh
+pnpm bundle
+pnpm test:package
+pnpm --filter @allmaps/slides pack --pack-destination ../../artifacts
+```
+
+`bundle` builds one distributable `@allmaps/slides` package. It includes the
+workspace IIIF and renderer code, the Svelte canvas components, and the application.
+External npm dependencies, including Sharp and Chiitiler, remain normal runtime
+dependencies. The other workspace packages do not need to be published first.
+`pack` also runs this build automatically through `prepack`.
+
+The entry points and dependency rules live in `packages/slides/tsdown.config.ts`.
+`scripts/build-package.mjs` delegates the Slides build to `scripts/bundle-slides.mjs`,
+which coordinates tsdown, `svelte-package` and copying the application. No generated
+import strings are patched. The package smoke test installs only the Slides
+tarball in a temporary project and checks the app and native rendering.
+
+`pnpm build` still builds the selected presentation; `pnpm bundle` builds the npm
+package. Publishing is a separate step:
+
+```sh
+pnpm --filter @allmaps/slides publish --access public
+```
+
+## Content development
+
 Each server reads its original content files. Vite hot-updates app code and
 automatically reloads content edits, additions, renames and removals. Separate sites
 have isolated application caches; they can run concurrently. Package-name
@@ -338,7 +369,8 @@ viewer tests with `pnpm --filter @allmaps/svelte-canvas-panel test`.
 
 ### Viewer package
 
-Slides imports `CanvasPanel` from `@allmaps/svelte-canvas-panel` through `workspace:*`.
+The app imports `CanvasPanel` from `@allmaps/slides/canvas-panel`. In the workspace,
+this forwards to `@allmaps/svelte-canvas-panel`; the Slides release includes its output.
 The [package README](packages/svelte-canvas-panel/README.md) documents its Svelte API,
 styling, tests and packaging commands. Workspace imports use the source, so viewer
 edits participate in the normal Slides development server without a separate build.

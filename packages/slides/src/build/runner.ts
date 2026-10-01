@@ -4,11 +4,12 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { exists, type RuntimeSlidesConfig } from "../content/config.ts";
 import { atomicWrite } from "./files.ts";
+import { packageRoot } from "../package.ts";
 
 /** Only small runner files are generated. App and content sources stay in place. */
 export async function prepareRunner(config: RuntimeSlidesConfig, runner = path.join(config.workDir, "runner")) {
   await mkdir(runner, { recursive: true });
-  const packageJson = JSON.parse(await readFile(new URL("../../package.json", import.meta.url), "utf8"));
+  const packageJson = JSON.parse(await readFile(path.join(packageRoot, "package.json"), "utf8"));
   await atomicWrite(path.join(runner, "package.json"), JSON.stringify({ private: true, type: "module", dependencies: packageJson.dependencies }));
   await atomicWrite(path.join(runner, "vite.config.js"), `export { default } from ${JSON.stringify(pathToFileURL(path.join(config.appDir, "vite.config.js")).href)};\n`);
   await atomicWrite(path.join(runner, "svelte.config.js"), `import * as app from ${JSON.stringify(pathToFileURL(path.join(config.appDir, "svelte.config.js")).href)};\nexport default app.createSlidesConfig ? app.createSlidesConfig() : app.default;\n`);

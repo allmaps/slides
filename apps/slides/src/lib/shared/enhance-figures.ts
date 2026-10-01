@@ -3,7 +3,7 @@ import { mount, unmount } from "svelte";
 import { writable } from "svelte/store";
 import CanvasFigure from "$lib/components/CanvasFigure.svelte";
 import { getContentAssetUrl, getContentIiifImage, joinUrl, withBaseUrl } from "./paths";
-import type { CanvasPanelProps } from "@allmaps/svelte-canvas-panel";
+import type { CanvasPanelProps } from "@allmaps/slides/canvas-panel";
 
 const resolveUrl = (value: string) => getContentAssetUrl(value) ?? withBaseUrl(value);
 

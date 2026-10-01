@@ -2,7 +2,7 @@ import { dev } from "$app/environment";
 import { error } from "@sveltejs/kit";
 import { dataAssetFiles } from "$lib/shared/content-package";
 import { env } from "$env/dynamic/public";
-import { resolveAnnotationImages } from "@allmaps/iiif/annotations";
+import { resolveAnnotationImages } from "@allmaps/slides/server/iiif";
 import { getContentIiifImage, withBaseUrl } from "$lib/shared/paths";
 import type { RequestHandler } from "./$types";
 

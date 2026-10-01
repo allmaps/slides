@@ -1,17 +1,17 @@
 import path from "node:path";
 import { watch, type FSWatcher } from "node:fs";
 import { mkdir } from "node:fs/promises";
-import { fileURLToPath } from "node:url";
 import type { Plugin, ViteDevServer } from "vite";
 import { iiifCatalogPath } from "../build/iiif.ts";
 import { thumbnailPaths } from "../build/thumbnails.ts";
 import { getAppEnvironment, loadRuntimeConfig, type RuntimeSlidesConfig } from "../content/config.ts";
 import { loadContent, slash, within, type ContentSnapshot } from "../content/index.ts";
+export { iiifImageAssets } from "@allmaps/iiif/vite";
 
 export const CONTENT_MODULE = "virtual:slides/content";
 const id = `\0${CONTENT_MODULE}`;
 const markdownId = "virtual:slides/markdown";
-const catalogId = "virtual:slides/iiif-server";
+const catalogId = "virtual:slides/iiif-config";
 export function contentModule(content: ContentSnapshot) {
   const lines = [`export const slidesConfig = ${JSON.stringify(content.config.slidesConfig)};`, `export const project = ${JSON.stringify(content.project)};`];
   const record = (name: string, files: string[], query: string | ((filename: string) => string), eager = true) => {
@@ -67,8 +67,7 @@ export function slidesContent(): Plugin {
     },
     async load(source) {
       if (source === `\0${catalogId}`) {
-        if (!runtime.iiif.enabled) return `export default { entries: async () => [], get: async () => new Response("Not found", { status: 404 }) };`;
-        return `import { readIiifCatalog } from ${JSON.stringify(fileURLToPath(import.meta.resolve("@allmaps/iiif/catalog")))}; export default readIiifCatalog(${JSON.stringify(iiifCatalogPath(runtime))}, { allowMissing: ${runtime.options.mode === "development"} });`;
+        return `export default ${JSON.stringify({ enabled: runtime.iiif.enabled, filename: iiifCatalogPath(runtime), allowMissing: runtime.options.mode === "development" })};`;
       }
       if (source !== id && source !== `\0${markdownId}`) return;
       const content = await loadContent(runtime);

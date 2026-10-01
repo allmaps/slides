@@ -2,7 +2,7 @@ import { access, readdir, readFile, realpath, stat } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { createHash } from "node:crypto";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { packageRoot } from "../package.ts";
 import { parse } from "yaml";
 import { parseConfigDocument } from "../model/config.ts";
 import { parseSlidesConfig, slidesConfigSchema } from "../model/content-schema.ts";
@@ -22,7 +22,6 @@ export type LoadSlidesConfigOptions = {
 };
 export type RuntimeSlidesConfig = Awaited<ReturnType<typeof loadSlidesConfig>>;
 const CONFIG_FILENAMES = ["slides.config.yml", "slides.config.yaml", "slides.config.json"];
-const packageRoot = fileURLToPath(new URL("../../", import.meta.url));
 export const exists = async (filename: string) => {
   try { await access(filename); return true; }
   catch (error) { if ((error as NodeJS.ErrnoException).code === "ENOENT") return false; throw error; }

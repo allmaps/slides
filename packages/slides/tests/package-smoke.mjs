@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawn } from 'node:child_process';
 import { mkdtemp, mkdir, readFile, writeFile, readdir, rm, realpath, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -10,24 +10,60 @@ const root = await mkdtemp(path.join(tmpdir(), 'slides-package-consumer-'));
 const archives = path.join(root, 'archives'); await mkdir(archives);
 const pnpm = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm';
 const run = (args, cwd = root, env = {}) => execFileSync(pnpm, args, { cwd, stdio: 'inherit', env: { ...process.env, ...env }, timeout: 240_000 });
-try {
-  const overrides = {};
-  for (const name of ['iiif', 'static-render', 'svelte-canvas-panel', 'slides']) {
-    const cwd = path.join(repository, 'packages', name);
-    run(['pack', '--pack-destination', archives], cwd);
-    const pkg = JSON.parse(await readFile(path.join(cwd, 'package.json')));
-    const archive = path.join(archives, pkg.name.replace('@', '').replace('/', '-') + '-' + pkg.version + '.tgz');
-    overrides[pkg.name] = 'file:' + archive;
+async function checkDevServer(installed) {
+  const child = spawn(process.execPath, [path.join(installed, 'bin/slides.js'), 'dev', '.', '--host', '127.0.0.1', '--port', '0'],
+    { cwd: root, stdio: ['ignore', 'pipe', 'pipe'] });
+  const closed = new Promise(resolve => child.once('close', resolve));
+  let log = '';
+  child.stdout.on('data', data => log += data);
+  child.stderr.on('data', data => log += data);
+  try {
+    const deadline = Date.now() + 60_000;
+    while (Date.now() < deadline && child.exitCode === null) {
+      const origin = log.match(/http:\/\/127\.0\.0\.1:\d+/)?.[0];
+      if (origin) {
+        const response = await fetch(`${origin}/story/`, { signal: AbortSignal.timeout(10_000) });
+        assert.equal(response.status, 200, log);
+        assert.match(await response.text(), /First chapter/);
+        const info = await fetch(`${origin}/story/iiif/ship/info.json`);
+        assert.equal(info.status, 200, log);
+        assert.equal((await info.json()).id, `${origin}/story/iiif/ship`);
+        return;
+      }
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    throw new Error(`Packaged dev server did not start:\n${log}`);
+  } finally {
+    child.kill('SIGTERM');
+    await closed;
   }
+}
+try {
+  const cwd = path.join(repository, 'packages/slides');
+  run(['pack', '--pack-destination', archives], cwd);
+  const sourcePackage = JSON.parse(await readFile(path.join(cwd, 'package.json')));
+  const archive = path.join(archives, `allmaps-slides-${sourcePackage.version}.tgz`);
   await writeFile(path.join(root, 'package.json'), JSON.stringify({ name: 'content-only-consumer', private: true, type: 'module',
-    devDependencies: { '@allmaps/slides': overrides['@allmaps/slides'] },
-    pnpm: { overrides, onlyBuiltDependencies: ['esbuild', 'sharp', '@maplibre/maplibre-gl-native'] },
+    devDependencies: { '@allmaps/slides': 'file:' + archive },
+    pnpm: { onlyBuiltDependencies: ['esbuild', 'sharp', '@maplibre/maplibre-gl-native'] },
   }, null, 2));
   run(['install', '--ignore-workspace']);
   const installed = path.join(root, 'node_modules/@allmaps/slides');
   const pkg = JSON.parse(await readFile(path.join(installed, 'package.json')));
   assert.equal(pkg.exports['./model'].default, './dist/model/index.js');
   assert.equal(pkg.exports['./build'].default, './dist/build/index.js');
+  for (const name of ['@allmaps/iiif', '@allmaps/static-render', '@allmaps/svelte-canvas-panel'])
+    assert.equal(pkg.dependencies[name], undefined, `${name} must be included, not installed from npm`);
+  for (const entry of Object.values(pkg.exports)) {
+    for (const filename of typeof entry === 'string' ? [entry] : Object.values(entry))
+      assert.ok((await stat(path.join(installed, filename))).isFile(), `Missing package export: ${filename}`);
+  }
+  for (const filename of await readdir(path.join(installed, 'dist'), { recursive: true })) {
+    if (!/\.(?:js|ts|svelte)$/.test(filename)) continue;
+    const source = await readFile(path.join(installed, 'dist', filename), 'utf8');
+    assert.doesNotMatch(source, /(?:from\s*|import\s*\(?\s*)["']@allmaps\/(?:iiif|static-render|svelte-canvas-panel)(?:\/|["'])/,
+      `Unpublished workspace import in ${filename}`);
+  }
   await assert.rejects(() => stat(path.join(installed, 'src')), { code: 'ENOENT' });
   // Authored content has no JavaScript entry point or exported content package.
   await mkdir(path.join(root, 'chapters'));
@@ -38,7 +74,8 @@ try {
   const config = { title: { short: 'Packed site', long: 'Packed site — an atlas through time' },
     description: { short: 'Explore our atlas', long: 'A detailed description for search and sharing' },
     main: 'main', slideshows: [{ id: 'main', path: 'chapters', description: 'Main slideshow fallback' }], site: { publicUrl: 'https://example.org/story/', basePath: '/story' },
-    map: { styles: { light: 'assets/map-styles/plain.json', dark: 'assets/map-styles/plain.json' } }, iiif: { sizes: false, tiles: false, webp: false } };
+    map: { styles: { light: 'assets/map-styles/plain.json', dark: 'assets/map-styles/plain.json' } },
+    socialImage: { textOverlay: true }, iiif: { sizes: false, tiles: false, webp: false } };
   await writeFile(path.join(root, 'slides.config.json'), JSON.stringify(config));
   await writeFile(path.join(root, 'chapters/01-first.md'), '---\ntitle: First chapter\n---\nA packaged story.\n\n![Ship](assets/images/ship.png)');
   const before = (await stat(installed)).mtimeMs;
@@ -76,12 +113,13 @@ try {
   for (let y = 400; y < 580; y++) for (let x = 56; x < 1144; x++)
     if (pixels[(y * 1200 + x) * imageInfo.channels] > 235) white++;
   assert.ok(white > 1000, 'the packaged app supplies its font and renders the sharing title');
+  await checkDevServer(installed);
   // A repeat build must reuse pixels. It still exports every public asset.
   run(['exec', 'slides', 'build', '.', '--outDir', 'site']);
   assert.deepEqual(await readdir(path.join(root, 'site/thumbnails')), rendered);
   await assert.rejects(() => stat(path.join(installed, 'app/.svelte-kit')), { code: 'ENOENT' });
   assert.equal((await stat(installed)).mtimeMs, before);
-  console.log(`PASS: packed content-only consumer with native thumbnails, IIIF, type checking, subpath URLs and repeat build: ${root}`);
+  console.log(`PASS: single-package consumer with native thumbnails, IIIF, type checking, dev server, subpath URLs and repeat build: ${root}`);
 } finally {
   if (process.env.KEEP_SLIDES_CONSUMER === '1') console.log(`Kept consumer: ${root}`);
   else await rm(root, { recursive: true, force: true });

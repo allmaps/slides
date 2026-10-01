@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { CanvasPanel, type CanvasPanelProps } from "@allmaps/svelte-canvas-panel";
+  import { CanvasPanel, type CanvasPanelProps } from "@allmaps/slides/canvas-panel";
   import type { Readable } from "svelte/store";
 
   import type { InterfaceText } from "$lib/shared/interface-settings";
