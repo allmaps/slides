@@ -68,16 +68,30 @@ The default application carries these files into development and built sites:
 - `licenses/MIT.txt`: the original Slides tooling/library notice.
 - `fonts/OFL.txt` and `fonts/SourceSans3-OFL.txt`: bundled font notices.
 
+The credits footer automatically displays the Slides version and links to the
+repository's `LICENSE.md`, pinned to the software commit for clean builds (or
+`main` for development builds). A package without a repository URL falls back to
+the bundled software notice. For a clean packaged build, it also links to the exact software
+commit and release notes. This identifies the software, not the content repository.
 The HTML links to the software notice using `rel="license"`. Production builds
 also generate `_app/licenses/dependencies.md` with bundled dependency notices.
 All paths are beneath the site's configured base path.
 
 License files alone do not supply Corresponding Source. Provide recipients with
 access to the source matching the application you distribute, including your app
-changes and the scripts needed to build it. A source archive alongside the site,
-linked from its credits, is a practical approach. Include the applicable license
-texts and build instructions. A link only to the latest upstream branch does not
-identify modified or older deployed versions.
+changes and the scripts needed to build it. The automatic commit link can provide
+that access for the unmodified released app while the matching source remains
+publicly available there. Keep that source available for as long as required;
+a commit hash alone does not guarantee availability. A separate release archive
+is not required by this release process. A link only to the latest upstream branch
+does not identify modified or older deployed versions.
+
+If you change the app, publish its matching source, licenses and build instructions.
+For a forked package, configure its public repository before packing; for a custom
+app, set `app.sourceUrl` to the matching source. Modified local builds do not claim
+that the unmodified upstream commit contains their full source. The automatic
+credits identify the build; they do not verify that you have supplied everything
+required by the license.
 
 Keep independently licensed content distinct in that source distribution. The
 content permission allows its omission; it does not exempt application code

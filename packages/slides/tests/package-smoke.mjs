@@ -51,6 +51,12 @@ try {
   run(['install', '--ignore-workspace']);
   const installed = path.join(root, 'node_modules/@allmaps/slides');
   const pkg = JSON.parse(await readFile(path.join(installed, 'package.json')));
+  const stamp = JSON.parse(await readFile(path.join(installed, 'build-info.json')));
+  assert.equal(stamp.version, pkg.version);
+  assert.match(stamp.revision, /^[a-f0-9]{40,64}$/);
+  assert.equal(execFileSync(process.execPath, [path.join(installed, 'bin/slides.js'), '--version'], {
+    cwd: root, encoding: 'utf8', env: { ...process.env, npm_package_version: '99.9.9', GITHUB_SHA: 'private-content-sha' },
+  }).trim(), pkg.version);
   assert.equal(pkg.license, 'SEE LICENSE IN LICENSE.md');
   // The release must carry both scopes and the complete content permission.
   const noticeFiles = ['LICENSE.md', 'static/licenses/GPL-3.0.txt',
@@ -94,8 +100,11 @@ try {
   const diagnostics = execFileSync(pnpm, ['exec', 'slides', 'check', '.', '--output', 'machine'], { cwd: root, encoding: 'utf8', timeout: 120_000 });
   console.log(diagnostics);
   assert.ok(Number(diagnostics.match(/COMPLETED (\d+) FILES/)?.[1]) > 10, 'svelte-check must actually check the packaged application');
-  run(['exec', 'slides', 'build', '.', '--outDir', 'site']);
+  run(['exec', 'slides', 'build', '.', '--outDir', 'site'], root, { npm_package_version: '99.9.9', GITHUB_SHA: 'private-content-sha' });
   const html = await readFile(path.join(root, 'site/index.html'), 'utf8');
+  const siteBuild = JSON.parse(await readFile(path.join(root, 'site/_app/slides-build.json')));
+  assert.deepEqual(siteBuild, JSON.parse(JSON.stringify({ ...stamp, customApp: false, applicationSourceUrl: stamp.sourceUrl })));
+  assert.doesNotMatch(JSON.stringify(siteBuild), /private-content-sha|99\.9\.9|slides-package-consumer-/);
   const licenseHref = html.match(/rel="license" href="([^"]+)"/)?.[1];
   assert.ok(licenseHref, 'The built page must link to its software notice');
   assert.equal(new URL(licenseHref, config.site.publicUrl).href, 'https://example.org/story/licenses/NOTICE.txt');

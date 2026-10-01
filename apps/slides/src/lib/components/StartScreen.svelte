@@ -4,7 +4,7 @@
   import { tick } from "svelte";
   import { Play } from "@lucide/svelte";
 
-  import AllmapsLogo from "$lib/components/AllmapsLogo.svelte";
+  import MadeWith from "$lib/components/MadeWith.svelte";
   import type { StartScreenTextConfig } from "$lib/shared/types";
 
   type Props = {
@@ -69,11 +69,9 @@
       <span>{startButtonLabel}</span>
     </button>
 
-    <p class="start-credit">
-      <span>{madeWithLabel}</span>
-      <AllmapsLogo inverted={isDarkMode} alt="" aria-hidden="true" />
-      <span>{t("productName")}</span>
-    </p>
+    <div class="start-credit">
+      <MadeWith {isDarkMode} label={madeWithLabel} />
+    </div>
   </div>
 </section>
 
@@ -115,7 +113,6 @@
   }
 
   .start-description,
-  .start-credit,
   .start-card h1 {
     margin: 0;
   }
@@ -137,8 +134,7 @@
     line-height: 1;
   }
 
-  .start-button span,
-  .start-credit span {
+  .start-button span {
     transform: translateY(0.06em);
   }
 
@@ -177,20 +173,7 @@
   }
 
   .start-credit {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
     margin-top: 1.5rem;
-    color: var(--app-interface-grey);
-    font-size: 1.25rem;
-    font-weight: 500;
-    line-height: 1.1;
-  }
-
-  .start-credit :global(.allmaps-logo) {
-    width: 2rem;
-    height: 2rem;
-    opacity: 0.2;
   }
 
   :global(.dark) .start-card {
@@ -203,14 +186,6 @@
     color: #fff;
   }
 
-  :global(.dark) .start-credit {
-    color: rgb(255 255 255 / 0.8);
-  }
-
-  :global(.dark) .start-credit :global(.allmaps-logo) {
-    opacity: 0.8;
-  }
-
   @media (max-width: 639px) {
     .start-card,
     :global(.dark) .start-card {
@@ -218,8 +193,7 @@
     }
 
     .start-description,
-    .start-button,
-    .start-credit {
+    .start-button {
       font-size: 1rem;
     }
 

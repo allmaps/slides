@@ -1,3 +1,8 @@
+declare module "virtual:slides/build-info" {
+  const info: import("@allmaps/slides/build-info").SiteBuildInfo;
+  export default info;
+}
+
 declare module "virtual:slides/iiif-config" {
 	const config: import("@allmaps/slides/server/iiif").IiifServerConfig;
 	export default config;

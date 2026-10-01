@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { Command } from "commander";
+import { getBuildInfo } from "../build-info.ts";
 
 import { CommandInterruptedError } from "../build/process.ts";
 import { runBuildIiifCommand } from "./commands/build-iiif.ts";
@@ -36,6 +37,7 @@ const addAppCommand = (name, description) => {
 
 program
   .name("slides")
+  .version((await getBuildInfo()).version)
   .description("Prepare and build Allmaps Slides content")
   .showHelpAfterError()
   .showSuggestionAfterError();

@@ -51,8 +51,8 @@ pnpm --filter @allmaps/slides pack --pack-destination ../../artifacts
 
 `bundle` builds one distributable `@allmaps/slides` package. It includes the
 workspace IIIF and renderer code, preprocessed Svelte canvas components, type
-declarations and application source. Other workspace packages do not need to
-be published first. External npm dependencies, including Sharp and Chiitiler,
+declarations and application source. The helper packages are private workspace
+packages; only `@allmaps/slides` is published. External npm dependencies, including Sharp and Chiitiler,
 remain runtime dependencies installed by the consumer's package manager.
 
 `pack` and `publish` rebuild through the `prepack` hook. `pnpm build` at the
@@ -73,7 +73,7 @@ To try a release archive, run this in a separate content repository, replacing
 the path with the archive produced by `pack`:
 
 ```sh
-pnpm add -D /absolute/path/to/allmaps-slides-0.0.1.tgz
+pnpm add -D /absolute/path/to/allmaps-slides-0.1.0-beta.1.tgz
 pnpm exec slides validate .
 pnpm exec slides dev .
 ```
@@ -82,19 +82,83 @@ The current dependency set needs no Zod override. Remove an old `zod: 4.4.3`
 override when upgrading and update the lockfile. Native Linux rendering still
 needs [system dependencies](static-render.md#linux-setup).
 
-## Publishing
+## Releases
 
-After setting the release version in `packages/slides/package.json` and running
-the release checks, an npm account with publish access to `@allmaps/slides` can run:
+`packages/slides/package.json` owns the public version, starting at
+`0.1.0-beta.1`. The bundled app and helper packages share that release. Their
+internal manifest versions are not separate public releases.
 
-```sh
-pnpm --filter @allmaps/slides publish --access public
-```
+For a user-visible change to the CLI, app or a bundled helper, run
+`pnpm changeset`, select `@allmaps/slides`, and describe what changed. Commit the
+generated Markdown file with the change. Content-only changes belong in their
+content repository's history and do not need a Slides changeset.
+
+The version workflow opens a release PR after changesets reach `main`. It updates
+the version, changelog and prerelease state. Enable GitHub Actions' permission to
+create pull requests in the repository settings. To prepare the same changes
+locally, run `pnpm release:version` and commit the result. During beta, Changesets
+advances `0.1.0-beta.1` to `0.1.0-beta.2`, and so on. A minor or major changeset can
+also change the target regular version.
+
+Keep the content submodules initialized when refreshing the workspace lockfile
+(`git submodule update --init --recursive` in a clean release checkout). The
+version workflow does this too, so it retains their dependency entries.
+
+For each release:
+
+1. Review the version PR and run the [checks below](#checks). The release PR uses
+   `GITHUB_TOKEN`, so run the Slides CI workflow manually on its branch if GitHub
+   does not trigger checks automatically. Merge the reviewed version changes.
+2. Check out the resulting clean, pushed commit and run `pnpm install --frozen-lockfile`
+   followed by `pnpm release:check`. Local content changes are excluded from this
+   check. Confirm that the software commit is accessible on GitHub before publishing.
+3. With npm access to `@allmaps/slides`, run `pnpm release:publish`. This rebuilds
+   and publishes the package, explicitly selects the `beta` npm tag for a beta version, and
+   creates a local Git tag such as `@allmaps/slides@0.1.0-beta.1`.
+4. Run `git push --follow-tags`. The release workflow creates a GitHub prerelease
+   with the corresponding changelog section. GitHub supplies its usual source
+   downloads; no separate source archive is uploaded.
+
+Use this publish command rather than `changeset publish`: Changesets can choose
+`latest` for packages that have not had a stable release, leaving `beta` behind.
+
+The initial `0.1.0-beta.1` version and changelog are already prepared; no version
+bump is needed for its first publication. Packing and testing never publish.
+An npm package's first publication may also receive the `latest` tag, so check
+the registry tags after that first release. The documented install uses `@beta`.
+
+When ready for a regular release, run `pnpm changeset pre exit` followed by
+`pnpm release:version`, review and commit the changes, then follow the same
+release steps. With the current target, this produces `0.1.0` on npm's `latest`
+tag. Keep Changesets' generated `.changeset/pre/` records in Git until it removes
+them during that transition.
 
 The package's [README](../packages/slides/README.md) is included at the archive root
 and becomes its npm landing page. Keep its documentation links absolute so they
 work on npm. Detailed guides remain in this repository's `docs/` directory.
-Packing and testing do not publish a release.
+
+## Software identity in credits
+
+Packing writes `build-info.json` inside the package with its version, software
+commit and source state. The app uses that metadata in the automatic credits
+footer, and built sites expose it at `_app/slides-build.json`. A clean packaged
+build links to the exact GitHub source commit and the matching release notes.
+The license link opens the repository's `LICENSE.md` at that commit, or on `main`
+for development builds. Packages without a repository URL link to the bundled
+software notice instead.
+
+Source checkouts show a development label. Uncommitted software changes show a
+modified label and omit links that would incorrectly identify the base commit
+as the complete source. Content changes do not affect this status. Builds without
+usable source metadata show a development label without an exact source link.
+The metadata never reads a consumer's Git commit, package version or CI variables,
+and does not contain content paths or repository URLs.
+
+For a fork, set the Slides package's `repository.url` to its public GitHub repository
+before committing and packing. A custom application selected with `app.directory`
+can provide its matching public source using `app.sourceUrl`; its source link
+does not default to the bundled app. See [configuration](configuration.md#credits-and-chapter-numbering)
+and [licensing](licensing.md#distributing-a-site).
 
 ## Checks
 

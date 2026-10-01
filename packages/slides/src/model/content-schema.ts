@@ -256,7 +256,10 @@ const slideshowDefinitionSchema = z.object({
 
 export const slidesConfigSchema = z
   .object({
-    app: z.object({ directory: optionalString }).optional(),
+    app: z.object({
+      directory: optionalString,
+      sourceUrl: z.url({ protocol: /^https?$/ }).optional(),
+    }).optional(),
     site: z
       .object({ basePath: optionalString, publicUrl: optionalString })
       .optional(),

@@ -1,0 +1,37 @@
+name: Prepare release
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.changeset/**'
+      - '.github/workflows/version.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: version-${{ github.ref }}
+
+permissions: {}
+
+jobs:
+  version:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          submodules: recursive
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+      - uses: changesets/action/version@v2
+        with:
+          script: pnpm release:version
+          github-token: ${{ secrets.GITHUB_TOKEN }}

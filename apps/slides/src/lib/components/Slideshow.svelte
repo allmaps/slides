@@ -12,6 +12,7 @@
   import Map from "$lib/components/Map.svelte";
   import MobilePanelHandle from "$lib/components/MobilePanelHandle.svelte";
   import PanelOverlay from "$lib/components/PanelOverlay.svelte";
+  import SoftwareCredits from "$lib/components/SoftwareCredits.svelte";
   import SlideshowNavigator from "$lib/components/SlideshowNavigator.svelte";
   import SlideshowLayers from "$lib/components/SlideshowLayers.svelte";
   import SlideshowPanel from "$lib/components/SlideshowPanel.svelte";
@@ -853,8 +854,8 @@
             {/if}
             {#if !SharedCredits && !CreditsComponent}
               <p class="text-[18px] leading-snug">{activeSlideshow.title}</p>
-              <p class="mt-3 text-[16px] leading-snug">{t("noCredits")}</p>
             {/if}
+            <SoftwareCredits isDarkMode={!!isDarkMode} />
           </PanelOverlay>
         {/if}
       </div>

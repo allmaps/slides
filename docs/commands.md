@@ -1,13 +1,14 @@
 # CLI commands
 
 Use Node.js 24 or later. Install the published package in your content repository
-with `pnpm add -D @allmaps/slides`. For source checkouts or local release archives,
+with `pnpm add -D @allmaps/slides@beta`. For source checkouts or local release archives,
 see [development](development.md).
 
 All examples below run from a content directory containing `slides.config.yml`.
 
 | Command | Purpose |
 | --- | --- |
+| `pnpm exec slides --version` | Show the installed Slides version. |
 | `pnpm exec slides dev .` | Validate content and start a development server. |
 | `pnpm exec slides validate .` | Check configuration, frontmatter and references. |
 | `pnpm exec slides check .` | Validate content and run Svelte checks. |

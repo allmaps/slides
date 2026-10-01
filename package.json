@@ -2,7 +2,6 @@
   "name": "slides-workspace",
   "private": true,
   "license": "SEE LICENSE IN LICENSE.md",
-  "version": "0.0.1",
   "type": "module",
   "scripts": {
     "dev": "slides dev ./content/gravity-at-sea",
@@ -12,9 +11,18 @@
     "validate": "slides validate ./content/gravity-at-sea",
     "iiif": "slides iiif ./content/gravity-at-sea",
     "bundle": "pnpm --filter @allmaps/slides run build",
-    "test:package": "pnpm --filter @allmaps/slides test:package"
+    "test:package": "pnpm --filter @allmaps/slides test:package",
+    "changeset": "changeset",
+    "release:version": "changeset version && pnpm install --lockfile-only --ignore-scripts",
+    "release:check": "node scripts/check-release.mjs",
+    "release:publish": "node scripts/publish-slides.mjs"
   },
   "devDependencies": {
-    "@allmaps/slides": "workspace:*"
+    "@allmaps/slides": "workspace:*",
+    "@changesets/cli": "3.0.3"
+  },
+  "packageManager": "pnpm@10.22.0",
+  "engines": {
+    "node": ">=24"
   }
 }

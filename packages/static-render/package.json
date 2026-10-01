@@ -85,5 +85,6 @@
     "README.md",
     "LICENSE",
     "scripts/install-system-deps.sh"
-  ]
+  ],
+  "private": true
 }

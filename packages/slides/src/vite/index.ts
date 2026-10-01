@@ -6,12 +6,14 @@ import { iiifCatalogPath } from "../build/iiif.ts";
 import { thumbnailPaths } from "../build/thumbnails.ts";
 import { getAppEnvironment, loadRuntimeConfig, type RuntimeSlidesConfig } from "../content/config.ts";
 import { loadContent, slash, within, type ContentSnapshot } from "../content/index.ts";
+import { getBuildInfo, siteBuildInfo, type SiteBuildInfo } from "../build-info.ts";
 export { iiifImageAssets } from "@allmaps/iiif/vite";
 
 export const CONTENT_MODULE = "virtual:slides/content";
 const id = `\0${CONTENT_MODULE}`;
 const markdownId = "virtual:slides/markdown";
 const catalogId = "virtual:slides/iiif-config";
+const buildInfoId = "virtual:slides/build-info";
 export function contentModule(content: ContentSnapshot) {
   const lines = [`export const slidesConfig = ${JSON.stringify(content.config.slidesConfig)};`, `export const project = ${JSON.stringify(content.project)};`];
   const record = (name: string, files: string[], query: string | ((filename: string) => string), eager = true) => {
@@ -45,6 +47,8 @@ export function markdownModule(content: ContentSnapshot) {
 
 export function slidesContent(): Plugin {
   let runtime: RuntimeSlidesConfig;
+  let buildInfo: SiteBuildInfo;
+  let ssr = false;
   let cleanup = () => {};
   const invalidate = (server: ViteDevServer) => {
     server.moduleGraph.invalidateAll();
@@ -54,18 +58,25 @@ export function slidesContent(): Plugin {
     name: "slides-content",
     async config() {
       runtime = await loadRuntimeConfig();
+      buildInfo = siteBuildInfo(await getBuildInfo(), runtime.raw.app);
       return {
         cacheDir: path.join(runtime.workDir, "vite"),
         server: { fs: { allow: [runtime.appDir, runtime.sourceContentDir, path.resolve(runtime.appDir, "../..")] },
           watch: { ignored: [runtime.cacheDir + "/**", runtime.outDir + "/**"] } },
       };
     },
+    configResolved(config) { ssr = Boolean(config.build.ssr); },
+    generateBundle() {
+      if (!ssr) this.emitFile({ type: "asset", fileName: "_app/slides-build.json", source: JSON.stringify(buildInfo, null, 2) + "\n" });
+    },
     resolveId(source) {
       if (source === CONTENT_MODULE) return id;
       if (source === markdownId) return `\0${markdownId}`;
       if (source === catalogId) return `\0${catalogId}`;
+      if (source === buildInfoId) return `\0${buildInfoId}`;
     },
     async load(source) {
+      if (source === `\0${buildInfoId}`) return `export default ${JSON.stringify(buildInfo)};`;
       if (source === `\0${catalogId}`) {
         return `export default ${JSON.stringify({ enabled: runtime.iiif.enabled, filename: iiifCatalogPath(runtime), allowMissing: runtime.options.mode === "development" })};`;
       }

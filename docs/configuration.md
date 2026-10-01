@@ -279,6 +279,24 @@ Paths are relative to the content directory and must name existing `.md` files
 inside it. Frontmatter is optional; the configured interface label is the fallback
 title. Referenced credits files are excluded from chapter lists and update live.
 
+The credits panel always ends with the Slides version and software notices, even
+when no credits document is configured. Clean packaged builds also link to the
+matching source commit and release notes. Local software changes are labeled as
+modified builds. These details describe the software; your content license and
+attribution belong in your own credits document.
+
+If you use a custom application, give visitors access to its matching source:
+
+```yaml
+app:
+  directory: ../custom-slides-app
+  sourceUrl: https://github.com/example/custom-slides-app/tree/COMMIT
+```
+
+`app.sourceUrl` is an optional HTTP or HTTPS URL, used only with `app.directory`.
+Replace `COMMIT` with the deployed app's commit. Without it, the custom app has no
+automatic source link. See [software licensing](licensing.md#distributing-a-site).
+
 ## Interface text
 
 English defaults, including accessibility labels and image viewer controls, live

@@ -11,11 +11,12 @@ Use **Node.js 24 or later**. Install the npm package in a new directory:
 ```sh
 mkdir my-story
 cd my-story
-pnpm add -D @allmaps/slides
+pnpm add -D @allmaps/slides@beta
 mkdir chapters
 ```
 
-For an unreleased checkout or a local package archive, see
+Slides is currently in beta. Commit your lockfile to keep builds reproducible.
+For a source checkout or a local package archive, see
 [development setup](https://github.com/allmaps/slides/blob/main/docs/development.md).
 
 Create `slides.config.yml`:

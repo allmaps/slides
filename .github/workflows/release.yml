@@ -1,0 +1,26 @@
+name: Release notes
+
+on:
+  push:
+    tags: ['@allmaps/slides@*']
+
+permissions:
+  contents: write
+
+jobs:
+  notes:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      - name: Extract notes for the tagged version
+        run: node scripts/release-notes.mjs > "$RUNNER_TEMP/slides-release-notes.md"
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          args=(--verify-tag --title "$GITHUB_REF_NAME" --notes-file "$RUNNER_TEMP/slides-release-notes.md")
+          if [[ "$GITHUB_REF_NAME" == *-beta.* ]]; then args+=(--prerelease); fi
+          gh release create "$GITHUB_REF_NAME" "${args[@]}"

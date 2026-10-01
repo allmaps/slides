@@ -1,6 +1,6 @@
 {
   "name": "@allmaps/slides",
-  "version": "0.0.1",
+  "version": "0.1.0-beta.1",
   "license": "SEE LICENSE IN LICENSE.md",
   "type": "module",
   "bin": {
@@ -17,7 +17,8 @@
     "test:dev": "node tests/dev-smoke.mjs",
     "test:assets": "node tests/asset-pages-smoke.mjs",
     "prepack": "pnpm run build",
-    "test:package": "node tests/package-smoke.mjs"
+    "test:package": "node tests/package-smoke.mjs",
+    "prepublishOnly": "node ../../scripts/check-release.mjs"
   },
   "dependencies": {
     "@allmaps/annotation": "1.0.0-beta.38",
@@ -83,7 +84,8 @@
       "types": "./src/canvas-panel/index.ts",
       "svelte": "./src/canvas-panel/index.ts",
       "default": "./src/canvas-panel/index.ts"
-    }
+    },
+    "./build-info": "./src/build-info.ts"
   },
   "engines": {
     "node": ">=24"
@@ -169,6 +171,10 @@
         "types": "./dist/canvas-panel/index.d.ts",
         "svelte": "./dist/canvas-panel/index.js",
         "default": "./dist/canvas-panel/index.js"
+      },
+      "./build-info": {
+        "types": "./dist/build-info.d.ts",
+        "default": "./dist/build-info.js"
       }
     }
   },
@@ -177,9 +183,20 @@
     "bin",
     "README.md",
     "LICENSE.md",
-    "app"
+    "app",
+    "build-info.json",
+    "CHANGELOG.md"
   ],
   "sideEffects": [
     "**/*.css"
-  ]
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/allmaps/slides.git",
+    "directory": "packages/slides"
+  },
+  "homepage": "https://github.com/allmaps/slides",
+  "bugs": {
+    "url": "https://github.com/allmaps/slides/issues"
+  }
 }

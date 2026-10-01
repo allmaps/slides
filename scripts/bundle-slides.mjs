@@ -1,7 +1,8 @@
-import { cp, mkdir, readFile, rm } from 'node:fs/promises';
+import { cp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { spawnSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 import path from 'node:path';
+import { captureBuildInfo } from '../packages/slides/src/build-info.ts';
 
 export async function bundleSlides(root) {
   const require = createRequire(path.join(root, 'package.json'));
@@ -28,5 +29,6 @@ export async function bundleSlides(root) {
   const source = path.resolve(root, '../../apps/slides');
   for (const name of ['src', 'static', 'vite.config.js', 'svelte.config.js', 'LICENSE.md'])
     await cp(path.join(source, name), path.join(app, name), { recursive: true });
+  await writeFile(path.join(root, 'build-info.json'), JSON.stringify(await captureBuildInfo(root, false), null, 2) + '\n');
   console.log('Bundled @allmaps/slides, including IIIF, the renderer, Svelte components and application.');
 }
