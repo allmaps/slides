@@ -1,14 +1,7 @@
 name: Static renderer
 on:
+  # Required status checks must run on every pull request, including docs-only changes.
   pull_request:
-    paths:
-      - "packages/**"
-      - "apps/slides/**"
-      - "scripts/**"
-      - ".dockerignore"
-      - "pnpm-lock.yaml"
-      - "pnpm-workspace.yaml"
-      - ".github/workflows/static-render.yml"
   workflow_dispatch:
 jobs:
   container:

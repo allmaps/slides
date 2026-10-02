@@ -1,16 +1,7 @@
 name: Slides architecture
 on:
+  # Required status checks must run on every pull request, including docs-only changes.
   pull_request:
-    paths:
-      - "packages/**"
-      - "package.json"
-      - ".changeset/**"
-      - "apps/slides/**"
-      - "scripts/**"
-      - "content/**"
-      - "pnpm-lock.yaml"
-      - "pnpm-workspace.yaml"
-      - ".github/workflows/slides.yml"
   workflow_dispatch:
 jobs:
   integration:
