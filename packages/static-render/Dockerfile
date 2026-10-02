@@ -24,7 +24,12 @@ CMD ["node", "/workspace/packages/static-render/bin/render.mjs", "--help"]
 
 # Optional Slides build image: content, caches and output are mounted at run time.
 FROM renderer AS slides-build
+# Build-info and release tests create Git fixtures and read the release tooling.
+RUN apt-get update && apt-get install -y --no-install-recommends git \
+    && rm -rf /var/lib/apt/lists/*
 COPY apps ./apps
+COPY scripts ./scripts
+COPY .changeset ./.changeset
 RUN mkdir -p content && pnpm install --frozen-lockfile \
     && pnpm --filter @allmaps/slides --filter @allmaps/static-render --filter @allmaps/iiif check \
     && pnpm --filter @allmaps/slides --filter @allmaps/slides-app --filter @allmaps/svelte-canvas-panel test

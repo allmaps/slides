@@ -4,6 +4,7 @@ import { mkdtemp, mkdir, readFile, writeFile, readdir, rm, realpath, stat } from
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { stripVTControlCharacters } from 'node:util';
 import sharp from 'sharp';
 const repository = fileURLToPath(new URL('../../../', import.meta.url));
 const root = await mkdtemp(path.join(tmpdir(), 'slides-package-consumer-'));
@@ -12,7 +13,7 @@ const pnpm = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm';
 const run = (args, cwd = root, env = {}) => execFileSync(pnpm, args, { cwd, stdio: 'inherit', env: { ...process.env, ...env }, timeout: 240_000 });
 async function checkDevServer(installed) {
   const child = spawn(process.execPath, [path.join(installed, 'bin/slides.js'), 'dev', '.', '--host', '127.0.0.1', '--port', '0'],
-    { cwd: root, stdio: ['ignore', 'pipe', 'pipe'] });
+    { cwd: root, stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, FORCE_COLOR: '1' } });
   const closed = new Promise(resolve => child.once('close', resolve));
   let log = '';
   child.stdout.on('data', data => log += data);
@@ -20,7 +21,8 @@ async function checkDevServer(installed) {
   try {
     const deadline = Date.now() + 60_000;
     while (Date.now() < deadline && child.exitCode === null) {
-      const origin = log.match(/http:\/\/127\.0\.0\.1:\d+/)?.[0];
+      // CI colors the port separately; exercise that output even in local runs.
+      const origin = stripVTControlCharacters(log).match(/http:\/\/127\.0\.0\.1:\d+/)?.[0];
       if (origin) {
         // Vite may still be compiling the app after it prints the server URL.
         const response = await fetch(`${origin}/story/`, { signal: AbortSignal.timeout(Math.max(1, deadline - Date.now())) });
