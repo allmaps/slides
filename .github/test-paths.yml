@@ -1,0 +1,12 @@
+# Used with dorny/paths-filter's `every` predicate in both test workflows.
+# Run tests unless every changed file is documentation. Keep content Markdown,
+# licenses, workflow files and unknown paths covered by default.
+tests:
+  - '**'
+  - '!docs/**'
+  - '!README.md'
+  - '!packages/*/README.md'
+  - '!apps/*/README.md'
+  - '!packages/*/CHANGELOG.md'
+  - '!apps/*/CHANGELOG.md'
+  - '!.changeset/*.md'

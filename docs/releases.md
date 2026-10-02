@@ -63,15 +63,17 @@ Local content edits do not block `release:check`.
 | --- | --- | --- |
 | Prepare release (`version.yml`) | Changesets on `main`, or manual run on `main` | Opens/updates the version and changelog PR. No publication. |
 | Release notes (`release.yml`) | Push of `@allmaps/slides@*`, or manual run with an existing tag | Creates the GitHub release; beta versions are prereleases. |
-| Slides architecture (`slides.yml`) | Relevant pull requests, or manual run | Tests the CLI, app, renderer, development server and installed package. |
-| Static renderer (`static-render.yml`) | Relevant pull requests, or manual run | Tests the Linux renderer container. |
+| Slides architecture (`slides.yml`) | Every pull request, or manual run | Tests the CLI, app, renderer, development server and installed package; skips tests for documentation-only PRs. |
+| Static renderer (`static-render.yml`) | Every pull request, or manual run | Tests the Linux renderer container; skips tests for documentation-only PRs. |
 | Deploy to GitHub Pages (content repos) | Push to `main`, or manual run | Installs the pinned npm package, builds content and deploys the site. |
 | Build and Publish Docker Image (Kattenburg) | Push to `main`, version tag, or manual run | Builds the site and publishes an Nginx image to GHCR. |
 
 GitHub Actions must be allowed to create pull requests under repository
 **Settings → Actions → General**. PRs created with `GITHUB_TOKEN` may not trigger
-other workflows automatically; manually run Slides architecture and Static
-renderer on the version PR branch when needed. Content repositories must select
+other workflows automatically. If the version PR has no checks, close and reopen
+it from your own account to trigger the pull-request workflows. Manual workflow
+runs are useful for diagnostics but do not satisfy required PR checks.
+Content repositories must select
 **GitHub Actions** as their Pages source under **Settings → Pages**.
 
 Version preparation installs only the software workspace. It does not clone

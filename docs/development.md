@@ -118,6 +118,15 @@ and [licensing](licensing.md#distributing-a-site).
 
 ## Checks
 
+Every pull request reports the required `integration` and `container` checks.
+Documentation-only changes pass after a quick file check, without installing
+dependencies or building the container. The shared rules in
+[`.github/test-paths.yml`](../.github/test-paths.yml) exclude guides, software
+READMEs, changelogs and changeset notes. All other paths run the full checks,
+including configuration, licenses, workflows and content submodules. Manual
+workflow runs always run the full checks; a failed change-detection step fails
+the required check.
+
 ```sh
 pnpm -r test
 pnpm --filter @allmaps/slides check

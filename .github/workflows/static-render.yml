@@ -1,6 +1,6 @@
 name: Static renderer
 on:
-  # Required status checks must run on every pull request, including docs-only changes.
+  # Always report the required check; skip expensive steps for documentation-only PRs.
   pull_request:
   workflow_dispatch:
 jobs:
@@ -8,10 +8,24 @@ jobs:
     runs-on: ubuntu-24.04
     permissions:
       contents: read
+      pull-requests: read
     steps:
       - uses: actions/checkout@v6
+      - name: Detect changes that need testing
+        id: changes
+        # Manual runs and PRs beyond the API's 3,000-file limit run all tests.
+        if: github.event_name == 'pull_request' && github.event.pull_request.changed_files <= 3000
+        uses: dorny/paths-filter@v4
+        with:
+          predicate-quantifier: every
+          filters: .github/test-paths.yml
+      - name: Documentation-only changes
+        if: steps.changes.outputs.tests == 'false'
+        run: echo "Documentation-only changes; container tests were not needed." >> "$GITHUB_STEP_SUMMARY"
       - uses: docker/setup-buildx-action@v3
+        if: steps.changes.outputs.tests != 'false'
       - name: Build image and run native smoke test
+        if: steps.changes.outputs.tests != 'false'
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -23,5 +37,6 @@ jobs:
           cache-from: type=gha,scope=slides-renderer
           cache-to: type=gha,mode=max,scope=slides-renderer
       - name: Check container entrypoint
+        if: steps.changes.outputs.tests != 'false'
         timeout-minutes: 1
         run: docker run --rm slides-renderer:check node packages/static-render/bin/render.mjs --help
