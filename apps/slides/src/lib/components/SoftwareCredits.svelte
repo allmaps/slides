@@ -12,7 +12,7 @@
 </script>
 
 <footer class="software-credits mt-6 border-t border-current/15 pt-6 pb-2 text-center text-[16px] leading-relaxed" data-software-credits>
-  <MadeWith {isDarkMode} href={buildInfo.repositoryUrl} />
+  <MadeWith {isDarkMode} href={buildInfo.repositoryUrl} logoInheritsColor />
   <p class="mt-2">{buildInfo.version}</p>
   {#if buildInfo.sourceState === "modified"}
     <p>{t("softwareModifiedBuild")}</p>
@@ -32,8 +32,10 @@
 </footer>
 
 <style>
-  .software-credits { color: var(--app-interface-grey); }
+  .software-credits {
+    --made-with-color: var(--app-text);
+    color: var(--app-text);
+  }
   a { text-decoration: none; }
   a:hover { color: var(--app-text); }
-  :global(.dark) .software-credits { color: rgb(255 255 255 / 0.8); }
 </style>

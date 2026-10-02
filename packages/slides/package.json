@@ -90,7 +90,7 @@
   "engines": {
     "node": ">=24"
   },
-  "description": "Build map stories from Markdown and local assets",
+  "description": "Build narrative maps from Markdown and local assets",
   "publishConfig": {
     "access": "public",
     "exports": {

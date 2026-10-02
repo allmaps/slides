@@ -13,7 +13,9 @@ git submodule update --init content/slides-template
 pnpm exec slides dev ./content/slides-template
 ```
 
-The template uses remote images and an empty basemap, so it needs no provider key.
+The template uses remote images and a Protomaps basemap. Its
+[README](../content/slides-template/README.md#preview) explains how to replace
+the demo API key when copying or forking it.
 To work on another bundled content repository, initialize its submodule and pass
 that directory instead. `git submodule update --init --recursive` initializes all
 content repositories in a fresh checkout.

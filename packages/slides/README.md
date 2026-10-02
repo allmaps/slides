@@ -1,6 +1,6 @@
 # @allmaps/slides
 
-Create interactive map stories from Markdown, images and georeferenced maps.
+Create interactive narrative maps from Markdown, images and georeferenced maps.
 The `slides` CLI previews your story locally and builds a static website.
 It includes the application, image tools and map thumbnail renderer.
 
@@ -22,7 +22,7 @@ For a source checkout or a local package archive, see
 Create `slides.config.yml`:
 
 ```yaml
-title: My first map story
+title: My first narrative map
 slideshows:
   - id: main
     path: chapters
