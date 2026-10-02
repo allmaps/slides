@@ -198,12 +198,12 @@ newly generated files are saved even if a later build step fails. Only complete
 source bodies and completed render jobs are cached. Manual workflow
 inputs can independently skip restoring each cache.
 
-The Pages workflow sets up Node 24 and pnpm, calls the renderer package's
-shared Ubuntu dependency setup script, and runs `slides build` under Xvfb.
+The Pages workflow sets up Node 24 and pnpm, installs Ubuntu renderer libraries
+inline and the pinned npm dependencies, and runs `slides build` under Xvfb.
 It uploads `dist/site` directly. No Docker image is built or run for Pages.
 
 Container deployment has a separate `docker-publish.yml` workflow. Kattenburg's
-single multi-stage Dockerfile obtains the Slides source, installs dependencies,
+single multi-stage Dockerfile installs the pinned Slides npm package,
 generates all derivatives and thumbnails, prerenders the site and produces an
 Nginx serving image. Only public site files enter that final image. Its Nginx
 configuration supports clean URLs for prerendered chapter HTML files.
@@ -212,12 +212,13 @@ The container build uses three BuildKit cache mounts and explicit Actions
 cache import/export; ordinary image-layer caching alone does not persist cache
 mounts on hosted runners. A daily `CACHE_EPOCH` build argument lets unchanged
 content revalidate remote inputs. The renderer cache is namespaced by the
-framework lockfile. See [Kattenburg's deployment guide](https://github.com/amsterdamtimemachine/kattenburg-atlas/blob/main/docs/deployment.md)
-for build arguments and local source overrides.
+content lockfile. See [Kattenburg's deployment guide](https://github.com/amsterdamtimemachine/kattenburg-atlas/blob/main/docs/deployment.md)
+for build arguments and package upgrades.
 
 The optional renderer/build-tool image remains useful for standalone batches.
-It shares `install-system-deps.sh` with the Pages and web-image builds. The
-monorepo's `static-render.yml` workflow tests that tool image and native pixels.
+The software workspace uses `install-system-deps.sh` for its own native CI setup;
+consumer workflows install the equivalent libraries inline. The monorepo's
+`static-render.yml` workflow tests the tool image and native pixels.
 
 ## Validation and limits
 

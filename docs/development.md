@@ -84,58 +84,14 @@ needs [system dependencies](static-render.md#linux-setup).
 
 ## Releases
 
-`packages/slides/package.json` owns the public version, starting at
-`0.1.0-beta.1`. The bundled app and helper packages share that release. Their
-internal manifest versions are not separate public releases.
+Only `@allmaps/slides` is published; the bundled app and helpers share its version.
+Add a changeset for changes to the CLI, app or helpers with `pnpm changeset`.
+See [publish versions and GitHub releases](releases.md) for the complete process,
+workflow responsibilities, npm authentication and recovery steps.
 
-For a user-visible change to the CLI, app or a bundled helper, run
-`pnpm changeset`, select `@allmaps/slides`, and describe what changed. Commit the
-generated Markdown file with the change. Content-only changes belong in their
-content repository's history and do not need a Slides changeset.
-
-The version workflow opens a release PR after changesets reach `main`. It updates
-the version, changelog and prerelease state. Enable GitHub Actions' permission to
-create pull requests in the repository settings. To prepare the same changes
-locally, run `pnpm release:version` and commit the result. During beta, Changesets
-advances `0.1.0-beta.1` to `0.1.0-beta.2`, and so on. A minor or major changeset can
-also change the target regular version.
-
-Keep the content submodules initialized when refreshing the workspace lockfile
-(`git submodule update --init --recursive` in a clean release checkout). The
-version workflow does this too, so it retains their dependency entries.
-
-For each release:
-
-1. Review the version PR and run the [checks below](#checks). The release PR uses
-   `GITHUB_TOKEN`, so run the Slides CI workflow manually on its branch if GitHub
-   does not trigger checks automatically. Merge the reviewed version changes.
-2. Check out the resulting clean, pushed commit and run `pnpm install --frozen-lockfile`
-   followed by `pnpm release:check`. Local content changes are excluded from this
-   check. Confirm that the software commit is accessible on GitHub before publishing.
-3. With npm access to `@allmaps/slides`, run `pnpm release:publish`. This rebuilds
-   and publishes the package, explicitly selects the `beta` npm tag for a beta version, and
-   creates a local Git tag such as `@allmaps/slides@0.1.0-beta.1`.
-4. Run `git push --follow-tags`. The release workflow creates a GitHub prerelease
-   with the corresponding changelog section. GitHub supplies its usual source
-   downloads; no separate source archive is uploaded.
-
-Use this publish command rather than `changeset publish`: Changesets can choose
-`latest` for packages that have not had a stable release, leaving `beta` behind.
-
-The initial `0.1.0-beta.1` version and changelog are already prepared; no version
-bump is needed for its first publication. Packing and testing never publish.
-An npm package's first publication may also receive the `latest` tag, so check
-the registry tags after that first release. The documented install uses `@beta`.
-
-When ready for a regular release, run `pnpm changeset pre exit` followed by
-`pnpm release:version`, review and commit the changes, then follow the same
-release steps. With the current target, this produces `0.1.0` on npm's `latest`
-tag. Keep Changesets' generated `.changeset/pre/` records in Git until it removes
-them during that transition.
-
-The package's [README](../packages/slides/README.md) is included at the archive root
-and becomes its npm landing page. Keep its documentation links absolute so they
-work on npm. Detailed guides remain in this repository's `docs/` directory.
+Content repositories have their own pinned package dependency and lockfile.
+They are not workspace packages, so preparing a software release does not need
+content submodules. Initialize a submodule only when developing that presentation.
 
 ## Software identity in credits
 

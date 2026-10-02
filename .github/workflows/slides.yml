@@ -20,8 +20,8 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v6
-        with:
-          submodules: recursive
+      - name: Check out the integration presentation
+        run: git submodule update --init content/gravity-at-sea
       - uses: pnpm/action-setup@v4
         with:
           version: 10.22.0
