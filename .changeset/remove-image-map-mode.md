@@ -2,14 +2,8 @@
 "@allmaps/slides": minor
 ---
 
-Remove `warpedMaps[].type: Image` and its image-only `region` and `wiggle` options. Warped maps now always load georeference annotations. Remove the generated georeferencing helper, the `model/map/image` export, its Turf dependency, image-specific layer controls and the unused `imageLayer` label. Images no longer trigger automatic basemap hiding or immediate camera transitions.
-
-Move non-georeferenced images from `warpedMaps` into zoomable IIIF figures in the slide's Markdown:
-
-```html
-<figure data-image="https://example.org/iiif/image" aria-label="Image description">
-  <figcaption>Image caption</figcaption>
-</figure>
-```
-
-Use `data-region="x,y,width,height"` on the figure to keep a crop and `data-rotation` for rotation. Set slide-level `hideBasemap: true` when needed. Zoomable text images and their IIIF services are unchanged. Remove the obsolete options and label from the docs and template references.
+Remove `warpedMaps[].type: Image`, its `region` and `wiggle` options, the
+`model/map/image` export and the unused `imageLayer` label.
+Move non-georeferenced images to [zoomable IIIF figures](https://github.com/allmaps/slides/blob/main/docs/images.md#iiif-figures)
+in slide Markdown; use `data-region` to retain a crop and `hideBasemap: true` on
+the slide when needed.
