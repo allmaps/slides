@@ -27,17 +27,27 @@ pnpm exec slides dev ../my-story
 pnpm exec slides validate ../my-story
 ```
 
+To create a new project from this checkout, run `pnpm exec slides init ../my-story`.
+The starter pins the checkout's package version. To test unreleased changes as an
+installed consumer, replace that dependency with a local package archive as
+described below.
+
 Keep editing the original content files. Markdown and assets reload automatically;
 configuration edits restart the server. Use a different `--port` for each server.
 Refresh generated images with the [generation commands](generation.md).
 
 The root shortcuts `pnpm dev`, `pnpm build`, `pnpm check`, `pnpm validate`,
-`pnpm iiif` and `pnpm preview` select Gravity at Sea. Initialize that submodule
-before using them. Local fixtures can live in the ignored `content/tests/`:
+`pnpm iiif` and `pnpm preview` forward to the CLI. Pass the content directory
+explicitly; initialize it first if it is a submodule:
 
 ```sh
-pnpm exec slides dev ./content/tests --port 5175
+pnpm dev ./content/slides-template
+pnpm check ./content/slides-template
+pnpm build ../my-story
 ```
+
+Local fixtures can live in the ignored `content/tests/`; for example,
+`pnpm dev ./content/tests --port 5175`.
 
 Generated sites, `node_modules/.vite/slides` caches and `.slides/` development
 runners are ignored by Git. Add `dist/`, `node_modules/` and `.slides/` to the
@@ -57,8 +67,8 @@ declarations and application source. The helper packages are private workspace
 packages; only `@allmaps/slides` is published. External npm dependencies, including Sharp and Chiitiler,
 remain runtime dependencies installed by the consumer's package manager.
 
-`pack` and `publish` rebuild through the `prepack` hook. `pnpm build` at the
-repository root builds a presentation; `pnpm bundle` builds the npm package.
+`pack` and `publish` rebuild through the `prepack` hook. At the repository root,
+`pnpm build <directory>` builds a presentation; `pnpm bundle` builds the npm package.
 The smoke test packs, installs and exercises a release without publishing it.
 
 The implementation lives in:
@@ -142,9 +152,9 @@ pnpm test:package
 
 The dev smoke runs two independent sites and checks HTTP/WebSocket updates.
 The asset smoke checks generated overview pages. The package smoke installs a
-single archive in a fresh content repository and exercises type checks, dev,
-IIIF, native pixels and repeat production builds. It requires registry access
-and a working native renderer.
+single archive in a fresh content repository and exercises project initialization,
+type checks, dev, IIIF, native pixels and repeat production builds. It requires
+registry access and a working native renderer.
 
 Package-specific tests and Docker checks are documented with the
 [renderer](static-render.md), [IIIF generator](iiif.md) and

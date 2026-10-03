@@ -1,6 +1,6 @@
 import type { MapLibreWarpedMapLayerOptions } from "@allmaps/maplibre";
 import type { Flavor } from "@protomaps/basemaps";
-import type { SourceSpecification, StyleSpecification } from "maplibre-gl";
+import type { LayerSpecification, SourceSpecification, StyleSpecification } from "maplibre-gl";
 import type { ThemeConfig } from "./theme.ts";
 
 export type ThemeMode = "light" | "dark";
@@ -47,8 +47,6 @@ export type MapConfig = {
 
 export type StartScreenTextConfig = {
   startButton?: string;
-  chapterCountSingular?: string;
-  chapterCountPlural?: string;
   madeWith?: string;
 };
 
@@ -77,6 +75,8 @@ export type SlidesConfig = {
   main: string;
   slideshows: SlideshowDefinition[];
   sources: Record<string, SourceDefinition>;
+  /** Defaults for generated layers, plus optional custom MapLibre layers. */
+  layers?: UserLayerConfig[];
   map?: MapConfig;
   protomaps?: ProtomapsStyleConfig;
   interface?: InterfaceConfig;
@@ -85,7 +85,6 @@ export type SlidesConfig = {
 };
 
 export type WarpedMapProps = {
-  type?: "Image";
   url: string;
   caption?: string;
   provenance?: string;
@@ -96,8 +95,6 @@ export type WarpedMapProps = {
   options?: Partial<MapLibreWarpedMapLayerOptions>;
   /** Overrides merged over options when the interface is in dark mode. */
   darkOptions?: Partial<MapLibreWarpedMapLayerOptions>;
-  region?: [number, number, number, number];
-  wiggle?: boolean;
 };
 
 export type MapLayerProps = {
@@ -106,6 +103,8 @@ export type MapLayerProps = {
   visibility?: "visible" | "none";
   duration?: number;
 };
+
+export type UserLayerConfig = MapLayerProps | LayerSpecification;
 
 export type SubslideshowReference =
   | string
@@ -127,12 +126,11 @@ export type MapChapterProps = {
     image: string;
     dimensions: [number, number];
   };
-  caption?: string;
-  freeze?: boolean;
+  /** Fit map bounds to the available viewport; defaults to contain. */
+  fit?: "cover" | "contain" | "equal";
+  /** Uniform inner fitting margin in pixels; negative values enlarge the fit area. */
   padding?: number;
-  fit?: "cover" | "contain" | "equal" | undefined;
   hideBasemap?: boolean;
-  contain?: boolean;
   warpedMaps?: WarpedMapProps[];
   layers?: MapLayerProps[];
   subslideshows?: SubslideshowReference[];
@@ -185,4 +183,6 @@ export type Slideshow = {
   start?: MapChapterProps;
   chapters: MapChapter[];
   sources: Record<string, SourceSpecification>;
+  /** Resolved global defaults, with internal layer IDs. */
+  layers?: LayerSpecification[];
 };

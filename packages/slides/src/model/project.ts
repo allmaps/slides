@@ -1,5 +1,6 @@
 import type { SourceSpecification } from "maplibre-gl";
 import { parseSlideMetadata } from "./content-schema.ts";
+import { resolveUserLayers, validateUserLayerChanges } from "./map/layers.ts";
 import type {
   SlidesConfig,
   MapChapter,
@@ -102,9 +103,14 @@ export const buildProject = (
       createSource(source, getContentAssetUrl),
     ]),
   );
+  const layers = resolveUserLayers(sources, slidesConfig.layers);
   const slideshows: Slideshow[] = slidesConfig.slideshows.map(
     (rawSlideshow) => {
       const slideshow = normalizeSlideshow(rawSlideshow, slidesConfig.main);
+      const chapters = slidesBySlideshow.get(slideshow.path) ?? [];
+      validateUserLayerChanges(layers, slideshow.start?.layers, `${slideshow.id} start`);
+      for (const chapter of chapters)
+        validateUserLayerChanges(layers, chapter.layers, chapter.sourcePath);
 
       return {
         ...slideshow,
@@ -112,8 +118,9 @@ export const buildProject = (
         start: slideshow.start
           ? resolveWarpedMaps(slideshow.start, getContentAssetUrl)
           : undefined,
-        chapters: slidesBySlideshow.get(slideshow.path) ?? [],
+        chapters,
         sources,
+        layers,
       };
     },
   );

@@ -19,7 +19,6 @@
   import SlideshowSeo from "$lib/components/SlideshowSeo.svelte";
   import SlideshowToc from "$lib/components/SlideshowToc.svelte";
   import StartScreen from "$lib/components/StartScreen.svelte";
-  import { getGeoJsonLayers } from "$lib/shared/geojson";
   import type { MobilePanelSize } from "$lib/shared/mobile-panel";
   import {
     getChapterRouteHref,
@@ -83,6 +82,7 @@
   let highlightedWarpedMapUrl: string | undefined = $state(undefined);
   let basemapAttributions: string[] = $state([]);
   let hiddenWarpedMapUrls: string[] = $state([]);
+  let temporarilyHideMaps = $state(false);
   let focusedWarpedMapUrl: string | undefined = $state(undefined);
   let scrollToTopSignal: number = $state(0);
   let mapResetSignal: number = $state(0);
@@ -95,11 +95,11 @@
   let lastMobileMapExtent: number | undefined;
   let mapViewportWidth: number | undefined;
   let mapViewportHeight: number | undefined;
-  let mapPadding: PaddingOptions = $state({
-    top: DEFAULT_PADDING,
-    right: DEFAULT_PADDING,
-    bottom: DEFAULT_PADDING,
-    left: DEFAULT_PADDING,
+  let mapLayoutPadding: PaddingOptions = $state({
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
   });
   let themePreference: ThemePreference | undefined = $state(undefined);
   let mainSlideshowStarted = $state(false);
@@ -116,9 +116,7 @@
   const clampIndex = (index: number, length: number) =>
     length > 0 ? Math.min(Math.max(index, 0), length - 1) : 0;
 
-  const layers = $derived(Object.entries(sources).flatMap(([sourceId, source]) =>
-    source.type === "geojson" ? getGeoJsonLayers(sourceId, "visible") : [],
-  ));
+  const layers = $derived(activeSlideshow.layers ?? []);
 
   const firstChapter = $derived(chapters[0]);
   const socialImage = $derived(thumbnails.social[activeSlideshow.id]);
@@ -141,8 +139,8 @@
     ),
   );
   const mapIndex = $derived(startScreenVisible ? 0 : activeIndex + 1);
-  const effectiveMapPadding = $derived(
-    startScreenVisible ? DEFAULT_PADDING : mapPadding,
+  const effectiveLayoutPadding = $derived(
+    startScreenVisible ? 0 : mapLayoutPadding,
   );
   const activeChapter = $derived(chapters[activeIndex]);
   const tocOpen = $derived(activePanelOverlay === "toc");
@@ -261,26 +259,40 @@
   };
 
   const handleKeyboard = (event: KeyboardEvent) => {
-    if (event.key === "Escape" && panelOverlayOpen) {
+    // Consume repeats for an active hold, even if focus or modifiers changed.
+    if (temporarilyHideMaps && (event.key === " " || event.code === "Space")) {
       event.preventDefault();
-      closePanelOverlays();
       return;
     }
     const target = event.target instanceof Element ? event.target : undefined;
-    const blocked = startScreenVisible || !!document.querySelector('dialog[open]') || !!target?.closest(
-      'input, textarea, select, [contenteditable]:not([contenteditable="false"]), [role="textbox"], [role="slider"], .maplibregl-canvas',
-    );
-    const action = slideshowShortcut({ ...event, key: event.key, altKey: event.altKey, ctrlKey: event.ctrlKey,
-      metaKey: event.metaKey, shiftKey: event.shiftKey, defaultPrevented: event.defaultPrevented, blocked });
+    const blocked = startScreenVisible || !!document.querySelector('dialog[open]');
+    const action = slideshowShortcut({ key: event.key, altKey: event.altKey, ctrlKey: event.ctrlKey,
+      metaKey: event.metaKey, shiftKey: event.shiftKey, defaultPrevented: event.defaultPrevented,
+      isComposing: event.isComposing, repeat: event.repeat, target, blocked });
     if (!action) return;
     if (action === "back" && !isSubslideshowActive) return;
+    if (action === "closePanel" && !panelOverlayOpen) return;
     event.preventDefault();
-    if (action === "togglePanel") togglePanel();
+    if (action === "hideMaps") temporarilyHideMaps = true;
+    else if (action === "closePanel") closePanelOverlays();
+    else if (action === "togglePanel") togglePanel();
     else if (action === "back") void goto(mainBreadcrumbHref);
     else {
       const chapter = chapters[activeIndex + (action === "next" ? 1 : -1)];
       if (chapter) void scrollActivePanelToChapter(chapter.slug);
     }
+  };
+
+  const releaseKeyboard = (event: KeyboardEvent) => {
+    // Release an existing hold regardless of the keyup target or modifiers.
+    if (temporarilyHideMaps && (event.key === " " || event.code === "Space")) {
+      event.preventDefault();
+      temporarilyHideMaps = false;
+    }
+  };
+
+  const resetKeyboard = () => {
+    temporarilyHideMaps = false;
   };
 
   const toggleTheme = () => {
@@ -410,37 +422,39 @@
       lastMobileMapExtent = cardExtent;
     }
     const reservePanel = panelVisible;
+    // Reserve only the interface footprint here. Map adds the chapter's
+    // uniform inner margin after this layout-dependent space is determined.
     const nextPadding = wideLayout
       ? {
-          top: DEFAULT_PADDING,
+          top: 0,
           right: Math.max(
-            DEFAULT_PADDING,
-            reservePanel ? Math.ceil(panelElement.offsetWidth + rightInset + DEFAULT_PADDING) : DEFAULT_PADDING,
+            0,
+            reservePanel ? Math.ceil(panelElement.offsetWidth + rightInset) : 0,
           ),
-          bottom: DEFAULT_PADDING,
-          left: DEFAULT_PADDING,
+          bottom: 0,
+          left: 0,
         }
       : {
-          top: DEFAULT_PADDING,
-          right: DEFAULT_PADDING,
+          top: 0,
+          right: 0,
           bottom: Math.max(
-            DEFAULT_PADDING,
+            0,
             // Keep a usable map viewport even when the reading panel is expanded.
             Math.min(
-              Math.ceil(cardExtent + DEFAULT_PADDING),
-              viewportHeight - DEFAULT_PADDING - 120,
+              Math.ceil(cardExtent),
+              viewportHeight - 2 * DEFAULT_PADDING - 120,
             ),
           ),
-          left: DEFAULT_PADDING,
+          left: 0,
         };
 
-    const paddingChanged = !samePadding(mapPadding, nextPadding);
+    const paddingChanged = !samePadding(mapLayoutPadding, nextPadding);
     const viewportChanged = mapViewportWidth !== viewportWidth || mapViewportHeight !== viewportHeight;
     if (!paddingChanged && !viewportChanged) return;
     mapViewportWidth = viewportWidth;
     mapViewportHeight = viewportHeight;
     if (paddingChanged) {
-      mapPadding = nextPadding;
+      mapLayoutPadding = nextPadding;
     }
 
     mapLayoutRevision += 1;
@@ -613,7 +627,8 @@
   });
 </script>
 
-<svelte:window onkeydown={handleKeyboard} />
+<svelte:window onkeydown={handleKeyboard} onkeyup={releaseKeyboard} onblur={resetKeyboard} />
+<svelte:document onvisibilitychange={() => { if (document.hidden) resetKeyboard(); }} />
 
 <SlideshowSeo {project} slideshow={activeSlideshow} image={socialImage} />
 
@@ -648,11 +663,12 @@
         duration={DEFAULT_DURATION}
         layoutRevision={mapLayoutRevision}
         resetSignal={mapResetSignal}
-        padding={effectiveMapPadding}
+        layoutPadding={effectiveLayoutPadding}
         controlsVisible={!startScreenVisible}
         onBasemapAttribution={(attributions) => { basemapAttributions = attributions; }}
         highlight={highlightedWarpedMapUrl}
         {hiddenWarpedMapUrls}
+        {temporarilyHideMaps}
         {focusedWarpedMapUrl}
         {debug}
       />

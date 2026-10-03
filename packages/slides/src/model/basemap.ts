@@ -13,6 +13,7 @@ import {
   DEFAULT_DARK_FLAVOR,
   DEFAULT_LIGHT_FLAVOR,
   DEFAULT_LOCALE,
+  DEFAULT_GLYPHS,
 } from "./settings.ts";
 import type {
   BasemapLabelPosition,
@@ -30,8 +31,6 @@ export const FOREGROUND_LAYER_ID = "foreground";
 const PROTOMAPS_SOURCE_ID = "protomaps";
 const PROTOMAPS_ATTRIBUTION =
   '<a href="https://github.com/protomaps/basemaps">Protomaps</a> © <a href="https://openstreetmap.org">OpenStreetMap</a>';
-const DEFAULT_GLYPHS =
-  "https://protomaps.github.io/basemaps-assets/fonts/{fontstack}/{range}.pbf";
 const DEFAULT_SPRITES = {
   light: "https://protomaps.github.io/basemaps-assets/sprites/v4/light",
   dark: "https://protomaps.github.io/basemaps-assets/sprites/v4/dark",
@@ -331,7 +330,7 @@ const resolveConfiguredStyle = async (
   } catch (error) {
     if (strict) throw error;
     console.warn(
-      `Could not load basemap style ${styleReference}. Falling back to Protomaps.\n  - ${error instanceof Error ? error.message : String(error)}`,
+      `Could not load basemap style ${styleReference}. Using fallback basemap settings.\n  - ${error instanceof Error ? error.message : String(error)}`,
     );
 
     return undefined;
@@ -542,8 +541,11 @@ export const resolveBasemapStyle = async ({
   const configuredStyle = config.style
     ? await resolveConfiguredStyle(config.style, fetchFn, strict, mapStyleFiles)
     : undefined;
-  const style =
-    configuredStyle ?? createProtomapsStyle(theme, config.protomaps);
+  const style: StyleSpecification = configuredStyle ?? (
+    config.protomaps.key?.trim()
+      ? createProtomapsStyle(theme, config.protomaps)
+      : { version: 8, sources: {}, layers: [] }
+  );
   const foregroundColor = getForegroundColor(
     style,
     config.foregroundColor,
@@ -569,7 +571,7 @@ export const resolveBasemapStyle = async ({
     defaultVisibilityById: new Map(
       allLayers.map((layer) => [layer.id, getLayerDefaultVisibility(layer)]),
     ),
-    glyphs: style.glyphs,
+    glyphs: style.glyphs ?? config.protomaps.glyphs,
     sprite: style.sprite,
     foregroundColor,
   };

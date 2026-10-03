@@ -93,7 +93,7 @@
   const getLayerMeta = (warpedMap: WarpedMapProps) =>
     warpedMap.provenance ??
     getUrlHost(warpedMap.homepage ?? warpedMap.url) ??
-    t(warpedMap.type === "Image" ? "imageLayer" : "georeferenceAnnotation");
+    t("georeferenceAnnotation");
 
   const isExternalUrl = (url: string) =>
     EXTERNAL_URL_PATTERN.test(url) || url.startsWith("//");
@@ -217,18 +217,16 @@
                   <p class="layer-meta">{getLayerMeta(warpedMap)}</p>
                 {/if}
 
-                {#if warpedMap.type !== "Image"}
-                  <a
-                    class="layer-meta layer-link"
-                    href={getAllmapsViewerUrl(warpedMap.url)}
-                    target="_blank"
-                    rel="noreferrer"
-                    onclick={stopLayerRowClick}
-                  >
-                    <span>{t("openInAllmaps")}</span>
-                    <MoveUpRight size={12} aria-hidden="true" />
-                  </a>
-                {/if}
+                <a
+                  class="layer-meta layer-link"
+                  href={getAllmapsViewerUrl(warpedMap.url)}
+                  target="_blank"
+                  rel="noreferrer"
+                  onclick={stopLayerRowClick}
+                >
+                  <span>{t("openInAllmaps")}</span>
+                  <MoveUpRight size={12} aria-hidden="true" />
+                </a>
               </div>
             </div>
 

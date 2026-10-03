@@ -1,10 +1,53 @@
 # CLI commands
 
-Use Node.js 24 or later. Install the published package in your content repository
-with `pnpm add -D @allmaps/slides@beta`. For source checkouts or local release archives,
-see [development](development.md).
+Use Node.js 24 or later. For source checkouts or local release archives, see
+[development](development.md).
 
-All examples below run from a content directory containing `slides.config.yml`.
+## Create a project
+
+Run this before installing dependencies in the new folder:
+
+```sh
+pnpm dlx @allmaps/slides@beta init my-story
+cd my-story
+pnpm install
+pnpm dev
+```
+
+If the CLI is already installed, use `pnpm exec slides init my-story`.
+`slides create` is an alias. Omitting the directory initializes the current
+folder; relative paths are resolved from your terminal's working directory.
+
+In a terminal, `init` asks for a title and an optional Protomaps API key. Press
+Enter to use "My narrative map" and leave the key empty. Both can be changed
+later in `slides.config.yml`. The key prompt links to [protomaps.com/api](https://protomaps.com/api)
+and explains that the key is included in the public website.
+
+Use `--title` and `--protomaps-key` to supply either answer directly. `--yes`
+(or `-y`) skips all prompts and uses defaults for omitted values:
+
+```sh
+pnpm exec slides init my-story --yes --title "My narrative map"
+```
+
+Piped and other non-interactive runs also use defaults without prompting.
+Ctrl+C cancels an interactive setup before files are created.
+
+The command creates `slides.config.yml`, `chapters/01-welcome.md`, `package.json`,
+`pnpm-workspace.yaml`, `.gitignore` and a short `README.md`. If you skip the key,
+the config includes `protomaps.key: ""` and the starter uses a plain background;
+no `map` block is needed. The Slides dependency is pinned to the version running
+the command. The pnpm settings keep the project
+independent of parent workspaces and allow the native dependencies to build.
+
+No dependencies are installed by `init`. Existing starter filenames, alternative
+Slides config files or a `chapters` directory cause it to stop before writing.
+Unrelated files, including an existing `.git` directory, are left in place.
+Choose a license for your own content; the command does not assign one.
+
+## Work on a project
+
+The following examples run from a content directory containing `slides.config.yml`.
 
 | Command | Purpose |
 | --- | --- |

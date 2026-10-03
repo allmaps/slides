@@ -11,8 +11,8 @@ thumbnails without a browser, DOM, or a running web server.
 | Map layers panel | 256 × 256 WebP per map-entry/theme variant | Transparent, north-up, fitted to the applied mask; no basemap   |
 | Social metadata  | 1200 × 630 JPEG per slideshow route  | First slide in light theme; optional overall short title and subtitle with a soft halo |
 
-A map-entry variant includes its URL, type, image crop, wiggle and renderer
-options. An AnnotationPage with several maps produces one combined layer-row
+A map-entry variant includes its URL and renderer options.
+An AnnotationPage with several maps produces one combined layer-row
 preview. A panel thumbnail is never upscaled into a slide: warped maps render
 again in the slide's shared viewport.
 
@@ -77,8 +77,10 @@ data. Small slide cards and hover previews never receive this overlay. See
 [the configuration examples](configuration.md#overall-titles-descriptions-and-sharing-images)
 for short/long copy and fallback rules.
 
-GeoJSON sources declared in the content configuration use the same SimpleStyle
-layers in the live map and upper thumbnail pass. The native adapter removes
+GeoJSON sources use the same generated and custom layers in the live map and
+upper thumbnail pass. Global `layers` defaults and the current slide's overrides
+are resolved independently for each preview, including text-label expressions.
+The native adapter removes
 null feature IDs (leaving properties and valid IDs intact), since those features
 would otherwise be silently omitted. The render caches include this correction.
 
@@ -243,7 +245,7 @@ xvfb-run -a pnpm --filter @allmaps/static-render test:native
 ```
 
 The supported scene is planar Web Mercator at pitch zero. Masks, transforms,
-opacity, saturation, background-color removal, colorization, image regions,
+opacity, saturation, background-color removal, colorization,
 basemap themes and vector overlays are handled. Sharp's raw-pixel pipeline
 applies map effects before alpha composition. WebGL-only distortion shading,
 mask/grid/GCP/vector diagnostics and unknown options produce warnings and are

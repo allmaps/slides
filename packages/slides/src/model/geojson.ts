@@ -73,7 +73,7 @@ export const getGeoJsonLayers = (
 ) => {
   return [
     {
-      id: `user-${sourceId}-fill`,
+      id: `${sourceId}-fill`,
       type: "fill",
       source: sourceId,
       layout: {
@@ -91,7 +91,7 @@ export const getGeoJsonLayers = (
       filter: ["==", "$type", "Polygon"],
     },
     {
-      id: `user-${sourceId}-line`,
+      id: `${sourceId}-line`,
       type: "line",
       source: sourceId,
       layout: {
@@ -119,7 +119,7 @@ export const getGeoJsonLayers = (
       filter: ["in", "$type", "LineString", "Polygon"],
     },
     {
-      id: `user-${sourceId}-point-circle`,
+      id: `${sourceId}-point-circle`,
       type: "circle",
       source: sourceId,
       layout: {
@@ -150,7 +150,7 @@ export const getGeoJsonLayers = (
       filter: ["all", ["==", "$type", "Point"], ["!has", "icon-image"]],
     },
     {
-      id: `user-${sourceId}-point-symbol`,
+      id: `${sourceId}-point-symbol`,
       type: "symbol",
       source: sourceId,
       layout: {

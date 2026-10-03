@@ -25,7 +25,7 @@ jobs:
         run: echo "Documentation-only changes; integration tests were not needed." >> "$GITHUB_STEP_SUMMARY"
       - name: Check out the integration presentation
         if: steps.changes.outputs.tests != 'false'
-        run: git submodule update --init content/gravity-at-sea
+        run: git submodule update --init content/slides-template
       - uses: pnpm/action-setup@v4
         if: steps.changes.outputs.tests != 'false'
         with:
@@ -45,7 +45,7 @@ jobs:
         run: |
           pnpm -r test
           pnpm --filter @allmaps/slides --filter @allmaps/iiif --filter @allmaps/static-render check
-          pnpm exec slides check ./content/gravity-at-sea
+          pnpm check ./content/slides-template
       - name: Native pixel alignment
         if: steps.changes.outputs.tests != 'false'
         run: xvfb-run -a pnpm --filter @allmaps/static-render test:native

@@ -1,9 +1,10 @@
 import { computeWarpedMapBearing } from "@allmaps/bearing";
 import { webMercatorToLonLat } from "@allmaps/project";
-import { computeRotatedBboxProperties } from "@allmaps/stdlib";
+import { computeRotatedBboxProperties, sizesToScale } from "@allmaps/stdlib";
 import type { WarpedMap } from "@allmaps/render";
 import type { PaddingOptions, PointLike } from "maplibre-gl";
 import type { MapChapterProps, WarpedMapProps } from "../types.ts";
+import { DEFAULT_PADDING } from "../settings.ts";
 
 export const WORLD_WIDTH = 40075016.68557849;
 export const TILE_SIZE = 512;
@@ -18,6 +19,25 @@ export type CameraLayoutOptions = {
 };
 export const unitsPerPixel = (zoom: number) =>
   WORLD_WIDTH / (TILE_SIZE * 2 ** zoom);
+
+/**
+ * Add a signed inner margin without changing the UI's layout offset.
+ * Negative results are for our fitting calculation, not MapLibre's native padding.
+ */
+export function getCameraPadding(
+  layoutPadding: number | PaddingOptions = 0,
+  padding = DEFAULT_PADDING,
+): PaddingOptions {
+  const layout = typeof layoutPadding === "number"
+    ? { top: layoutPadding, right: layoutPadding, bottom: layoutPadding, left: layoutPadding }
+    : layoutPadding;
+  return {
+    top: (layout.top ?? 0) + padding,
+    right: (layout.right ?? 0) + padding,
+    bottom: (layout.bottom ?? 0) + padding,
+    left: (layout.left ?? 0) + padding,
+  };
+}
 
 export function getCameraLayoutOptions(
   padding: number | PaddingOptions,
@@ -45,7 +65,7 @@ export function resolveChapterCamera(
   chapter: MapChapterProps,
   getMaps: (annotation: WarpedMapProps) => WarpedMap[],
   size: [number, number],
-  padding: number | PaddingOptions = 25,
+  padding: number | PaddingOptions = chapter.padding ?? DEFAULT_PADDING,
   previous: Camera = { center: [0, 0], zoom: 14, bearing: 0 },
 ): Camera {
   const annotations = chapter.warpedMaps ?? [];
@@ -70,11 +90,15 @@ export function resolveChapterCamera(
       typeof padding === "number"
         ? { left: padding, right: padding, top: padding, bottom: padding }
         : padding;
+    // Negative margins enlarge the fit area, zooming beyond its visible edges.
     const width = Math.max(1, size[0] - (p.left ?? 25) - (p.right ?? 25));
     const height = Math.max(1, size[1] - (p.top ?? 25) - (p.bottom ?? 25));
-    const scale = Math.max(
-      (bbox[2] - bbox[0]) / width,
-      (bbox[3] - bbox[1]) / height,
+    // Use the same fit modes as Allmaps' getMapCenterZoomBearing, with the
+    // available viewport shared by the live map and generated previews.
+    const scale = sizesToScale(
+      [bbox[2] - bbox[0], bbox[3] - bbox[1]],
+      [width, height],
+      chapter.fit ?? "contain",
     );
     camera = {
       center: webMercatorToLonLat(center),

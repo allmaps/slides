@@ -21,7 +21,8 @@ _Allmaps Slides is currently in beta. Try it out and share your feedback, ideas 
 
 ## Create a slideshow
 
-Start with the [package quick start](packages/slides/README.md) or the
+Create a minimal project with `slides init` using the
+[package quick start](packages/slides/README.md), or copy the
 [GitHub template repository](https://github.com/allmaps/slides-template), which includes
 a small example and annotated configuration files.
 
@@ -46,8 +47,8 @@ when copying or forking it.
 - [Architecture](docs/architecture.md): application, package and content boundaries.
 - [Content examples](content): independent repositories included as Git submodules.
 
-`pnpm bundle` builds the npm package. `pnpm build` builds the Gravity at Sea
-site after its content submodule has been initialized.
+`pnpm bundle` builds the npm package. Root shortcuts take a content directory:
+for example, `pnpm build ./content/slides-template` builds the template site.
 
 ## Inspiration and previous versions
 

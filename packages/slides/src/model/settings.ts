@@ -56,8 +56,12 @@ export const DEFAULT_WARPED_MAP_OPTIONS: Partial<MapLibreWarpedMapLayerOptions> 
     distortionMeasure: undefined,
   };
 
-// From https://github.com/digidem/maplibre-storymap/blob/main/demo/index.html
+export const DEFAULT_GLYPHS =
+  "https://protomaps.github.io/basemaps-assets/fonts/{fontstack}/{range}.pbf";
+
 export const LAYER_TYPES = {
+  background: ["background-opacity"],
+  "color-relief": ["color-relief-opacity"],
   fill: ["fill-opacity"],
   line: ["line-opacity"],
   circle: ["circle-opacity", "circle-stroke-opacity"],

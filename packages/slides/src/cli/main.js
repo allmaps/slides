@@ -8,6 +8,7 @@ import { runBuildIiifCommand } from "./commands/build-iiif.ts";
 import { runAppCommand } from "./commands/run-app.ts";
 import { runValidateCommand } from "./commands/validate.ts";
 import { runCachePurgeCommand } from "./commands/cache.ts";
+import { runInitCommand } from "./commands/init.ts";
 
 const program = new Command();
 
@@ -41,6 +42,15 @@ program
   .description("Prepare and build Allmaps Slides content")
   .showHelpAfterError()
   .showSuggestionAfterError();
+
+program.command("init")
+  .alias("create")
+  .description("Create a minimal Slides project without overwriting existing files")
+  .argument("[directory]", "New project directory", ".")
+  .option("--title <title>", "Project title (prompted when omitted)")
+  .option("--protomaps-key <key>", "Optional Protomaps API key (prompted when omitted)")
+  .option("-y, --yes", "Skip prompts and use defaults for omitted values")
+  .action((directory, options) => runInitCommand(directory, options));
 
 addAppCommand("thumbnails", "Generate map thumbnails without building the app");
 addAppCommand("dev", "Validate content and start the Slides dev server");

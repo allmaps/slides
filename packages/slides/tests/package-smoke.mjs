@@ -31,6 +31,7 @@ async function checkDevServer(installed) {
         const info = await fetch(`${origin}/story/iiif/ship/info.json`);
         assert.equal(info.status, 200, log);
         assert.equal((await info.json()).id, `${origin}/story/iiif/ship`);
+        assert.doesNotMatch(log, /Cannot find base config file/, 'packaged dev startup must not read a missing base tsconfig');
         return;
       }
       await new Promise(resolve => setTimeout(resolve, 100));
@@ -84,6 +85,17 @@ try {
       `Unpublished workspace import in ${filename}`);
   }
   await assert.rejects(() => stat(path.join(installed, 'src')), { code: 'ENOENT' });
+  // Scaffold from the installed archive: init must not rely on checkout files.
+  const starter = path.join(root, 'starter');
+  run(['exec', 'slides', 'init', starter, '--title', 'My new narrative map', '--yes']);
+  const starterPackage = JSON.parse(await readFile(path.join(starter, 'package.json')));
+  assert.equal(starterPackage.devDependencies['@allmaps/slides'], pkg.version);
+  assert.doesNotMatch(await readFile(path.join(starter, 'slides.config.yml'), 'utf8'), /^map:/m);
+  run(['exec', 'slides', 'validate', starter]);
+  run(['exec', 'slides', 'build', starter]);
+  const starterHtml = await readFile(path.join(starter, 'dist/index.html'), 'utf8');
+  assert.match(starterHtml, /My new narrative map/);
+  assert.match(starterHtml, /Queequeg was a native of Rokovoko/);
   // Authored content has no JavaScript entry point or exported content package.
   await mkdir(path.join(root, 'chapters'));
   await mkdir(path.join(root, 'assets/images'), { recursive: true });

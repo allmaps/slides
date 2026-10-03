@@ -21,8 +21,59 @@ test('slideshow shortcuts leave typing, modified browser shortcuts, and consumed
   assert.equal(slideshowShortcut({ key: 'ArrowLeft' }), 'previous');
   assert.equal(slideshowShortcut({ key: 'b' }), 'back');
   assert.equal(slideshowShortcut({ key: 'h' }), 'togglePanel');
-  for (const option of ['blocked', 'defaultPrevented', 'ctrlKey', 'metaKey', 'altKey', 'shiftKey']) {
+  for (const option of ['blocked', 'defaultPrevented', 'ctrlKey', 'metaKey', 'altKey', 'shiftKey', 'isComposing']) {
     assert.equal(slideshowShortcut({ key: 'ArrowLeft', [option]: true }), undefined, option);
   }
   assert.equal(slideshowShortcut({ key: 'Tab' }), undefined);
+});
+
+test('Space starts a temporary map comparison and replaces backtick', () => {
+  assert.equal(slideshowShortcut({ key: ' ' }), 'hideMaps');
+  assert.equal(slideshowShortcut({ key: '`' }), undefined);
+  for (const option of ['blocked', 'defaultPrevented', 'ctrlKey', 'metaKey', 'altKey', 'shiftKey', 'isComposing', 'repeat']) {
+    assert.equal(slideshowShortcut({ key: ' ', [option]: true }), undefined, option);
+  }
+  // Repeated navigation keys still advance chapters.
+  assert.equal(slideshowShortcut({ key: 'ArrowRight', repeat: true }), 'next');
+});
+
+// Model the selectors matched by a focused element or one of its ancestors.
+function targetMatching(...matches) {
+  return { closest(selectors) {
+    return selectors.split(',').some(selector => matches.includes(selector.trim())) ? this : null;
+  } };
+}
+
+test('map canvas and chapter-link focus keep all slideshow shortcuts available', () => {
+  for (const target of [targetMatching('.maplibregl-canvas'), targetMatching('a[href]'), targetMatching('[role="link"]')]) {
+    for (const [key, action] of [['ArrowRight', 'next'], ['ArrowLeft', 'previous'], ['b', 'back'], ['h', 'togglePanel'], [' ', 'hideMaps']]) {
+      assert.equal(slideshowShortcut({ key, target }), action, key);
+    }
+  }
+});
+
+test('Space still activates focused controls, including icons inside buttons', () => {
+  for (const selector of ['button', 'summary', '[role="button"]', '[role="checkbox"]', '[role="switch"]']) {
+    const target = targetMatching(selector);
+    assert.equal(slideshowShortcut({ key: ' ', target }), undefined, selector);
+    assert.equal(slideshowShortcut({ key: 'h', target }), 'togglePanel', selector);
+    assert.equal(slideshowShortcut({ key: 'ArrowRight', target }), 'next', selector);
+  }
+  const slider = targetMatching('[role="slider"]');
+  assert.equal(slideshowShortcut({ key: 'ArrowRight', target: slider }), undefined);
+  assert.equal(slideshowShortcut({ key: ' ', target: slider }), undefined);
+  assert.equal(slideshowShortcut({ key: 'h', target: slider }), 'togglePanel');
+});
+
+test('typing and modal dialogs retain their keyboard controls, including Escape', () => {
+  for (const selector of ['input', 'textarea', 'select', '[contenteditable]:not([contenteditable="false"])', '[role="textbox"]', '[role="combobox"]']) {
+    for (const key of ['ArrowRight', 'ArrowLeft', 'b', 'h', ' ']) {
+      assert.equal(slideshowShortcut({ key, target: targetMatching(selector) }), undefined, `${selector}: ${key}`);
+    }
+  }
+  assert.equal(slideshowShortcut({ key: 'Escape' }), 'closePanel');
+  for (const key of ['Escape', 'ArrowRight', 'h', ' ']) {
+    assert.equal(slideshowShortcut({ key, blocked: true }), undefined, key);
+    assert.equal(slideshowShortcut({ key, defaultPrevented: true }), undefined, key);
+  }
 });

@@ -71,6 +71,7 @@ async function start(name) {
   const origin = `http://127.0.0.1:${number}`;
   const get = async url => fetch(origin + url, { signal: AbortSignal.timeout(10_000) });
   await until(async () => { const response = await get('/'); return response.ok && (await response.text()).includes(`${name} first`); }, `${name} startup`);
+  assert.doesNotMatch(entry.log, /Cannot find base config file/, 'a fresh dev runner must generate its base tsconfig before Vite loads');
   return { content, config, runtime, appDir, origin, get, image, child, geojson, geojsonPath };
 }
 try {
