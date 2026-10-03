@@ -22,7 +22,8 @@ small English example and [annotated configuration references](https://github.co
 
 | Reference | What it covers |
 | --- | --- |
-| [Development and releases](development.md) | Source setup, bundling, package checks and publication. |
+| [Development](development.md) | Source setup, bundling and package checks. |
+| [Releases](releases.md) | Versions, npm publication, GitHub releases and content upgrades. |
 | [Architecture](architecture.md) | Workspace boundaries, data flow, caches and watching. |
 | [Slides API](api.md) | Public JavaScript exports and a build example. |
 | [Interface behavior](interface.md) | Navigation, mobile layouts and viewer integration. |

@@ -11,8 +11,8 @@ thumbnails without a browser, DOM, or a running web server.
 | Map layers panel | 256 × 256 WebP per map-entry/theme variant | Transparent, north-up, fitted to the applied mask; no basemap   |
 | Social metadata  | 1200 × 630 JPEG per slideshow route  | First slide in light theme; optional overall short title and subtitle with a soft halo |
 
-A map-entry variant includes its URL, type, image crop, wiggle and renderer
-options. An AnnotationPage with several maps produces one combined layer-row
+A map-entry variant includes its URL and renderer options.
+An AnnotationPage with several maps produces one combined layer-row
 preview. A panel thumbnail is never upscaled into a slide: warped maps render
 again in the slide's shared viewport.
 
@@ -77,8 +77,10 @@ data. Small slide cards and hover previews never receive this overlay. See
 [the configuration examples](configuration.md#overall-titles-descriptions-and-sharing-images)
 for short/long copy and fallback rules.
 
-GeoJSON sources declared in the content configuration use the same SimpleStyle
-layers in the live map and upper thumbnail pass. The native adapter removes
+GeoJSON sources use the same generated and custom layers in the live map and
+upper thumbnail pass. Global `layers` defaults and the current slide's overrides
+are resolved independently for each preview, including text-label expressions.
+The native adapter removes
 null feature IDs (leaving properties and valid IDs intact), since those features
 would otherwise be silently omitted. The render caches include this correction.
 
@@ -198,12 +200,12 @@ newly generated files are saved even if a later build step fails. Only complete
 source bodies and completed render jobs are cached. Manual workflow
 inputs can independently skip restoring each cache.
 
-The Pages workflow sets up Node 24 and pnpm, calls the renderer package's
-shared Ubuntu dependency setup script, and runs `slides build` under Xvfb.
+The Pages workflow sets up Node 24 and pnpm, installs Ubuntu renderer libraries
+inline and the pinned npm dependencies, and runs `slides build` under Xvfb.
 It uploads `dist/site` directly. No Docker image is built or run for Pages.
 
 Container deployment has a separate `docker-publish.yml` workflow. Kattenburg's
-single multi-stage Dockerfile obtains the Slides source, installs dependencies,
+single multi-stage Dockerfile installs the pinned Slides npm package,
 generates all derivatives and thumbnails, prerenders the site and produces an
 Nginx serving image. Only public site files enter that final image. Its Nginx
 configuration supports clean URLs for prerendered chapter HTML files.
@@ -212,12 +214,13 @@ The container build uses three BuildKit cache mounts and explicit Actions
 cache import/export; ordinary image-layer caching alone does not persist cache
 mounts on hosted runners. A daily `CACHE_EPOCH` build argument lets unchanged
 content revalidate remote inputs. The renderer cache is namespaced by the
-framework lockfile. See [Kattenburg's deployment guide](https://github.com/amsterdamtimemachine/kattenburg-atlas/blob/main/docs/deployment.md)
-for build arguments and local source overrides.
+content lockfile. See [Kattenburg's deployment guide](https://github.com/amsterdamtimemachine/kattenburg-atlas/blob/main/docs/deployment.md)
+for build arguments and package upgrades.
 
 The optional renderer/build-tool image remains useful for standalone batches.
-It shares `install-system-deps.sh` with the Pages and web-image builds. The
-monorepo's `static-render.yml` workflow tests that tool image and native pixels.
+The software workspace uses `install-system-deps.sh` for its own native CI setup;
+consumer workflows install the equivalent libraries inline. The monorepo's
+`static-render.yml` workflow tests the tool image and native pixels.
 
 ## Validation and limits
 
@@ -242,7 +245,7 @@ xvfb-run -a pnpm --filter @allmaps/static-render test:native
 ```
 
 The supported scene is planar Web Mercator at pitch zero. Masks, transforms,
-opacity, saturation, background-color removal, colorization, image regions,
+opacity, saturation, background-color removal, colorization,
 basemap themes and vector overlays are handled. Sharp's raw-pixel pipeline
 applies map effects before alpha composition. WebGL-only distortion shading,
 mask/grid/GCP/vector diagnostics and unknown options produce warnings and are

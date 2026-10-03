@@ -25,8 +25,7 @@ thumbnails refresh on build or an explicit command, not on ordinary dev edits.
 ## Final verification
 
 - All workspace unit/component tests and Slides/IIIF/renderer TypeScript checks pass.
-- Existing content roots validate: Gravity at Sea (31 slides), Kattenburg (35)
-  and basemap fixtures (10).
+- Existing content repositories validate.
 - Svelte checks exercise actual app sources, including when installed under
   `node_modules`: zero errors, one existing `Map.svelte` warning about the
   initial `anticipate` value.

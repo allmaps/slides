@@ -22,18 +22,34 @@ URLs and [generation](generation.md) for IIIF and thumbnail settings.
 
 ## Basemaps
 
-The quick-start example uses an empty MapLibre style. To use the default
-Protomaps basemap, remove that `map.styles` block and supply your public key:
+With no custom `map.styles` entry or Protomaps API key, Slides shows no basemap.
+You can omit the entire `map` block, as the starter created by `slides init` does.
+Your georeferenced maps, images and other layers still appear.
+The starter asks for a Protomaps key and includes `protomaps.key: ""` if you skip
+it. An empty key also allows `PUBLIC_PROTOMAPS_KEY` to supply one later.
+
+To add a Protomaps basemap, supply your public key in `slides.config.yml`:
+
+```yaml
+protomaps:
+  key: your-key
+```
+
+Alternatively, supply the key through the environment:
 
 ```sh
 PUBLIC_PROTOMAPS_KEY=your-key pnpm exec slides dev .
 ```
 
 Use the same key for builds and thumbnails, and allow your deployment origin
-in the provider's settings. Alternatively, point `map.styles.light` and
-`map.styles.dark` to your own MapLibre style URLs or files under
-`assets/map-styles/`. Protomaps color overrides below apply to generated basemaps,
-not custom styles.
+in the provider's settings. Without a key, Slides does not request Protomaps
+tiles, glyphs or sprites. This applies to the live view and generated previews.
+
+For a custom basemap, point `map.styles.light` and `map.styles.dark` to MapLibre
+style URLs or files under `assets/map-styles/`. These styles do not need a
+Protomaps key and take precedence over generated Protomaps styles. An explicit
+empty style still works if you want to suppress a configured Protomaps basemap.
+Protomaps color overrides below apply only to generated basemaps.
 
 ## Start-screen maps
 
@@ -45,7 +61,7 @@ settings:
 slideshows:
   - id: main
     path: slideshows/00-main
-    title: Gravity Expeditions at Sea
+    title: My narrative map
     start:
       location:
         center: [4.9, 52.37]
@@ -227,21 +243,99 @@ slide under `map.protomaps`; they do not modify custom `map.styles` files.
 
 ## Shared GeoJSON overlays
 
-Declare GeoJSON sources in the content configuration to show them throughout
-the project, in both the interactive map and slide/social thumbnails:
+Declare GeoJSON sources in `slides.config.yml`. Each source generates four
+layers: `<source>-fill`, `<source>-line`, `<source>-point-circle` and
+`<source>-point-symbol`. These are visible by default, in both the interactive
+map and slide/social thumbnails. Use top-level `layers` to change their defaults:
 
 ```yaml
 sources:
   route:
     type: geojson
     path: assets/geojson/route.geojson
+layers:
+  - layer: route-line
+    visibility: none
 ```
+
+Enable the route in one slide's Markdown frontmatter:
+
+```yaml
+layers:
+  - layer: route-line
+    visibility: visible
+    opacity: 0.8
+    duration: 300
+```
+
+Each slide resolves its overrides against the global defaults. Omitted settings
+return to those defaults; they never carry over from a previous slide. The same
+rules apply to `slideshows[].start.layers`. `opacity` accepts 0–1 and `duration`
+is a non-negative transition duration in milliseconds. Without an opacity
+override, the layer keeps its paint expression, including per-feature styles.
+Without a duration, the global paint transition or MapLibre default applies.
+Use authored IDs without an internal `user-` prefix.
 
 Feature properties control the appearance using SimpleStyle: `stroke`,
 `stroke-width`, `stroke-opacity`, `fill`, `fill-opacity`, `marker-color` and
 `marker-size`. Omitted properties use the shared default style. For example,
 `{"stroke":"#64c18f","stroke-width":8}` draws a green route. Regenerate
 thumbnails after changing the geometry or style with `slides thumbnails .`.
+
+### Custom layers and labels
+
+A global `layers` entry with `id` defines a full
+[MapLibre style layer](https://maplibre.org/maplibre-style-spec/layers/).
+Entries with `layer` adjust existing layers. Custom layers are drawn above the
+generated layers in list order, with the last on top. A custom `id` matching a
+generated ID replaces that generated layer. Unknown source/layer references
+and duplicate IDs are rejected during content validation.
+
+For example, Amsterdam's historic-building GeoJSON contains points with names
+in the `Naam` property. Add the following alongside your existing configuration:
+
+```yaml
+sources:
+  buildings:
+    type: geojson
+    url: https://maps.amsterdam.nl/open_geodata/geojson_lnglat.php?KAARTLAAG=HISTORISCHE_BEBOUWING&THEMA=archeologie
+layers:
+  - layer: buildings-point-circle
+    visibility: none
+  - id: building-labels
+    type: symbol
+    source: buildings
+    layout:
+      visibility: none
+      text-field: [get, Naam]
+      text-font: [Noto Sans Regular]
+      text-size: 14
+      text-anchor: bottom
+      text-offset: [0, -0.7]
+    paint:
+      text-color: '#34373d'
+      text-halo-color: '#ffffff'
+      text-halo-width: 2
+```
+
+Then enable the points and labels on the desired slide:
+
+```yaml
+layers:
+  - layer: buildings-point-circle
+    visibility: visible
+  - layer: building-labels
+    visibility: visible
+```
+
+`text-field: [get, Naam]` reads each feature's `properties.Naam`. MapLibre
+expressions can also combine fields or filter features. Text uses the basemap's
+glyph endpoint when available; otherwise Slides supplies the Protomaps font
+endpoint, which supports `Noto Sans Regular`. A custom font needs a compatible
+glyph endpoint in the map style or `map.protomaps.glyphs`. Label collisions are
+handled by MapLibre, so zooming in can reveal additional labels.
+Sources and layer definitions live in the project configuration; a slide selects
+them with `layers` overrides.
 
 ## Credits and chapter numbering
 
@@ -310,21 +404,10 @@ interface:
     mapLayers: Kaarten
     chapterPosition: "Hoofdstuk {current} van {total}"
     backToTitle: "Terug naar {title}"
-    readMore: Lees meer
+    startButton: Start
+    madeWith: Gemaakt met
 ```
 
 Unspecified keys use English. Existing `interface.startScreen` settings remain
 supported; `interface.text` takes precedence. Kattenburg Atlas includes the full
 Dutch translation in its `slides.config.yml`.
-
-Start-screen text can be translated from the project configuration. Use
-`{count}` where the number of chapters should appear:
-
-```yml
-interface:
-  startScreen:
-    startButton: Start
-    chapterCountSingular: "{count} hoofdstuk in deze presentatie"
-    chapterCountPlural: "{count} hoofdstukken in deze presentatie"
-    madeWith: Gemaakt met
-```

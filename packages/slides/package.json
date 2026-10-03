@@ -33,7 +33,6 @@
     "@sveltejs/kit": "^2.50.2",
     "@sveltejs/vite-plugin-svelte": "^6.2.4",
     "@tailwindcss/vite": "^4.2.0",
-    "@turf/turf": "^7.3.5",
     "@types/node": "^25.9.1",
     "commander": "^14.0.2",
     "maplibre-gl": "^6.11.2",
@@ -70,7 +69,6 @@
     "./model/types": "./src/model/types.ts",
     "./model/basemap": "./src/model/basemap.ts",
     "./model/config": "./src/model/config.ts",
-    "./model/map/image": "./src/model/map/image.ts",
     "./model/map/annotations": "./src/model/map/annotations.ts",
     "./model/map/layers": "./src/model/map/layers.ts",
     "./model/map/camera": "./src/model/map/camera.ts",
@@ -90,7 +88,7 @@
   "engines": {
     "node": ">=24"
   },
-  "description": "Build map stories from Markdown and local assets",
+  "description": "Build narrative maps from Markdown and local assets",
   "publishConfig": {
     "access": "public",
     "exports": {
@@ -129,10 +127,6 @@
       "./model/config": {
         "types": "./dist/model/config.d.ts",
         "default": "./dist/model/config.js"
-      },
-      "./model/map/image": {
-        "types": "./dist/model/map/image.d.ts",
-        "default": "./dist/model/map/image.js"
       },
       "./model/map/annotations": {
         "types": "./dist/model/map/annotations.d.ts",

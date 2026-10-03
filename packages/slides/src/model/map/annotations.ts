@@ -18,12 +18,6 @@ export const getUniqueAnnotations = (annotations: WarpedMapProps[]) => {
 export const getAnnotationsFromChapters = (chapters: MapChapterProps[]) =>
   getUniqueAnnotations(chapters.flatMap((chapter) => chapter.warpedMaps ?? []));
 
-export const hidesBasemap = (chapter: MapChapterProps) =>
-  !!(
-    chapter.hideBasemap ||
-    chapter.warpedMaps?.some((map) => map.type === "Image")
-  );
-
 export function stableStringify(value: unknown): string {
   return JSON.stringify(value, (_, entry) =>
     entry && typeof entry === "object" && !Array.isArray(entry)
@@ -34,15 +28,12 @@ export function stableStringify(value: unknown): string {
   );
 }
 
-/** URL stays the authored identity; variants include crop/transformation/effects. */
+/** URL stays the authored identity; variants include transformation/effects. */
 export const layerPreviewKey = ({
   url,
-  type,
-  region,
-  wiggle,
   options,
   darkOptions,
 }: WarpedMapProps, theme: ThemeMode = "light") => stableStringify({
-  url, type, region, wiggle,
+  url,
   options: theme === "dark" && darkOptions ? { ...options, ...darkOptions } : options,
 });

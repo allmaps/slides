@@ -1,6 +1,5 @@
-import { parseAnnotation, type GeoreferencedMap } from "@allmaps/annotation";
+import { parseAnnotation } from "@allmaps/annotation";
 import type { WarpedMap } from "@allmaps/render";
-import { createFauxGeoreferencedMap } from "../model/map/image.ts";
 import type { ThemeMode, WarpedMapProps } from "../model/types.ts";
 import { getWarpedMapOptions } from "../model/map/annotations.ts";
 import { recipeHash, type RemoteCache, type CachedResource } from "@allmaps/static-render/cache";
@@ -12,7 +11,7 @@ export type LoadedLayer = {
   maps: WarpedMap[];
   effects: WarpedMapEffects;
   revision: string;
-  annotation?: CachedResource;
+  annotation: CachedResource;
 };
 
 export async function loadLayer(
@@ -22,21 +21,10 @@ export async function loadLayer(
   theme: ThemeMode = "light",
 ): Promise<LoadedLayer> {
   const { options, effects } = staticMapOptions(getWarpedMapOptions(props, theme), props.url);
-  let annotation: CachedResource | undefined;
-  let maps: GeoreferencedMap[];
-  if (props.type === "Image")
-    maps = [
-      await createFauxGeoreferencedMap(props.url, {
-        ...props,
-        fetchFn: sources.fetch,
-      }),
-    ];
-  else {
-    annotation = await (/^https?:\/\//.test(props.url)
-      ? annotations.get(props.url)
-      : sources.get(props.url));
-    maps = parseAnnotation(JSON.parse(annotation.bytes.toString()));
-  }
+  const annotation = await (/^https?:\/\//.test(props.url)
+    ? annotations.get(props.url)
+    : sources.get(props.url));
+  const maps = parseAnnotation(JSON.parse(annotation.bytes.toString()));
   if (!maps.length) throw new Error(`No georeferenced maps: ${props.url}`);
   const imageRevisions = await Promise.all(
     maps.map((map) => sources.imageRevision(map.resource.id)),

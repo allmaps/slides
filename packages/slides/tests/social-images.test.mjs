@@ -10,7 +10,6 @@ import { prepareThumbnails } from "../src/build/prepare.ts";
 test("social scenes use overall short copy, subslideshow titles and a caller-supplied font", async t => {
   const root = await mkdtemp(path.join(tmpdir(), "slides-social-"));
   t.after(() => rm(root, { recursive: true, force: true }));
-  const style = { version: 8, sources: {}, layers: [] };
   const font = await readFile(new URL('../../../apps/slides/static/fonts/SourceSans3-VariableFont_wght.ttf', import.meta.url));
   await writeFile(path.join(root, 'custom.ttf'), font);
   const config = {
@@ -22,7 +21,6 @@ test("social scenes use overall short copy, subslideshow titles and a caller-sup
       { id: 'history', path: 'history', title: 'The early years', description: 'Do not use this as the subtitle' },
     ],
     socialImage: { font: { family: 'Source Sans 3', path: 'custom.ttf' } },
-    map: { styles: { light: style, dark: style } },
   };
   for (const show of config.slideshows) {
     await mkdir(path.join(root, show.path));
@@ -34,6 +32,13 @@ test("social scenes use overall short copy, subslideshow titles and a caller-sup
     assetRoot: root, cacheRoot: path.join(root, 'cache'), annotationsRoot: path.join(root, 'annotations'), offline: true, refresh: false,
   });
   const defaults = await prepare();
+  for (const job of defaults.plan.jobs) {
+    for (const style of Object.values(job.styles)) {
+      assert.deepEqual(style.sources, {}, 'unconfigured basemaps must not request tiles');
+      assert.equal(style.glyphs, undefined);
+      assert.equal(style.sprite, undefined);
+    }
+  }
   assert.ok(defaults.plan.jobs.every(job => !job.textOverlay), 'sharing images default to no text');
   assert.equal(defaults.plan.fonts, undefined, 'a configured font alone must not enable overlays');
   config.socialImage.textOverlay = true;

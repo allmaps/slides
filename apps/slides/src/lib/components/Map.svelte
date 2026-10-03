@@ -26,18 +26,21 @@
   import {
     getAnnotationsFromChapters,
     getUniqueAnnotations,
-    hidesBasemap,
     getWarpedMapOptions,
   } from "$lib/shared/map/annotations";
   import {
     resolveChapterCamera,
+    getCameraPadding,
     getCameraLayoutOptions,
     type CameraLayoutOptions,
   } from "$lib/shared/map/camera";
   import { constrainSlideshowCamera } from "$lib/shared/map/constraints";
   import { withBaseUrl } from "$lib/shared/paths";
-  import { createFauxGeoreferencedMap } from "$lib/shared/map/image";
-  import { prepareUserLayers, getUserLayerChange } from "$lib/shared/map/layers";
+  import { applyUserLayerChanges, getUserLayerGlyphs } from "$lib/shared/map/layers";
+  import { createLayerTransitions } from "$lib/shared/map/layer-transitions";
+  import { focusMapOnWheel } from "$lib/shared/map/focus";
+  import { setComparisonOpacity } from "$lib/shared/map/comparison";
+  import { LAYER_TYPES } from "$lib/shared/settings";
   import { slidesConfig } from "$lib/shared/app-config";
   import {
     getBasemapLayerVisibility as resolveLayerVisibility,
@@ -82,12 +85,13 @@
     slideshowMapConfig?: MapConfig;
     highlight?: string;
     hiddenWarpedMapUrls?: string[];
+    temporarilyHideMaps?: boolean;
     focusedWarpedMapUrl?: string;
     showLabels?: boolean;
     anticipate?: boolean;
     layoutRevision?: number;
     resetSignal?: number;
-    padding?: number | PaddingOptions;
+    layoutPadding?: number | PaddingOptions;
     controlsVisible?: boolean;
     onBasemapAttribution?: (attributions: string[]) => void;
     debug?: boolean;
@@ -105,12 +109,13 @@
     slideshowMapConfig,
     highlight,
     hiddenWarpedMapUrls = [],
+    temporarilyHideMaps = false,
     focusedWarpedMapUrl,
     showLabels,
     anticipate,
     layoutRevision = 0,
     resetSignal = 0,
-    padding,
+    layoutPadding = 0,
     controlsVisible = true,
     onBasemapAttribution,
     debug = dev,
@@ -124,25 +129,15 @@
   );
   let currentWarpedMaps = $derived(currentChapter?.warpedMaps);
   let currentLayers = $derived(currentChapter?.layers);
-  let currentImageSlide = $derived(
-    currentWarpedMaps?.some((warpedMaps) => warpedMaps.type === "Image") ||
-      false,
-  );
   const focusedMapUrl = $derived(currentWarpedMaps?.some(({ url }) => url === focusedWarpedMapUrl)
     ? focusedWarpedMapUrl : undefined);
-  let currentHideBasemap = $derived(!!focusedMapUrl || hidesBasemap(currentChapter ?? {}));
-  let currentPadding = $derived.by(() => {
-    if (typeof padding === "number" || padding === undefined) {
-      return padding ?? DEFAULT_PADDING;
-    }
-
-    return {
-      top: padding.top ?? DEFAULT_PADDING,
-      right: padding.right ?? DEFAULT_PADDING,
-      bottom: padding.bottom ?? DEFAULT_PADDING,
-      left: padding.left ?? DEFAULT_PADDING,
-    };
-  });
+  let currentHideBasemap = $derived(!!focusedMapUrl || !!currentChapter?.hideBasemap);
+  // Full-map mode restores the normal margin so the whole map stays visible.
+  // Its native MapLibre fitting path also requires non-negative padding.
+  const currentPadding = $derived(getCameraPadding(
+    layoutPadding,
+    focusedMapUrl ? DEFAULT_PADDING : currentChapter?.padding ?? DEFAULT_PADDING,
+  ));
 
   let sprite = $derived(currentChapter?.sprite);
   const theme = $derived((isDarkMode ? "dark" : "light") as ThemeMode);
@@ -190,6 +185,7 @@
   );
 
   let map: maplibregl.Map;
+  let userLayerTransitions: ReturnType<typeof createLayerTransitions>;
   let container: HTMLElement;
   let mapLoaded = $state(false);
   let currentBearing = $state(0);
@@ -375,8 +371,11 @@
   };
 
   const setStyleAssets = (basemapStyle: ResolvedBasemapStyle) => {
-    if (basemapStyle.glyphs) {
-      map.setGlyphs(basemapStyle.glyphs);
+    const glyphs = basemapStyle.glyphs ?? getUserLayerGlyphs(
+      Array.isArray(layers) ? layers : layers ? [layers] : [],
+    );
+    if (glyphs) {
+      map.setGlyphs(glyphs);
     }
 
     if (typeof basemapStyle.sprite === "string") {
@@ -609,7 +608,7 @@
     }
 
     const initialCameraUpdate = start;
-    if (currentImageSlide || initialCameraUpdate) {
+    if (initialCameraUpdate) {
       flyToOptions.duration = 0;
     } else if (
       (!useCurrentLocation || !currentLocation.duration) &&
@@ -665,42 +664,25 @@
           console.log("Loading warped map...", annotation);
         }
 
-        if (annotation.type === "Image") {
-          // Create a 'fake' annotation for the image, in order to add it to the map
-          const georeferencedMap = await createFauxGeoreferencedMap(url, {
-            region: annotation.region,
-            wiggle: annotation.wiggle,
-          });
+        const snapshotUrl = annotationUrls[url];
+        const georeferenceAnnotation = await fetch(snapshotUrl ? withBaseUrl(snapshotUrl) : url).then((response) =>
+          response.json(),
+        );
 
-          if (destroyed) return;
+        if (destroyed) return;
 
-          const options = {
-            ...getWarpedMapOptions(annotation, theme),
-            visible: false,
-          };
-          const id = warpedMapLayer.addGeoreferencedMap(georeferencedMap, options);
-          rememberMapIdsForAnnotation(url, [id]);
-        } else {
-          const snapshotUrl = annotationUrls[url];
-          const georeferenceAnnotation = await fetch(snapshotUrl ? withBaseUrl(snapshotUrl) : url).then((response) =>
-            response.json(),
-          );
+        const options = {
+          ...getWarpedMapOptions(annotation, theme),
+          visible: false,
+        };
+        const results = warpedMapLayer.addGeoreferenceAnnotation(georeferenceAnnotation, options);
 
-          if (destroyed) return;
-
-          const options = {
-            ...getWarpedMapOptions(annotation, theme),
-            visible: false,
-          };
-          const results = warpedMapLayer.addGeoreferenceAnnotation(georeferenceAnnotation, options);
-
-          const mapIds = results.flatMap((result) => result.ok ? [result.mapId] : []);
-          const errors = results.flatMap((result) => result.ok ? [] : [result.error]);
-          if (errors.length) {
-            console.error("Failed to add georeferenced map for", url, errors);
-          }
-          rememberMapIdsForAnnotation(url, mapIds);
+        const mapIds = results.flatMap((result) => result.ok ? [result.mapId] : []);
+        const errors = results.flatMap((result) => result.ok ? [] : [result.error]);
+        if (errors.length) {
+          console.error("Failed to add georeferenced map for", url, errors);
         }
+        rememberMapIdsForAnnotation(url, mapIds);
       } catch (error) {
         if (!destroyed) {
           console.error("Failed to load georeferenced map for", url, error);
@@ -851,6 +833,9 @@
             .filter((option) => option !== "visible" && option !== "opacity"),
         },
       );
+      // Layer-panel visibility/opacity updates must redraw even when Allmaps
+      // emits no change event and MapLibre has stopped rendering after zooming.
+      map.triggerRepaint();
     });
   }
 
@@ -906,17 +891,6 @@
         : {}),
     });
   };
-
-  function toggleVisibility(event: KeyboardEvent) {
-    if (event.repeat) return;
-    if (mapLoaded && event.code === "Backquote") {
-      const opacity = warpedMapLayer.getOpacity();
-      warpedMapLayer.setLayerOptions(
-        { opacity: opacity === 0 ? 1 : 0 },
-        { animate: ANIMATE_WARPED_MAP_OPACITY },
-      );
-    }
-  }
 
   const resetNorth = () => {
     if (!mapLoaded) return;
@@ -978,36 +952,35 @@
     }
     const layerList = Array.isArray(layers) ? layers : [layers];
 
-    prepareUserLayers(layerList)
-      .forEach((layer) => {
-        const vectorTypes = ["symbol", "circle", "line", "raster", "fill"];
-        const moveToFront = vectorTypes.includes(layer.type);
-        map.addLayer(layer, moveToFront ? undefined : "warped-map-layer");
-      });
+    for (const layer of layerList) map.addLayer(layer);
   }
 
   function setUserLayerState() {
     if (!mapLoaded || !layers) return;
     const layerList = Array.isArray(layers) ? layers : [layers];
 
-    for (const layer of prepareUserLayers(layerList)) {
+    for (const layer of applyUserLayerChanges(layerList, currentLayers)) {
       if (!map.getLayer(layer.id)) continue;
-      const change = currentLayers?.find((change) => `user-${change.layer}` === layer.id);
       const source = "source" in layer ? sources?.[layer.source] : undefined;
       const visibility = focusedMapUrl && source?.type === "geojson"
         ? "none"
-        : change?.visibility ?? layer.layout?.visibility ?? "visible";
-      // Full-map mode temporarily hides content overlays, including layers
-      // with no per-slide overrides. Restore the slide's visibility on exit.
-      map.setLayoutProperty(layer.id, "visibility", visibility);
-
-      if (!change) continue;
-      const { paint, duration } = getUserLayerChange(change, layer.type);
-      for (const [property, value] of Object.entries(paint)) {
-        const options = duration ? { duration } : {};
-        if (duration) map.setPaintProperty(layer.id, `${property}-transition` as keyof maplibregl.AllPaintProperties, options);
-        map.setPaintProperty(layer.id, property as keyof maplibregl.AllPaintProperties, value);
+        : layer.layout?.visibility ?? "visible";
+      if (source?.type === "geojson") {
+        // Full-map mode and reduced motion bypass native opacity transitions.
+        userLayerTransitions.set(layer, visibility !== "none",
+          !!focusedMapUrl || window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+        continue;
       }
+      const paint = layer.paint as Partial<maplibregl.AllPaintProperties> | undefined;
+      for (const property of LAYER_TYPES[layer.type as keyof typeof LAYER_TYPES] ?? []) {
+        // Resolve each slide from global defaults, including expressions and
+        // transitions. Omitting an override must not retain the previous slide.
+        const transition = `${property}-transition` as keyof maplibregl.AllPaintProperties;
+        map.setPaintProperty(layer.id, transition, paint?.[transition]);
+        const opacityProperty = property as keyof maplibregl.AllPaintProperties;
+        map.setPaintProperty(layer.id, opacityProperty, paint?.[opacityProperty]);
+      }
+      map.setLayoutProperty(layer.id, "visibility", visibility);
     }
   }
 
@@ -1054,6 +1027,10 @@
     };
   });
   $effect(applyWarpedMapState);
+  $effect(() => {
+    if (!mapLoaded) return;
+    setComparisonOpacity(map, warpedMapLayer, temporarilyHideMaps);
+  });
   $effect(setChapterCamera);
   $effect(setUserLayerState);
   $effect(() => {
@@ -1111,6 +1088,9 @@
       currentBearing = map.getBearing();
     };
 
+    userLayerTransitions = createLayerTransitions(map);
+    const removeMapFocusListeners = focusMapOnWheel(map.getCanvas());
+
     map.on("move", updateBearing);
     // TileJSON may supply attribution after its style source was installed.
     map.on("sourcedata", (event) => {
@@ -1164,6 +1144,8 @@
 
     return () => {
       destroyed = true;
+      removeMapFocusListeners();
+      userLayerTransitions.destroy();
       if (mapLoaded) {
         warpedMapLayer.clear();
       }
@@ -1172,10 +1154,8 @@
   });
 </script>
 
-<svelte:window on:keydown={toggleVisibility} on:keyup={toggleVisibility} />
-
 <div class="relative h-full min-h-0 w-full min-w-0">
-  <div class="h-full min-h-0 w-full min-w-0" bind:this={container}></div>
+  <div class="map-container h-full min-h-0 w-full min-w-0" bind:this={container}></div>
 
   <div
     class="map-controls pointer-events-none absolute z-10 flex flex-col md:flex-row"
@@ -1224,6 +1204,10 @@
 </div>
 
 <style>
+  .map-container :global(.maplibregl-canvas:focus) {
+    outline: none;
+  }
+
   .map-controls {
     gap: var(--app-control-gap);
     top: var(--app-inset-top);

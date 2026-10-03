@@ -6,12 +6,10 @@ import {
   getEffectiveBasemapStyleConfig,
   getEffectiveBasemapLayerState,
 } from "../model/basemap.ts";
-import { getGeoJsonLayers } from "../model/geojson.ts";
 import {
-  prepareUserLayers,
   applyUserLayerChanges,
 } from "../model/map/layers.ts";
-import { layerPreviewKey, hidesBasemap } from "../model/map/annotations.ts";
+import { layerPreviewKey } from "../model/map/annotations.ts";
 import { resolveChapterCamera, type Camera } from "../model/map/camera.ts";
 import {
   emptyThumbnails,
@@ -93,7 +91,7 @@ export async function prepareThumbnails(content: ContentSnapshot, options: {
           options: map.mapOptions,
         })),
       };
-      if (layer.annotation && /^https?:/.test(props.url)) {
+      if (/^https?:/.test(props.url)) {
         plan.resources[props.url] = {
           base64: layer.annotation.bytes.toString("base64"),
           extension: "json",
@@ -154,7 +152,7 @@ export async function prepareThumbnails(content: ContentSnapshot, options: {
     const styles = sceneStyles(
       style,
       state,
-      hidesBasemap(chapter),
+      !!chapter.hideBasemap,
       resolvedSources,
       overlayLayers,
     );
@@ -187,13 +185,7 @@ export async function prepareThumbnails(content: ContentSnapshot, options: {
         light: { center: [0, 0], zoom: 14, bearing: 0 },
         dark: { center: [0, 0], zoom: 14, bearing: 0 },
       };
-      let overlays: LayerSpecification[] = Object.entries(
-        slideshow.sources,
-      ).flatMap(([id, source]) =>
-        source.type === "geojson"
-          ? prepareUserLayers(getGeoJsonLayers(id))
-          : [],
-      );
+      const defaultOverlays = slideshow.layers ?? [];
       const chapters = [
         ...(slideshow.start ? [slideshow.start] : []),
         ...slideshow.chapters,
@@ -203,8 +195,7 @@ export async function prepareThumbnails(content: ContentSnapshot, options: {
           throw new Error(
             "Warped sprite previews are not supported; use IIIF image sources",
           );
-        // User-layer changes advance once per chapter, independently of theme.
-        overlays = applyUserLayerChanges(overlays, chapter.layers);
+        const overlays = applyUserLayerChanges(defaultOverlays, chapter.layers);
         const previews = {} as Record<ThemeMode, Thumbnail>;
         for (const theme of ["light", "dark"] as const) {
           const selected = await Promise.all(
@@ -238,7 +229,7 @@ export async function prepareThumbnails(content: ContentSnapshot, options: {
             });
           }
           const previousCamera = cameras[theme];
-          const camera = resolveChapterCamera(chapter, mapsFor, size, 20, previousCamera);
+          const camera = resolveChapterCamera(chapter, mapsFor, size, chapter.padding ?? 20, previousCamera);
           cameras[theme] = camera;
           if (!("slug" in chapter)) continue;
           previews[theme] = await renderScene(
@@ -255,7 +246,7 @@ export async function prepareThumbnails(content: ContentSnapshot, options: {
               chapter,
               mapsFor,
               socialSize,
-              32,
+              chapter.padding ?? 32,
               previousCamera,
             );
             manifest.social[slideshow.id] = await renderScene(

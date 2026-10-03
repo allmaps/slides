@@ -4,6 +4,7 @@
   import { tick, untrack } from "svelte";
   import { waitForFigureLayouts } from "$lib/shared/enhance-figures";
   import { withBaseUrl } from "$lib/shared/paths";
+  import { panelScroll } from "$lib/shared/panel-scroll";
   import { emptyThumbnails, slidePreviewKey, type ThumbnailManifest } from "$lib/shared/thumbnails";
   import ChapterContent from "$lib/components/ChapterContent.svelte";
   import { getChapterCount, getChapterLabel, getSlideshowNumber } from "@allmaps/slides/model/project";
@@ -338,21 +339,6 @@
   });
 
   $effect(() => {
-    const element = scrollContainer;
-    if (!element) return;
-    // Observe native scrolling gestures without overriding their default action.
-    const onScrollKey = (event: KeyboardEvent) => {
-      if (["ArrowUp", "ArrowDown", "PageUp", "PageDown", "Home", "End", " "].includes(event.key)) interruptNavigation();
-    };
-    element.addEventListener("pointerdown", interruptNavigation, { passive: true });
-    element.addEventListener("keydown", onScrollKey);
-    return () => {
-      element.removeEventListener("pointerdown", interruptNavigation);
-      element.removeEventListener("keydown", onScrollKey);
-    };
-  });
-
-  $effect(() => {
     observerKey;
 
     if (!scrollContainer) return;
@@ -427,11 +413,15 @@
   class="relative flex h-full min-h-0 flex-col text-[var(--app-text)] {className}"
   inert={!active || suspended}
 >
+  <!-- svelte-ignore a11y_no_noninteractive_tabindex (The scrollable region needs keyboard focus for native scrolling and slideshow shortcuts.) -->
   <div
     bind:this={scrollContainer}
+    use:panelScroll={interruptNavigation}
     data-slideshow-scroll
+    tabindex="0"
+    role="region"
+    aria-label={slideshow.title}
     onscroll={waitForScrollIdle}
-    onwheel={interruptNavigation}
     class="slideshow-scroll panel-scrollbar min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-3.5 transition-opacity duration-150 {loaded
       ? ''
       : 'invisible'} {overlayOpen
@@ -524,6 +514,10 @@
     margin-inline: 6px;
     width: calc(100% - 12px);
     scroll-padding-bottom: var(--panel-scroll-clearance, calc(var(--navigator-height, 62px) + 16px));
+  }
+
+  .slideshow-scroll:focus-visible {
+    outline: none;
   }
 
   .panel-link {

@@ -75,17 +75,34 @@ warpedMaps:
 ```
 
 For a local annotation, use `path: assets/annotations/map.json` instead of `url`.
-To show an original image without georeferencing, use an IIIF Image API service:
+To show an original image without georeferencing, add a
+[zoomable IIIF figure](images.md#iiif-figures) to the slide's text.
 
-```yaml
-warpedMaps:
-  - type: Image
-    url: https://elo.memorix.io/resources/iiif/3/c5cc0a2c-df58-4d69-8a25-fe8d6024ddc7
-```
-
-For `type: Image`, use the service URL without `/info.json`.
 Each slide supplies its own maps; repeat an entry to retain it on the next slide.
 Omit `location` to fit the maps automatically, or supply a center and zoom.
+Set `fit: contain` (the default) to show all map bounds, `fit: cover` to fill the
+available map area with some cropping, or `fit: equal` to give the map bounds
+the same area as the available viewport. This applies to the live view and
+generated previews, and also works under `slideshows[].start`. `useZoom: true`
+overrides the fitted zoom with the map's resource scale; an explicit
+`location.zoom` takes priority over both.
+
+Use `padding` to set a uniform inner margin in pixels, inside the area left by
+the reading panel and other layout reservations. Positive values add space;
+negative values enlarge the fitting area, zooming in for extra cropping.
+For edge-to-edge fitting within that area:
+
+```yaml
+fit: cover
+padding: 0
+```
+
+For extra cropping, try `padding: -20`. The interface still controls the reserved
+space and camera offset. An explicit
+padding also applies to generated slide previews and sharing images. When
+omitted, the existing margins remain: 25 pixels in the live view, 20 in slide
+previews and 32 in sharing images. This also works under `slideshows[].start`.
+The temporary "Show full map" view always uses the normal 25-pixel margin.
 
 Use [configuration](configuration.md) for basemaps, dark-mode map options and
 shared GeoJSON overlays. Use [images and captions](images.md) for images inside

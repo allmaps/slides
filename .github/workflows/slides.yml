@@ -1,16 +1,7 @@
 name: Slides architecture
 on:
+  # Always report the required check; skip expensive steps for documentation-only PRs.
   pull_request:
-    paths:
-      - "packages/**"
-      - "package.json"
-      - ".changeset/**"
-      - "apps/slides/**"
-      - "scripts/**"
-      - "content/**"
-      - "pnpm-lock.yaml"
-      - "pnpm-workspace.yaml"
-      - ".github/workflows/slides.yml"
   workflow_dispatch:
 jobs:
   integration:
@@ -18,28 +9,49 @@ jobs:
     timeout-minutes: 20
     permissions:
       contents: read
+      pull-requests: read
     steps:
       - uses: actions/checkout@v6
+      - name: Detect changes that need testing
+        id: changes
+        # Manual runs and PRs beyond the API's 3,000-file limit run all tests.
+        if: github.event_name == 'pull_request' && github.event.pull_request.changed_files <= 3000
+        uses: dorny/paths-filter@v4
         with:
-          submodules: recursive
+          predicate-quantifier: every
+          filters: .github/test-paths.yml
+      - name: Documentation-only changes
+        if: steps.changes.outputs.tests == 'false'
+        run: echo "Documentation-only changes; integration tests were not needed." >> "$GITHUB_STEP_SUMMARY"
+      - name: Check out the integration presentation
+        if: steps.changes.outputs.tests != 'false'
+        run: git submodule update --init content/slides-template
       - uses: pnpm/action-setup@v4
+        if: steps.changes.outputs.tests != 'false'
         with:
           version: 10.22.0
       - uses: actions/setup-node@v6
+        if: steps.changes.outputs.tests != 'false'
         with:
           node-version: 24
           cache: pnpm
       - name: Set up native renderer
+        if: steps.changes.outputs.tests != 'false'
         run: sudo sh packages/static-render/scripts/install-system-deps.sh
       - run: pnpm install --frozen-lockfile
+        if: steps.changes.outputs.tests != 'false'
       - name: Unit and component checks
+        if: steps.changes.outputs.tests != 'false'
         run: |
           pnpm -r test
           pnpm --filter @allmaps/slides --filter @allmaps/iiif --filter @allmaps/static-render check
-          pnpm exec slides check ./content/gravity-at-sea
+          pnpm check ./content/slides-template
       - name: Native pixel alignment
+        if: steps.changes.outputs.tests != 'false'
         run: xvfb-run -a pnpm --filter @allmaps/static-render test:native
       - name: Independent development sites
+        if: steps.changes.outputs.tests != 'false'
         run: pnpm --filter @allmaps/slides test:dev
       - name: Fresh installed consumer
+        if: steps.changes.outputs.tests != 'false'
         run: xvfb-run -a pnpm --filter @allmaps/slides test:package

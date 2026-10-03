@@ -40,11 +40,22 @@ between the top screen margin and navigator. Expanding the mobile card to its
 maximum height preserves the map's previous framing.
 
 Keyboard shortcuts: **Left / Right** for previous / next chapter, **B** to return
-to the main slideshow and **H** to hide / show the sidebar. Shortcuts leave text
-entry, modified browser shortcuts and image dialogs alone. The mobile handle also
-supports **Up / Down**, **Home** (hide) and **End** (expand).
+to the main slideshow and **H** to hide / show the sidebar. Hold **Space** to
+temporarily hide the warped maps and see the basemap; release it to restore them.
+Shortcuts leave text entry, modified browser shortcuts and image dialogs alone.
+Shortcuts work while the map or a chapter link has focus. Space keeps its usual
+activation behavior on focused buttons and other controls. Scrolling the text
+panel moves focus back to the reading area. Wheel zoom moves focus to the map
+only when a previously focused control would consume Space; clicks use native
+browser focus. The
+mobile handle also supports **Up / Down**, **Home** (hide) and **End** (expand).
 Rapid chapter navigation advances from the latest requested chapter while smooth
 scrolling settles; manual scrolling can interrupt it without snapping back.
+GeoJSON overlays use native MapLibre opacity transitions when their slide
+visibility changes (300 ms by default). Readers who prefer reduced motion see
+immediate changes. Lines and fills fade as whole layers, preserving feature
+styles. Feature-dependent circle or symbol opacity does not fade smoothly;
+use a constant opacity if these layers need to fade.
 
 ## Image viewer
 

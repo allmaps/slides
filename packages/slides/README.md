@@ -1,70 +1,42 @@
 # @allmaps/slides
 
-Create interactive map stories from Markdown, images and georeferenced maps.
+Create interactive narrative maps from Markdown, images and georeferenced maps.
 The `slides` CLI previews your story locally and builds a static website.
 It includes the application, image tools and map thumbnail renderer.
 
 ## Quick start
 
-Use **Node.js 24 or later**. Install the npm package in a new directory:
+Use **Node.js 24 or later** and pnpm 10. Create a project, install its dependencies
+and start the preview:
 
 ```sh
-mkdir my-story
+pnpm dlx @allmaps/slides@beta init my-story
 cd my-story
-pnpm add -D @allmaps/slides@beta
-mkdir chapters
+pnpm install
+pnpm dev
 ```
 
-Slides is currently in beta. Commit your lockfile to keep builds reproducible.
-For a source checkout or a local package archive, see
-[development setup](https://github.com/allmaps/slides/blob/main/docs/development.md).
+`init` asks for a title and an optional Protomaps key; you can change both later
+in `slides.config.yml`. Press Enter to keep the defaults and use a plain
+background. Use `--yes` to skip prompts. `create` is an alias for `init`;
+neither overwrites existing files.
 
-Create `slides.config.yml`:
+Open the preview URL printed in your terminal and edit `chapters/01-welcome.md`.
 
-```yaml
-title: My first map story
-slideshows:
-  - id: main
-    path: chapters
-map:
-  styles:
-    light: &plain
-      version: 8
-      sources: {}
-      layers: []
-    dark: *plain
-```
+Slides is currently in beta. The starter pins your Slides version; commit your
+lockfile to keep builds reproducible. For a source checkout or a local package
+archive, see [development setup](https://github.com/allmaps/slides/blob/main/docs/development.md).
 
-This uses a plain background, so the example needs no basemap API key.
-Create `chapters/01-welcome.md`:
-
-```md
----
-title: Welcome
-location:
-  center: [4.4924, 52.1590]
-  zoom: 14
----
-
-Every map has a story. This is the first chapter of mine.
-```
-
-Start the preview and open the URL printed in your terminal:
-
-```sh
-pnpm exec slides dev .
-```
-
-Edit the Markdown file to see your changes. For an example with historical maps,
+For an example with historical maps,
 use the [Slides template](https://github.com/allmaps/slides-template). To add a
 background map, follow [basemap setup](https://github.com/allmaps/slides/blob/main/docs/configuration.md#basemaps).
 
 ## Check and build
 
 ```sh
-pnpm exec slides validate .
-pnpm exec slides build .
-pnpm exec slides preview .
+pnpm exec slides validate
+pnpm exec slides build
+pnpm exec slides preview
 ```
 
 The build writes a static site to `dist/` and generates image derivatives and

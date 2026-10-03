@@ -4,6 +4,7 @@ import { mkdtemp, mkdir, readFile, writeFile, readdir, rm, realpath, stat } from
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { stripVTControlCharacters } from 'node:util';
 import sharp from 'sharp';
 const repository = fileURLToPath(new URL('../../../', import.meta.url));
 const root = await mkdtemp(path.join(tmpdir(), 'slides-package-consumer-'));
@@ -12,7 +13,7 @@ const pnpm = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm';
 const run = (args, cwd = root, env = {}) => execFileSync(pnpm, args, { cwd, stdio: 'inherit', env: { ...process.env, ...env }, timeout: 240_000 });
 async function checkDevServer(installed) {
   const child = spawn(process.execPath, [path.join(installed, 'bin/slides.js'), 'dev', '.', '--host', '127.0.0.1', '--port', '0'],
-    { cwd: root, stdio: ['ignore', 'pipe', 'pipe'] });
+    { cwd: root, stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, FORCE_COLOR: '1' } });
   const closed = new Promise(resolve => child.once('close', resolve));
   let log = '';
   child.stdout.on('data', data => log += data);
@@ -20,7 +21,8 @@ async function checkDevServer(installed) {
   try {
     const deadline = Date.now() + 60_000;
     while (Date.now() < deadline && child.exitCode === null) {
-      const origin = log.match(/http:\/\/127\.0\.0\.1:\d+/)?.[0];
+      // CI colors the port separately; exercise that output even in local runs.
+      const origin = stripVTControlCharacters(log).match(/http:\/\/127\.0\.0\.1:\d+/)?.[0];
       if (origin) {
         // Vite may still be compiling the app after it prints the server URL.
         const response = await fetch(`${origin}/story/`, { signal: AbortSignal.timeout(Math.max(1, deadline - Date.now())) });
@@ -29,6 +31,7 @@ async function checkDevServer(installed) {
         const info = await fetch(`${origin}/story/iiif/ship/info.json`);
         assert.equal(info.status, 200, log);
         assert.equal((await info.json()).id, `${origin}/story/iiif/ship`);
+        assert.doesNotMatch(log, /Cannot find base config file/, 'packaged dev startup must not read a missing base tsconfig');
         return;
       }
       await new Promise(resolve => setTimeout(resolve, 100));
@@ -82,6 +85,17 @@ try {
       `Unpublished workspace import in ${filename}`);
   }
   await assert.rejects(() => stat(path.join(installed, 'src')), { code: 'ENOENT' });
+  // Scaffold from the installed archive: init must not rely on checkout files.
+  const starter = path.join(root, 'starter');
+  run(['exec', 'slides', 'init', starter, '--title', 'My new narrative map', '--yes']);
+  const starterPackage = JSON.parse(await readFile(path.join(starter, 'package.json')));
+  assert.equal(starterPackage.devDependencies['@allmaps/slides'], pkg.version);
+  assert.doesNotMatch(await readFile(path.join(starter, 'slides.config.yml'), 'utf8'), /^map:/m);
+  run(['exec', 'slides', 'validate', starter]);
+  run(['exec', 'slides', 'build', starter]);
+  const starterHtml = await readFile(path.join(starter, 'dist/index.html'), 'utf8');
+  assert.match(starterHtml, /My new narrative map/);
+  assert.match(starterHtml, /Queequeg was a native of Rokovoko/);
   // Authored content has no JavaScript entry point or exported content package.
   await mkdir(path.join(root, 'chapters'));
   await mkdir(path.join(root, 'assets/images'), { recursive: true });

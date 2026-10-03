@@ -1,5 +1,6 @@
 import type { LayerSpecification, SourceSpecification, StyleSpecification } from "maplibre-gl";
 import { getLayerWithVisibility, type EffectiveBasemapLayerState, type ResolvedBasemapStyle } from "../model/basemap.ts";
+import { getUserLayerGlyphs } from "../model/map/layers.ts";
 export function sceneStyles(
   style: ResolvedBasemapStyle,
   state: EffectiveBasemapLayerState,
@@ -26,10 +27,9 @@ export function sceneStyles(
   const make = (layers: LayerSpecification[]): StyleSpecification => ({
     version: 8,
     sources: { ...style.sources, ...sources },
-    glyphs: style.glyphs,
+    glyphs: style.glyphs ?? getUserLayerGlyphs(layers),
     sprite: style.sprite,
     layers: layers.filter((layer) => layer.layout?.visibility !== "none"),
   });
   return { lower: make(lower), upper: make(upper) };
 }
-

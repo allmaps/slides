@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import type { MapLibreWarpedMapLayerOptions } from "@allmaps/maplibre";
 import type { SlidesConfig } from "./types.ts";
-import type { StyleSpecification } from "maplibre-gl";
+import type { LayerSpecification, StyleSpecification } from "maplibre-gl";
 import { THEME_NAMES } from "./theme.ts";
 
 const nullableToUndefined = (value: unknown) =>
@@ -49,12 +49,6 @@ const optionalArray = <Schema extends z.ZodType>(schema: Schema) =>
   }, z.array(schema).optional());
 
 const coordinateSchema = z.tuple([z.number(), z.number()]);
-const fourNumberTupleSchema = z.tuple([
-  z.number(),
-  z.number(),
-  z.number(),
-  z.number(),
-]);
 const themeModeSchema = z.enum(["light", "dark"]);
 const themeColorSchema = z.string().trim().regex(
   /^#(?:[\da-f]{3}|[\da-f]{6})$/i,
@@ -124,8 +118,6 @@ const protomapsConfigSchema = z
 const startScreenTextSchema = z
   .object({
     startButton: optionalString,
-    chapterCountSingular: optionalString,
-    chapterCountPlural: optionalString,
     madeWith: optionalString,
   })
   .passthrough();
@@ -148,10 +140,26 @@ export const mapConfigSchema = z
 
 const mapLayerSchema = z.object({
   layer: nonEmptyString,
-  opacity: z.number().optional(),
+  opacity: z.number().min(0).max(1).optional(),
   visibility: z.enum(["visible", "none"]).optional(),
-  duration: z.number().optional(),
+  duration: z.number().nonnegative().optional(),
 });
+
+const customLayerSchema = z.object({
+  id: nonEmptyString,
+  type: z.enum(["fill", "line", "symbol", "circle", "heatmap", "fill-extrusion", "raster", "hillshade", "background", "color-relief"]),
+  source: optionalNonEmptyString,
+  layout: z.object({ visibility: z.enum(["visible", "none"]).optional() }).passthrough().optional(),
+  paint: unknownRecordSchema.optional(),
+  filter: z.array(z.unknown()).optional(),
+  minzoom: z.number().min(0).max(24).optional(),
+  maxzoom: z.number().min(0).max(24).optional(),
+}).passthrough().superRefine((layer, ctx) => {
+  if (layer.type !== "background" && !layer.source)
+    ctx.addIssue({ code: "custom", path: ["source"], message: "provide a source for this layer" });
+}).transform(layer => layer as LayerSpecification);
+
+const userLayerConfigSchema = z.union([customLayerSchema, mapLayerSchema]);
 
 const subslideshowReferenceSchema = z.union([
   nonEmptyString,
@@ -168,7 +176,6 @@ const warpedMapOptionsSchema = z.custom<Partial<MapLibreWarpedMapLayerOptions>>(
 
 const warpedMapSchema = z
   .object({
-    type: z.literal("Image").optional(),
     url: optionalNonEmptyString,
     path: optionalNonEmptyString,
     caption: optionalString,
@@ -179,8 +186,6 @@ const warpedMapSchema = z
     useZoom: z.boolean().optional(),
     options: warpedMapOptionsSchema.optional(),
     darkOptions: warpedMapOptionsSchema.optional(),
-    region: fourNumberTupleSchema.optional(),
-    wiggle: z.boolean().optional(),
   })
   .passthrough()
   .refine((warpedMap) => warpedMap.url || warpedMap.path, {
@@ -210,12 +215,9 @@ const mapChapterPropsSchema = z
         dimensions: coordinateSchema,
       }),
     ),
-    caption: optionalString,
-    freeze: z.boolean().optional(),
-    padding: z.number().optional(),
     fit: z.enum(["cover", "contain", "equal"]).optional(),
+    padding: z.number().optional(),
     hideBasemap: z.boolean().optional(),
-    contain: z.boolean().optional(),
     warpedMaps: optionalArray(warpedMapSchema),
     layers: optionalArray(mapLayerSchema),
   })
@@ -293,6 +295,7 @@ export const slidesConfigSchema = z
       .record(z.string(), sourceDefinitionSchema)
       .optional()
       .default({}),
+    layers: optionalArray(userLayerConfigSchema),
     map: mapConfigSchema.optional(),
     protomaps: protomapsConfigSchema.optional(),
     interface: interfaceConfigSchema.optional(),
@@ -397,6 +400,7 @@ export const parseSlidesConfig = (
         (config.slideshows.length === 1 ? config.slideshows[0].id : "main"),
       slideshows: config.slideshows,
       sources: config.sources,
+      layers: config.layers,
       map: config.map,
       protomaps: config.protomaps,
       interface: config.interface,

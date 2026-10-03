@@ -4,6 +4,26 @@ import { mkdtemp, writeFile, rm } from "node:fs/promises";
 import path from "node:path";
 import { tmpdir } from "node:os";
 import { loadSlidesConfig, getAppEnvironment } from "../src/content/config.ts";
+import { getEffectiveBasemapStyleConfig, resolveBasemapStyle } from "../src/model/basemap.ts";
+
+test("an environment key enables Protomaps without a map block", async t => {
+  const root = await mkdtemp(path.join(tmpdir(), "slides-basemap-config-"));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  await writeFile(path.join(root, "slides.config.yml"), "title: Map\n");
+  for (const key of ["", "environment-key"]) {
+    const config = await loadSlidesConfig({ content: root, publicOverrides: { PUBLIC_PROTOMAPS_KEY: key } });
+    const style = await resolveBasemapStyle({ theme: "light", config: getEffectiveBasemapStyleConfig({
+      theme: "light", appMap: config.slidesConfig.map, appProtomaps: config.slidesConfig.protomaps,
+    }) });
+    assert.equal(getAppEnvironment(config).PUBLIC_PROTOMAPS_KEY, key);
+    if (key) assert.equal(style.sources["basemap:protomaps"].url, "https://api.protomaps.com/tiles/v4.json?key=environment-key");
+    else assert.deepEqual(style.sources, {});
+  }
+  await writeFile(path.join(root, "slides.config.yml"), 'title: Map\nprotomaps:\n  key: ""\n');
+  assert.equal((await loadSlidesConfig({ content: root,
+    publicOverrides: { PUBLIC_PROTOMAPS_KEY: "environment-key" },
+  })).protomapsKey, "environment-key");
+});
 
 test("generation defaults, IIIF options, and config reloads preserve only explicit environment overrides", async t => {
   const root = await mkdtemp(path.join(tmpdir(), "slides-generation-"));

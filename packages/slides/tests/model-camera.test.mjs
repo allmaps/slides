@@ -7,6 +7,7 @@ import {
   resolveChapterCamera,
   unitsPerPixel,
   getCameraLayoutOptions,
+  getCameraPadding,
 } from "../src/model/map/camera.ts";
 
 // Synthetic mask around Kattenburg; independent of installed content packages.
@@ -94,6 +95,41 @@ test("explicit location overrides map fitting and a location-only chapter inheri
   );
 });
 
+test("fit modes contain, cover or equal the available area at different bearings and aspect ratios", () => {
+  const map = new WarpedMap("map", georeferencedMap);
+  const padding = { left: 80, right: 20, top: 30, bottom: 50 };
+  try {
+    for (const size of [[540, 400], [400, 700]]) {
+      for (const bearing of [0, 37, 90]) {
+        const chapter = { warpedMaps: [{ url: "map" }], location: { bearing } };
+        const cameras = {};
+        for (const fit of ["contain", "cover", "equal"]) {
+          const camera = resolveChapterCamera({ ...chapter, fit }, () => [map], size, padding);
+          cameras[fit] = camera;
+          const viewport = new Viewport(size, lonLatToWebMercator(camera.center), unitsPerPixel(camera.zoom), {
+            rotation: (-bearing * Math.PI) / 180,
+          });
+          const [a, b, c, d, e, f] = viewport.projectedGeoToViewportHomogeneousTransform;
+          const pixels = map.projectedGeoAppliedMask.map(([x, y]) => [a * x + c * y + e, b * x + d * y + f]);
+          const width = Math.max(...pixels.map(p => p[0])) - Math.min(...pixels.map(p => p[0]));
+          const height = Math.max(...pixels.map(p => p[1])) - Math.min(...pixels.map(p => p[1]));
+          const ratios = [width / (size[0] - padding.left - padding.right), height / (size[1] - padding.top - padding.bottom)];
+          const extent = fit === "contain" ? Math.max(...ratios) : fit === "cover" ? Math.min(...ratios) : ratios[0] * ratios[1];
+          assert.ok(Math.abs(extent - 1) < 1e-6, `${fit}, ${bearing}°, ${size}: ${ratios}`);
+          assert.equal(camera.bearing, bearing);
+        }
+        assert.deepEqual(resolveChapterCamera(chapter, () => [map], size, padding), cameras.contain);
+        assert.deepEqual(cameras.cover.center, cameras.contain.center);
+        assert.deepEqual(cameras.equal.center, cameras.contain.center);
+        assert.ok(cameras.contain.zoom < cameras.equal.zoom);
+        assert.ok(cameras.equal.zoom < cameras.cover.zoom);
+      }
+    }
+  } finally {
+    map.destroy();
+  }
+});
+
 test("useBounds excludes distant maps while an explicit zoom overrides native-image zoom", () => {
   const map = new WarpedMap("map", georeferencedMap);
   const props = { url: "included", useBounds: true, useZoom: true };
@@ -102,12 +138,55 @@ test("useBounds excludes distant maps while an explicit zoom overrides native-im
       assert.equal(entry.url, "included");
       return [map];
     };
-    const camera = resolveChapterCamera(
-      { warpedMaps: [props, { url: "excluded" }], location: { zoom: 11 } },
-      getMaps,
-      [540, 400],
-    );
-    assert.equal(camera.zoom, 11);
+    for (const fit of ["contain", "cover", "equal"]) {
+      const chapter = { fit, warpedMaps: [props, { url: "excluded" }] };
+      const native = resolveChapterCamera(chapter, getMaps, [540, 400]);
+      assert.ok(Math.abs(unitsPerPixel(native.zoom) - 1 / map.resourceToProjectedGeoScale) < 1e-9);
+      const explicit = resolveChapterCamera({ ...chapter, location: { zoom: 11 } }, getMaps, [540, 400]);
+      assert.equal(explicit.zoom, 11);
+    }
+  } finally {
+    map.destroy();
+  }
+});
+
+test("inner padding preserves layout reservations and offsets, including edge-to-edge cover", () => {
+  const map = new WarpedMap("map", georeferencedMap);
+  const warpedMaps = [{ url: "map" }];
+  try {
+    for (const [size, layout, offset] of [
+      [[1280, 800], { top: 0, right: 460, bottom: 0, left: 0 }, [-230, 0]],
+      [[400, 800], { top: 0, right: 0, bottom: 420, left: 0 }, [0, -210]],
+      [[540, 400], { top: 0, right: 0, bottom: 0, left: 0 }, [0, 0]],
+    ]) {
+      assert.deepEqual(getCameraPadding(layout, 0), layout);
+      assert.deepEqual(getCameraPadding(layout), getCameraPadding(layout, 25));
+      for (const padding of [-30, 0, 25, 60]) {
+        const combined = getCameraPadding(layout, padding);
+        const framing = getCameraLayoutOptions(combined);
+        assert.deepEqual(framing.offset, offset, 'the content margin must not move the layout center');
+        for (const side of ['top', 'right', 'bottom', 'left'])
+          assert.equal(combined[side] - padding, layout[side], 'the panel reservation must remain intact');
+        const camera = resolveChapterCamera({ warpedMaps, fit: 'cover', padding }, () => [map], size, framing.padding);
+        const viewport = new Viewport(size, lonLatToWebMercator(camera.center), unitsPerPixel(camera.zoom));
+        const [a, b, c, d, e, f] = viewport.projectedGeoToViewportHomogeneousTransform;
+        const pixels = map.projectedGeoAppliedMask.map(([x, y]) => [a * x + c * y + e + offset[0], b * x + d * y + f + offset[1]]);
+        const bounds = [Math.min(...pixels.map(p => p[0])), Math.min(...pixels.map(p => p[1])),
+          Math.max(...pixels.map(p => p[0])), Math.max(...pixels.map(p => p[1]))];
+        const target = [combined.left, combined.top, size[0] - combined.right, size[1] - combined.bottom];
+        assert.ok(bounds[0] <= target[0] + 1e-6 && bounds[1] <= target[1] + 1e-6 &&
+          bounds[2] >= target[2] - 1e-6 && bounds[3] >= target[3] - 1e-6, 'cover must reach every available edge');
+        assert.ok(Math.abs(bounds[0] - target[0]) < 1e-6 || Math.abs(bounds[1] - target[1]) < 1e-6,
+          'cover must meet one pair of edges exactly');
+      }
+    }
+    for (const padding of [-30, 0, 25]) {
+      assert.deepEqual(
+        resolveChapterCamera({ warpedMaps, padding }, () => [map], [540, 400]),
+        resolveChapterCamera({ warpedMaps }, () => [map], [540, 400], padding),
+        'standalone camera resolution also honors the chapter margin',
+      );
+    }
   } finally {
     map.destroy();
   }

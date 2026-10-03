@@ -39,12 +39,25 @@ see [licensing and source distribution](licensing.md#distributing-a-site).
 
 ## Workflows and headers
 
-The existing content repositories provide source-checkout workflow examples:
+The content repositories install an exact `@allmaps/slides` version from their
+own `package.json` and `pnpm-lock.yaml`, using `pnpm install --frozen-lockfile`.
+They do not clone the Slides source. Examples:
 [Gravity at Sea](https://github.com/tu-delft-heritage/gravity-expeditions-app/blob/main/.github/workflows/deploy-pages.yml),
-[Reuzenarbeid](https://github.com/tu-delft-heritage/reuzenarbeid/blob/main/.github/workflows/deploy-pages.yml)
-and [Kattenburg Atlas](https://github.com/amsterdamtimemachine/kattenburg-atlas/blob/main/.github/workflows/deploy-pages.yml).
-They install renderer system dependencies and run the build under Xvfb.
-The [template](https://github.com/allmaps/slides-template) does not configure deployment.
+[Reuzenarbeid](https://github.com/tu-delft-heritage/reuzenarbeid/blob/main/.github/workflows/deploy-pages.yml),
+[Kattenburg Atlas](https://github.com/amsterdamtimemachine/kattenburg-atlas/blob/main/.github/workflows/deploy-pages.yml)
+and the [template](https://github.com/allmaps/slides-template/blob/main/.github/workflows/deploy-pages.yml).
+
+Select **GitHub Actions** as the content repository's Pages source. The workflow
+uses Pages' configured URL and base path, including a custom domain when configured.
+It installs the native renderer's Ubuntu libraries inline and builds under Xvfb.
+IIIF, annotation and thumbnail caches have separate reset options for manual runs.
+Private content repositories can use the public npm package without a Slides
+checkout token; Pages availability depends on the repository's GitHub plan.
+
+To upgrade, run `pnpm add -D -E @allmaps/slides@<version>` in the content repository,
+validate/build, then commit its manifest and lockfile. Pushing to `main` redeploys.
+The `SLIDES_REF` variable is no longer used. See [software releases](releases.md)
+for how npm publishing and GitHub releases work.
 
 Kattenburg also has a Docker build that serves the exported site with Nginx;
 see its [deployment guide](https://github.com/amsterdamtimemachine/kattenburg-atlas/blob/main/docs/deployment.md).

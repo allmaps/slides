@@ -13,12 +13,9 @@ export async function prepareRunner(config: RuntimeSlidesConfig, runner = path.j
   await atomicWrite(path.join(runner, "package.json"), JSON.stringify({ private: true, type: "module", dependencies: packageJson.dependencies }));
   await atomicWrite(path.join(runner, "vite.config.js"), `export { default } from ${JSON.stringify(pathToFileURL(path.join(config.appDir, "vite.config.js")).href)};\n`);
   await atomicWrite(path.join(runner, "svelte.config.js"), `import * as app from ${JSON.stringify(pathToFileURL(path.join(config.appDir, "svelte.config.js")).href)};\nexport default app.createSlidesConfig ? app.createSlidesConfig() : app.default;\n`);
-  await atomicWrite(path.join(runner, "tsconfig.json"), JSON.stringify({
-    extends: path.join(config.workDir, "svelte-kit", "tsconfig.json"),
-    compilerOptions: { rewriteRelativeImportExtensions: true, allowJs: true, checkJs: true, esModuleInterop: true, skipLibCheck: true, strict: true, moduleResolution: "bundler", rootDirs: [runner, config.appDir, path.join(config.workDir, "svelte-kit/types")] },
-    include: [path.join(runner, "src/**/*.ts"), path.join(runner, "src/**/*.js"), path.join(runner, "src/**/*.svelte"), path.join(config.workDir, "svelte-kit/**/*.d.ts")],
-    exclude: [],
-  }, null, 2));
+  // Sync may itself bundle the app config. Do not expose an extends reference
+  // until SvelteKit has generated its target, including when reusing a runner.
+  await rm(path.join(runner, "tsconfig.json"), { force: true });
   for (const name of ["src", "static"]) {
     const source = path.join(config.appDir, name), link = path.join(runner, name);
     if (await exists(source) && !await exists(link)) await symlink(source, link, "junction");
@@ -52,4 +49,13 @@ export async function prepareRunner(config: RuntimeSlidesConfig, runner = path.j
   await rm(runnerModules, { recursive: true, force: true });
   await symlink(modules, runnerModules, "junction");
   return runner;
+}
+
+export async function writeRunnerTsconfig(config: RuntimeSlidesConfig, runner: string) {
+  await atomicWrite(path.join(runner, "tsconfig.json"), JSON.stringify({
+    extends: path.join(config.workDir, "svelte-kit", "tsconfig.json"),
+    compilerOptions: { rewriteRelativeImportExtensions: true, allowJs: true, checkJs: true, esModuleInterop: true, skipLibCheck: true, strict: true, moduleResolution: "bundler", rootDirs: [runner, config.appDir, path.join(config.workDir, "svelte-kit/types")] },
+    include: [path.join(runner, "src/**/*.ts"), path.join(runner, "src/**/*.js"), path.join(runner, "src/**/*.svelte"), path.join(config.workDir, "svelte-kit/**/*.d.ts")],
+    exclude: [],
+  }, null, 2));
 }

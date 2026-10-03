@@ -6,7 +6,7 @@ import { tmpdir } from "node:os";
 import { loadSlidesConfig, getAppEnvironment, booleanOption, type LoadSlidesConfigOptions } from "../content/config.ts";
 import { loadContent } from "../content/index.ts";
 import { buildThumbnails, thumbnailPaths } from "./thumbnails.ts";
-import { prepareRunner } from "./runner.ts";
+import { prepareRunner, writeRunnerTsconfig } from "./runner.ts";
 import { prepareIiif } from "./iiif.ts";
 import { runNode } from "./process.ts";
 export { buildThumbnails } from "./thumbnails.ts";
@@ -26,17 +26,24 @@ export async function runSite(command: "dev" | "build" | "preview" | "check" | "
   if (command === "build" && booleanOption(env.SLIDES_THUMBNAILS_ENABLED, true)) await buildThumbnails(config);
   if (command === "build") await prepareIiif(config);
   const require = createRequire(import.meta.url);
+  const syncRunner = async (runner: string) => {
+    await runNode(path.join(path.dirname(require.resolve("@sveltejs/kit/package.json")), "svelte-kit.js"), ["sync"], { cwd: runner, env });
+    await writeRunnerTsconfig(config, runner);
+  };
   if (command === "check") {
     // svelte-check deliberately skips node_modules, including Vite's default
     // cache location. A temporary linked workspace keeps diagnostics effective.
     const runner = await realpath(await mkdtemp(path.join(tmpdir(), "slides-check-")));
     try {
       await prepareRunner(config, runner);
-      await runNode(path.join(path.dirname(require.resolve("@sveltejs/kit/package.json")), "svelte-kit.js"), ["sync"], { cwd: runner, env });
+      await syncRunner(runner);
       return await runNode(path.join(path.dirname(require.resolve("svelte-check/package.json")), "bin/svelte-check"), ["--tsconfig", "./tsconfig.json", ...args], { cwd: runner, env });
     } finally { await rm(runner, { recursive: true, force: true }); }
   }
   const runner = await prepareRunner(config);
+  // Vite reads the runner's tsconfig while bundling its config, before the
+  // SvelteKit plugin can generate the base config that it extends.
+  await syncRunner(runner);
   return runNode(path.join(path.dirname(require.resolve("vite/package.json")), "bin/vite.js"), [command, ...args], { cwd: runner, env });
 }
 export const buildSite = (options: LoadSlidesConfigOptions = {}) => runSite("build", options);
