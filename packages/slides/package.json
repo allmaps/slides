@@ -1,6 +1,6 @@
 {
   "name": "@allmaps/slides",
-  "version": "0.1.0-beta.1",
+  "version": "0.1.0-beta.2",
   "license": "SEE LICENSE IN LICENSE.md",
   "type": "module",
   "bin": {
