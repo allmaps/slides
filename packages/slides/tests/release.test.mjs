@@ -1,16 +1,46 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { mkdtemp, mkdir, writeFile, rm, realpath } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, writeFile, rm, realpath } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
+import { parse } from 'yaml';
 import { checkRelease } from '../../../scripts/check-release.mjs';
 import { prepareNpmRelease, publishedBuildInfo } from '../../../scripts/prepare-npm-release.mjs';
+import { syncNpmTags } from '../../../scripts/sync-npm-tags.mjs';
 
 const name = '@allmaps/slides';
 const version = '0.1.0-beta.2';
 const noNetwork = () => { throw new Error('Unexpected registry request'); };
+
+test('version workflow ignores consumed beta notes but allows new changesets and beta exit', async t => {
+  const workflow = parse(await readFile(new URL('../../../.github/workflows/version.yml', import.meta.url), 'utf8'));
+  const check = workflow.jobs.version.steps.find(step => step.id === 'changes').run;
+  for (const { mode, pending, expected } of [
+    { mode: 'pre', pending: false, expected: false },
+    { mode: 'pre', pending: true, expected: true },
+    { mode: 'exit', pending: false, expected: true },
+    { mode: undefined, pending: false, expected: false },
+    { mode: undefined, pending: true, expected: true },
+  ]) {
+    const root = await mkdtemp(path.join(tmpdir(), 'slides-version-workflow-'));
+    t.after(() => rm(root, { recursive: true, force: true }));
+    await mkdir(path.join(root, '.changeset/pre'), { recursive: true });
+    await writeFile(path.join(root, '.changeset/README.md'), 'Release instructions');
+    await writeFile(path.join(root, '.changeset/config.json'), '{}');
+    await writeFile(path.join(root, '.changeset/pre/shipped.md'), '---\n"@allmaps/slides": patch\n---\nAlready released.\n');
+    if (mode) await writeFile(path.join(root, '.changeset/pre.json'), JSON.stringify({ mode, tag: 'beta' }));
+    if (pending) await writeFile(path.join(root, '.changeset/new.md'), '---\n"@allmaps/slides": patch\n---\nNew fix.\n');
+    const output = path.join(root, 'output');
+    const summary = path.join(root, 'summary');
+    execFileSync('bash', ['-e', '-c', check], {
+      cwd: root, stdio: 'pipe', env: { ...process.env, GITHUB_OUTPUT: output, GITHUB_STEP_SUMMARY: summary },
+    });
+    assert.equal(await readFile(output, 'utf8'), `needed=${expected}\n`, JSON.stringify({ mode, pending }));
+    if (!expected) assert.match(await readFile(summary, 'utf8'), /no version PR needed/);
+  }
+});
 
 async function fixture(t, nextVersion = version) {
   const root = await realpath(await mkdtemp(path.join(tmpdir(), 'slides-release-')));
@@ -106,4 +136,43 @@ test('registry errors, missing tarballs, and corrupt packages cannot be mistaken
   const { info } = await checkRelease(f.root);
   await assert.rejects(publishedBuildInfo(name, version, await publishedFixture(t, info, { corrupt: true })), /integrity mismatch/);
   await assert.rejects(publishedBuildInfo(name, version, await publishedFixture(t, info, { tarStatus: 404 })), /tarball returned HTTP 404/);
+});
+
+test('beta publication advances latest without changing the beta alias', async () => {
+  for (const latest of [undefined, '0.1.0-beta.1', '0.0.9-beta.99']) {
+    const commands = [];
+    const result = await syncNpmTags({ name, version }, {
+      fetchFn: async url => {
+        assert.equal(url, `https://registry.npmjs.org/-/package/${encodeURIComponent(name)}/dist-tags`);
+        return Response.json({ beta: version, ...(latest ? { latest } : {}) });
+      },
+      run: (...args) => commands.push(args),
+    });
+    assert.equal(commands.length, 1);
+    assert.deepEqual(commands[0][1], ['dist-tag', 'add', `${name}@${version}`, 'latest', '--registry=https://registry.npmjs.org']);
+    assert.match(result, /latest and beta now point/);
+  }
+});
+
+test('tag repair preserves stable, current and newer defaults', async () => {
+  const noWrite = () => assert.fail('Must not change npm tags');
+  for (const latest of ['0.1.0', '0.0.1', version, '0.1.0-beta.10', '0.2.0-beta.1', '1.0.0-rc.1']) {
+    await syncNpmTags({ name, version }, {
+      fetchFn: async () => Response.json({ beta: version, latest }), run: noWrite,
+    });
+  }
+  await syncNpmTags({ name, version: '0.1.0' }, { fetchFn: noNetwork, run: noWrite });
+  await assert.rejects(syncNpmTags({ name, version }, {
+    fetchFn: async () => Response.json({ beta: '0.1.0-beta.3', latest: '0.1.0-beta.1' }), run: noWrite,
+  }), /current published beta/);
+});
+
+test('tag updates refuse unpublished betas and registry failures', async () => {
+  const noWrite = () => assert.fail('Must not change npm tags');
+  await assert.rejects(syncNpmTags({ name, version }, {
+    fetchFn: async () => Response.json({ latest: '0.1.0-beta.1' }), run: noWrite,
+  }), /current published beta/);
+  await assert.rejects(syncNpmTags({ name, version }, {
+    fetchFn: async () => new Response(null, { status: 503 }), run: noWrite,
+  }), /HTTP 503/);
 });

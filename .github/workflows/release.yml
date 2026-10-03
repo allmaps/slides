@@ -48,8 +48,9 @@ jobs:
       - uses: pnpm/action-setup@v4
         if: steps.plan.outputs.release == 'true' && steps.plan.outputs.published == 'false'
       - name: Install npm with trusted publishing support
-        if: steps.plan.outputs.release == 'true' && steps.plan.outputs.published == 'false'
-        run: npm install --global npm@11
+        if: steps.plan.outputs.release == 'true'
+        # OIDC dist-tag authentication requires npm 11.21.0 or later.
+        run: npm install --global 'npm@^11.21.0'
       - name: Install packaging dependencies
         if: steps.plan.outputs.release == 'true' && steps.plan.outputs.published == 'false'
         # Packaging does not run the native renderer or need content repositories.
@@ -63,6 +64,9 @@ jobs:
         env:
           NPM_TAG: ${{ steps.plan.outputs.npmTag }}
         run: npm publish "$RUNNER_TEMP/slides.tgz" --access public --tag "$NPM_TAG" --provenance
+      - name: Update npm distribution tags
+        if: steps.plan.outputs.release == 'true'
+        run: node scripts/sync-npm-tags.mjs
       - name: Create and push the release tag
         if: steps.plan.outputs.release == 'true'
         env:
