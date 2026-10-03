@@ -7,6 +7,7 @@ import path from 'node:path';
 import { test } from 'node:test';
 import { checkRelease } from '../../../scripts/check-release.mjs';
 import { prepareNpmRelease, publishedBuildInfo } from '../../../scripts/prepare-npm-release.mjs';
+import { syncNpmTags } from '../../../scripts/sync-npm-tags.mjs';
 
 const name = '@allmaps/slides';
 const version = '0.1.0-beta.2';
@@ -106,4 +107,46 @@ test('registry errors, missing tarballs, and corrupt packages cannot be mistaken
   const { info } = await checkRelease(f.root);
   await assert.rejects(publishedBuildInfo(name, version, await publishedFixture(t, info, { corrupt: true })), /integrity mismatch/);
   await assert.rejects(publishedBuildInfo(name, version, await publishedFixture(t, info, { tarStatus: 404 })), /tarball returned HTTP 404/);
+});
+
+test('beta publication advances latest without changing the beta alias', async () => {
+  for (const latest of [undefined, '0.1.0-beta.1', '0.0.9-beta.99']) {
+    const commands = [];
+    const result = await syncNpmTags({ name, version }, {
+      fetchFn: async url => {
+        assert.equal(url, `https://registry.npmjs.org/-/package/${encodeURIComponent(name)}/dist-tags`);
+        return Response.json({ beta: version, ...(latest ? { latest } : {}) });
+      },
+      run: (...args) => commands.push(args),
+    });
+    assert.equal(commands.length, 1);
+    assert.deepEqual(commands[0][1], ['dist-tag', 'add', `${name}@${version}`, 'latest', '--registry=https://registry.npmjs.org']);
+    assert.match(result, /latest and beta now point/);
+  }
+});
+
+test('tag repair preserves stable, current and newer defaults', async () => {
+  const noWrite = () => assert.fail('Must not change npm tags');
+  for (const latest of ['0.1.0', '0.0.1', version, '0.1.0-beta.10', '0.2.0-beta.1', '1.0.0-rc.1']) {
+    await syncNpmTags({ name, version }, {
+      fetchFn: async () => Response.json({ beta: version, latest }), run: noWrite,
+    });
+  }
+  await syncNpmTags({ name, version: '0.1.0' }, { fetchFn: noNetwork, run: noWrite });
+  await assert.rejects(syncNpmTags({ name, version }, {
+    fetchFn: async () => Response.json({ beta: '0.1.0-beta.3', latest: '0.1.0-beta.1' }), run: noWrite,
+  }), /current published beta/);
+});
+
+test('tag repair refuses unpublished betas and registry failures; dry run never writes', async () => {
+  const noWrite = () => assert.fail('Must not change npm tags');
+  await assert.rejects(syncNpmTags({ name, version }, {
+    fetchFn: async () => Response.json({ latest: '0.1.0-beta.1' }), run: noWrite,
+  }), /current published beta/);
+  await assert.rejects(syncNpmTags({ name, version }, {
+    fetchFn: async () => new Response(null, { status: 503 }), run: noWrite,
+  }), /HTTP 503/);
+  assert.match(await syncNpmTags({ name, version }, {
+    fetchFn: async () => Response.json({ beta: version, latest: '0.1.0-beta.1' }), run: noWrite, dryRun: true,
+  }), /Would set latest/);
 });
