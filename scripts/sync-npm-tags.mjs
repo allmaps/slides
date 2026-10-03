@@ -10,7 +10,6 @@ const betaParts = version => /^(\d+)\.(\d+)\.(\d+)-beta\.(\d+)$/.exec(version)?.
 export async function syncNpmTags({ name, version }, {
   fetchFn = fetch,
   run = execFileSync,
-  dryRun = false,
 } = {}) {
   assert.equal(name, '@allmaps/slides');
   const target = betaParts(version);
@@ -34,7 +33,6 @@ export async function syncNpmTags({ name, version }, {
     if (difference < 0 || target[difference] < current[difference])
       return `Keeping newer latest ${tags.latest}.`;
   }
-  if (dryRun) return `Would set latest to ${version}, retaining beta.`;
   run(process.platform === 'win32' ? 'npm.cmd' : 'npm',
     ['dist-tag', 'add', `${name}@${version}`, 'latest', '--registry=https://registry.npmjs.org'],
     { stdio: 'inherit' });
@@ -43,5 +41,5 @@ export async function syncNpmTags({ name, version }, {
 
 if (process.argv[1] && pathToFileURL(path.resolve(process.argv[1])).href === import.meta.url) {
   const pkg = JSON.parse(await readFile(new URL('../packages/slides/package.json', import.meta.url), 'utf8'));
-  console.log(await syncNpmTags(pkg, { dryRun: process.argv.includes('--dry-run') }));
+  console.log(await syncNpmTags(pkg));
 }

@@ -138,7 +138,7 @@ test('tag repair preserves stable, current and newer defaults', async () => {
   }), /current published beta/);
 });
 
-test('tag repair refuses unpublished betas and registry failures; dry run never writes', async () => {
+test('tag updates refuse unpublished betas and registry failures', async () => {
   const noWrite = () => assert.fail('Must not change npm tags');
   await assert.rejects(syncNpmTags({ name, version }, {
     fetchFn: async () => Response.json({ latest: '0.1.0-beta.1' }), run: noWrite,
@@ -146,7 +146,4 @@ test('tag repair refuses unpublished betas and registry failures; dry run never 
   await assert.rejects(syncNpmTags({ name, version }, {
     fetchFn: async () => new Response(null, { status: 503 }), run: noWrite,
   }), /HTTP 503/);
-  assert.match(await syncNpmTags({ name, version }, {
-    fetchFn: async () => Response.json({ beta: version, latest: '0.1.0-beta.1' }), run: noWrite, dryRun: true,
-  }), /Would set latest/);
 });

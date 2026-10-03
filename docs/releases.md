@@ -79,7 +79,6 @@ silently switch to staged publishing.
 | Prepare release (`version.yml`) | Changesets on `main`, or manual run on `main` | Opens/updates the version and changelog PR. |
 | Publish release (`release.yml`) | Package manifest changes on `main` | Publishes only when the version changes, then creates the tag and GitHub release. |
 | Publish release (`release.yml`) | Manual run on `main` with an empty tag | Attempts the current prepared release, including retrying an interrupted publication. |
-| Publish release (`release.yml`) | Manual run on `main` with `sync_tags` enabled and an empty tag | Repairs `latest` for the already-published beta without rebuilding or republishing. |
 | Publish release (`release.yml`) | Push of `@allmaps/slides@*`, or manual run with an existing tag | Creates the GitHub release only; does not publish to npm. |
 | Slides architecture (`slides.yml`) | Every pull request, or manual run | Tests the CLI, app, renderer, development server and installed package; skips tests for documentation-only PRs. |
 | Static renderer (`static-render.yml`) | Every pull request, or manual run | Tests the Linux renderer container; skips tests for documentation-only PRs. |
@@ -112,11 +111,10 @@ public Slides template.
 - A manual run with an empty tag uses the selected `main` commit. Use it only
   when that commit is the prepared release. If more work has landed on `main`,
   rerun the original failed run instead.
-- If `beta` is current but `latest` still points to an older beta, enable
-  **Allow npm dist-tag** for the trusted publisher, then run **Publish release**
-  on `main` with `sync_tags` enabled and `tag` empty. This uses the package version
-  on `main`, requires it to match npm's current `beta`, and never replaces a
-  stable or newer `latest`. It needs no new package version or Git tag.
+- If an earlier beta publication left `latest` behind, correct it once from a
+  logged-in terminal: `npm dist-tag add @allmaps/slides@0.1.0-beta.2 latest`
+  (replace the example with the current beta version). This updates the tag
+  without republishing. Subsequent releases update it automatically.
 
 GitHub supplies source ZIP/tar downloads for tagged releases. The first npm
 publication also received `latest`; the release workflow now keeps that default
@@ -141,10 +139,6 @@ rebuilds the package, publishes, synchronizes npm tags using the same policy, an
 creates a local annotated tag. Complete npm's publishing authentication when
 prompted. Pushing the tag creates the GitHub release. Coordinate this fallback with any running
 Actions publication so they do not attempt the same version concurrently.
-
-To repair only npm tags from a checkout of the published version, run
-`pnpm release:tags` after logging in. Add `--dry-run` to inspect the proposed
-change without modifying npm.
 
 Use these release commands instead of `changeset publish` to keep source
 validation, npm tags and GitHub releases on the same workflow.

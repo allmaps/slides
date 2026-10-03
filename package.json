@@ -15,7 +15,6 @@
     "changeset": "changeset",
     "release:version": "changeset version && pnpm install --lockfile-only --ignore-scripts",
     "release:check": "node scripts/check-release.mjs",
-    "release:tags": "node scripts/sync-npm-tags.mjs",
     "release:publish": "node scripts/publish-slides.mjs"
   },
   "devDependencies": {
