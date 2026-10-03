@@ -38,6 +38,11 @@ publish anything. Pending changesets alone do not publish anything either:
 they prepare the version PR. A release requires a clean software commit,
 consumed changesets and a changelog entry matching the version.
 
+**Prepare release** skips version preparation when there are no new changesets.
+Archived beta notes in `.changeset/pre/` do not count, so merging a version PR
+does not open another empty PR. Explicitly leaving beta with `changeset pre exit`
+still allows a version PR without new notes. The same checks apply to manual runs.
+
 [Software checks](development.md#checks) cover the package and application.
 Content changes belong in their own repositories and need no Slides changeset.
 Local content edits do not block `pnpm release:check`.
@@ -76,7 +81,7 @@ silently switch to staged publishing.
 
 | Workflow | Trigger | Result |
 | --- | --- | --- |
-| Prepare release (`version.yml`) | Changesets on `main`, or manual run on `main` | Opens/updates the version and changelog PR. |
+| Prepare release (`version.yml`) | Changesets on `main`, or manual run on `main` | Opens/updates a version PR only for new changesets or an explicit beta exit. |
 | Publish release (`release.yml`) | Package manifest changes on `main` | Publishes only when the version changes, then creates the tag and GitHub release. |
 | Publish release (`release.yml`) | Manual run on `main` with an empty tag | Attempts the current prepared release, including retrying an interrupted publication. |
 | Publish release (`release.yml`) | Push of `@allmaps/slides@*`, or manual run with an existing tag | Creates the GitHub release only; does not publish to npm. |
