@@ -101,17 +101,27 @@ test('Changesets advances the existing beta and graduates to the intended regula
 test('release commands select the npm channel explicitly and tag only after successful publication', async t => {
   const { root, dir } = await fixture(t);
   await mkdir(path.join(root, 'scripts'));
-  for (const name of ['check-release.mjs', 'publish-slides.mjs'])
+  for (const name of ['check-release.mjs', 'publish-slides.mjs', 'sync-npm-tags.mjs'])
     await writeFile(path.join(root, 'scripts', name), await readFile(new URL(`../../../scripts/${name}`, import.meta.url)));
   await symlink(new URL('../src/build-info.ts', import.meta.url), path.join(dir, 'src/build-info.ts'));
   await mkdir(path.join(root, '.changeset'));
   await writeFile(path.join(root, '.changeset/pre.json'), '{"mode":"pre","tag":"beta"}');
   await writeFile(path.join(dir, 'CHANGELOG.md'), `# Slides\n\n## ${pkg.version}\n\nInitial beta.\n`);
   await mkdir(path.join(root, 'mock-bin'));
-  const mock = path.join(root, 'mock-bin/pnpm');
+  const mockBin = path.join(root, 'mock-bin');
   // No registry operation or tag creation: record subprocess arguments instead.
-  await writeFile(mock, `#!${process.execPath}\nrequire('node:fs').appendFileSync(process.env.RELEASE_TEST_LOG, JSON.stringify(process.argv.slice(2)) + '\\n');\nprocess.exit(process.env.RELEASE_TEST_FAIL === '1' ? 1 : 0);\n`);
-  await chmod(mock, 0o755);
+  for (const command of ['pnpm', 'npm']) {
+    const mock = path.join(mockBin, command);
+    await writeFile(mock, `#!${process.execPath}\nrequire('node:fs').appendFileSync(process.env.RELEASE_TEST_LOG, JSON.stringify(process.argv.slice(2)) + '\\n');\nprocess.exit(process.env.RELEASE_TEST_FAIL === '1' || (process.env.RELEASE_TEST_FAIL === 'tags' && process.argv[2] === 'dist-tag') ? 1 : 0);\n`);
+    await chmod(mock, 0o755);
+  }
+  const registry = 'data:text/javascript,' + encodeURIComponent(`
+    import assert from 'node:assert/strict';
+    globalThis.fetch = async url => {
+      assert.equal(url, 'https://registry.npmjs.org/-/package/%40allmaps%2Fslides/dist-tags');
+      return Response.json({ beta: '${pkg.version}', latest: '0.1.0-beta.0' });
+    };
+  `);
   const commit = () => {
     git(root, 'add', '.');
     git(root, '-c', 'user.name=Slides test', '-c', 'user.email=slides@example.invalid', 'commit', '-qm', 'release fixture', '--no-gpg-sign');
@@ -119,13 +129,14 @@ test('release commands select the npm channel explicitly and tag only after succ
   commit();
   await mkdir(path.join(root, 'content'));
   const log = path.join(root, 'content/publish-log');
-  const run = (env = {}) => execFileSync(process.execPath, [path.join(root, 'scripts/publish-slides.mjs')], {
+  const run = (env = {}) => execFileSync(process.execPath, ['--import', registry, path.join(root, 'scripts/publish-slides.mjs')], {
     cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'],
-    env: { ...process.env, PATH: `${path.dirname(mock)}${path.delimiter}${process.env.PATH}`, RELEASE_TEST_LOG: log, ...env },
+    env: { ...process.env, PATH: `${mockBin}${path.delimiter}${process.env.PATH}`, RELEASE_TEST_LOG: log, ...env },
   });
   const calls = async () => (await readFile(log, 'utf8')).trim().split('\n').filter(Boolean).map(JSON.parse);
   const expected = tag => [
     ['--filter', '@allmaps/slides', 'publish', '--access', 'public', '--tag', tag, '--no-git-checks'],
+    ...(tag === 'beta' ? [['dist-tag', 'add', `${pkg.name}@${pkg.version}`, 'latest', '--registry=https://registry.npmjs.org']] : []),
     ['exec', 'changeset', 'git-tag'],
   ];
   run();
@@ -133,6 +144,9 @@ test('release commands select the npm channel explicitly and tag only after succ
   await writeFile(log, '');
   assert.throws(() => run({ RELEASE_TEST_FAIL: '1' }));
   assert.equal((await calls()).length, 1, 'Failed publication must not create a release tag');
+  await writeFile(log, '');
+  assert.throws(() => run({ RELEASE_TEST_FAIL: 'tags' }));
+  assert.deepEqual(await calls(), expected('beta').slice(0, 2), 'Failed npm tag update must not create a Git release tag');
 
   await writeFile(path.join(dir, 'package.json'), JSON.stringify({ ...pkg, version: '0.1.0' }));
   await writeFile(path.join(dir, 'CHANGELOG.md'), '# Slides\n\n## 0.1.0\n\nFirst regular release.\n');
