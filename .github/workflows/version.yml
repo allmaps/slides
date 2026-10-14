@@ -25,12 +25,34 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v6
         with:
           node-version: 24
+          package-manager-cache: false
+      - name: Check for pending release changes
+        id: changes
+        run: |
+          node --input-type=module <<'NODE'
+          import { appendFile, readFile, readdir } from 'node:fs/promises';
+          // Consumed beta notes live in .changeset/pre/ and must not start another PR.
+          const pending = (await readdir('.changeset', { withFileTypes: true })).some(
+            entry => entry.isFile() && entry.name.endsWith('.md') && entry.name !== 'README.md',
+          );
+          const pre = await readFile('.changeset/pre.json', 'utf8').then(JSON.parse).catch(error => {
+            if (error.code === 'ENOENT') return undefined;
+            throw error;
+          });
+          const needed = pending || pre?.mode === 'exit';
+          await appendFile(process.env.GITHUB_OUTPUT, `needed=${needed}\n`);
+          if (!needed) await appendFile(process.env.GITHUB_STEP_SUMMARY,
+            'No pending changesets or beta exit; no version PR needed.\n');
+          NODE
+      - uses: pnpm/action-setup@v4
+        if: steps.changes.outputs.needed == 'true'
       - run: pnpm install --frozen-lockfile --ignore-scripts
+        if: steps.changes.outputs.needed == 'true'
       - uses: changesets/action/version@v2
+        if: steps.changes.outputs.needed == 'true'
         with:
           script: pnpm release:version
           github-token: ${{ secrets.GITHUB_TOKEN }}

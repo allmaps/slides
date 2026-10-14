@@ -30,6 +30,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends git \
 COPY apps ./apps
 COPY scripts ./scripts
 COPY .changeset ./.changeset
+# The release regression test exercises the version workflow's changeset guard.
+COPY .github/workflows/version.yml ./.github/workflows/version.yml
 RUN mkdir -p content && pnpm install --frozen-lockfile \
     && pnpm --filter @allmaps/slides --filter @allmaps/static-render --filter @allmaps/iiif check \
     && pnpm --filter @allmaps/slides --filter @allmaps/slides-app --filter @allmaps/svelte-canvas-panel test
