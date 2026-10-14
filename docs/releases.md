@@ -13,7 +13,10 @@ Content repositories choose when to upgrade and redeploy their websites.
    changesets are collected into one release.
 2. **Prepare release** opens or updates a version PR with the new version,
    changelog and lockfile. During beta, the next version after `0.1.0-beta.1` is
-   `0.1.0-beta.2`. Review the PR, let its checks pass, and merge it.
+   `0.1.0-beta.2`. Review the PR, let its checks pass, and merge it. For a
+   version-only PR, these checks verify the changed files and manifest instead
+   of repeating the expensive software tests. Changes to code, dependencies or
+   the lockfile still run the full checks.
 3. **Publish release** detects the version change on `main`, checks the release,
    builds and packs the software, and publishes it to npm. Beta versions update
    `beta` and also `latest` while the default version is still a beta. Once
@@ -85,8 +88,8 @@ silently switch to staged publishing.
 | Publish release (`release.yml`) | Package manifest changes on `main` | Publishes only when the version changes, then creates the tag and GitHub release. |
 | Publish release (`release.yml`) | Manual run on `main` with an empty tag | Attempts the current prepared release, including retrying an interrupted publication. |
 | Publish release (`release.yml`) | Push of `@allmaps/slides@*`, or manual run with an existing tag | Creates the GitHub release only; does not publish to npm. |
-| Slides architecture (`slides.yml`) | Every pull request, or manual run | Tests the CLI, app, renderer, development server and installed package; skips tests for documentation-only PRs. |
-| Static renderer (`static-render.yml`) | Every pull request, or manual run | Tests the Linux renderer container; skips tests for documentation-only PRs. |
+| Slides architecture (`slides.yml`) | Every pull request, or manual run | Tests the CLI, app, renderer, development server and installed package; skips expensive tests for documentation-only and verified version-only PRs. |
+| Static renderer (`static-render.yml`) | Every pull request, or manual run | Tests the Linux renderer container; uses the same documentation and version-only shortcuts. |
 | Deploy to GitHub Pages (content repos) | Push to `main`, or manual run | Installs the pinned npm package, builds content and deploys the site. |
 | Build and Publish Docker Image (Kattenburg) | Push to `main`, version tag, or manual run | Builds the site and publishes an Nginx image to GHCR. |
 

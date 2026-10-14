@@ -134,10 +134,18 @@ Every pull request reports the required `integration` and `container` checks.
 Documentation-only changes pass after a quick file check, without installing
 dependencies or building the container. The shared rules in
 [`.github/test-paths.yml`](../.github/test-paths.yml) exclude guides, software
-READMEs, changelogs and changeset notes. All other paths run the full checks,
-including configuration, licenses, workflows and content submodules. Manual
-workflow runs always run the full checks; a failed change-detection step fails
-the required check.
+READMEs, changelogs and changeset notes.
+
+Automatic version PRs from this repository's `changeset-release/main` branch to
+`main` also skip expensive tests when a comparison against the PR base confirms
+that only the Slides package's `version` field, changelog and Changesets release
+records changed. Any other manifest field, lockfile, code, configuration,
+license, workflow or content change runs the full checks. The required checks
+still report success with a summary explaining the shortcut. Publication keeps
+its release validation and package build.
+
+Manual workflow runs and PRs exceeding 3,000 changed files always run the full
+checks; a failed change-detection step fails the required check.
 
 ```sh
 pnpm -r test
